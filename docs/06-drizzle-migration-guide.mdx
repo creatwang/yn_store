@@ -1,0 +1,241 @@
+# MikroORM → Drizzle ORM 映射指南
+
+> 本指南帮助将 Medusa 的 MikroORM DML 数据模型定义迁移到 Drizzle ORM schema。
+
+## 1. 类型映射速查表
+
+| Medusa DML | PostgreSQL 实际类型 | Drizzle 定义 |
+|-----------|-------------------|-------------|
+| `model.id({ prefix: "prod" })` | `text` | `text("id").primaryKey()` |
+| `model.text()` | `text` | `text("column_name")` |
+| `model.text().nullable()` | `text NULL` | `text("column_name")` |
+| `model.number()` | `integer` | `integer("column_name")` |
+| `model.float()` | `real` | `real("column_name")` |
+| `model.bigNumber()` | `numeric` + `jsonb` | `numeric("amount")` + `jsonb("raw_amount")` |
+| `model.boolean().default(false)` | `boolean DEFAULT false` | `boolean("column_name").default(false)` |
+| `model.json()` | `jsonb` | `jsonb("column_name")` |
+| `model.dateTime()` | `timestamptz` | `timestamp("column_name", { withTimezone: true })` |
+| `model.enum(SomeEnum)` | `text` (存字符串) | `text("column_name")` |
+| `model.autoincrement()` | `serial` | `serial("column_name")` |
+| `model.array()` | `jsonb` | `jsonb("column_name").$type<string[]>()` |
+
+## 2. ID 生成策略
+
+Medusa 使用带前缀的随机 ID（如 `prod_01H...`），算法基于 `ulid` 或 `nanoid`。
+
+```typescript
+import { customAlphabet } from "nanoid"
+const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 26)
+
+export function generateId(prefix: string): string {
+  return `${prefix}_${nanoid()}`
+}
+```
+
+在 Drizzle schema 中设置默认值:
+
+```typescript
+import { text, pgTable } from "drizzle-orm/pg-core"
+
+export const product = pgTable("product", {
+  id: text("id").primaryKey().$defaultFn(() => generateId("prod")),
+  // ...
+})
+```
+
+## 3. 软删除
+
+所有 Medusa 表都有 `created_at`, `updated_at`, `deleted_at` 三个时间戳字段：
+
+```typescript
+import { timestamp } from "drizzle-orm/pg-core"
+
+const timestamps = {
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deleted_at: timestamp("deleted_at", { withTimezone: true }),
+}
+
+export const product = pgTable("product", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  // ... 其他字段
+  ...timestamps,
+})
+```
+
+查询时必须过滤:
+
+```typescript
+import { isNull } from "drizzle-orm"
+
+const products = await db.select()
+  .from(product)
+  .where(isNull(product.deleted_at))
+```
+
+## 4. bigNumber 双列模式
+
+Medusa 金额字段使用 `bigNumber` 类型，实际存储为两列:
+
+```typescript
+export const orderLineItem = pgTable("order_line_item", {
+  // 格式化后的数值 (用于展示和计算)
+  unit_price: numeric("unit_price"),
+  // 原始精度数据 (用于精确计算)
+  raw_unit_price: jsonb("raw_unit_price").$type<{ value: string; precision: number }>(),
+})
+```
+
+读取时使用 `raw_*` 字段做精确计算，`amount` 字段做展示。
+
+## 5. 完整模型示例: Product
+
+```typescript
+import {
+  pgTable,
+  text,
+  boolean,
+  real,
+  jsonb,
+  timestamp,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core"
+import { relations } from "drizzle-orm"
+
+export const product = pgTable("product", {
+  id: text("id").primaryKey().$defaultFn(() => generateId("prod")),
+  title: text("title").notNull(),
+  handle: text("handle").notNull(),
+  subtitle: text("subtitle"),
+  description: text("description"),
+  is_giftcard: boolean("is_giftcard").default(false).notNull(),
+  status: text("status").default("draft").notNull(),
+  thumbnail: text("thumbnail"),
+  weight: real("weight"),
+  length: real("length"),
+  height: real("height"),
+  width: real("width"),
+  origin_country: text("origin_country"),
+  hs_code: text("hs_code"),
+  mid_code: text("mid_code"),
+  material: text("material"),
+  discountable: boolean("discountable").default(true).notNull(),
+  external_id: text("external_id"),
+  metadata: jsonb("metadata"),
+  type_id: text("type_id").references(() => productType.id),
+  collection_id: text("collection_id").references(() => productCollection.id),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deleted_at: timestamp("deleted_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("IDX_product_handle_unique")
+    .on(table.handle)
+    .where(sql`deleted_at IS NULL`),
+  index("IDX_product_type_id").on(table.type_id),
+  index("IDX_product_collection_id").on(table.collection_id),
+  index("IDX_product_status").on(table.status),
+])
+
+export const productRelations = relations(product, ({ one, many }) => ({
+  type: one(productType, {
+    fields: [product.type_id],
+    references: [productType.id],
+  }),
+  collection: one(productCollection, {
+    fields: [product.collection_id],
+    references: [productCollection.id],
+  }),
+  variants: many(productVariant),
+  options: many(productOption),
+  images: many(productImage),
+}))
+```
+
+## 6. 关系映射
+
+| Medusa DML 关系 | Drizzle 映射方式 |
+|----------------|----------------|
+| `model.belongsTo(Entity)` | 外键列 + `one()` relation |
+| `model.hasMany(Entity)` | `many()` relation (对方表有 FK) |
+| `model.hasOne(Entity)` | `one()` relation (对方表有 FK) |
+| `model.manyToMany(Entity, { pivotTable })` | 枢纽表 + 双 `one()` + `many()` |
+
+### manyToMany 示例: product ↔ product_tag
+
+```typescript
+// 枢纽表
+export const productTags = pgTable("product_tags", {
+  product_id: text("product_id").notNull().references(() => product.id),
+  product_tag_id: text("product_tag_id").notNull().references(() => productTag.id),
+}, (table) => [
+  primaryKey({ columns: [table.product_id, table.product_tag_id] }),
+])
+
+// 关系
+export const productTagsRelations = relations(productTags, ({ one }) => ({
+  product: one(product, {
+    fields: [productTags.product_id],
+    references: [product.id],
+  }),
+  tag: one(productTag, {
+    fields: [productTags.product_tag_id],
+    references: [productTag.id],
+  }),
+}))
+```
+
+## 7. 枚举值参考
+
+Medusa 的枚举存储为 text 字符串，以下是常用枚举值:
+
+| 枚举 | 可能的值 |
+|------|---------|
+| ProductStatus | `draft`, `proposed`, `published`, `rejected` |
+| OrderStatus | `pending`, `completed`, `archived`, `canceled`, `requires_action`, `draft` |
+| ReturnStatus | `open`, `requested`, `received`, `partially_received`, `canceled` |
+| ClaimType | `replace`, `refund` |
+| PaymentCollectionStatus | `not_paid`, `awaiting`, `authorized`, `partially_authorized`, `captured`, `partially_captured`, `partially_refunded`, `refunded`, `canceled`, `requires_action` |
+| FulfillmentStatus | 通过日期字段判断: `packed_at`, `shipped_at`, `delivered_at`, `canceled_at` |
+| GeoZoneType | `country`, `province`, `city`, `zip` |
+| PromotionType | `standard`, `buyget` |
+| PriceListStatus | `draft`, `active` |
+| PriceListType | `sale`, `override` |
+| NotificationStatus | `pending`, `sent`, `failed` |
+| ApiKeyType | `publishable`, `secret` |
+| RuleOperator | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin` |
+
+## 8. Drizzle introspect 快速启动
+
+如果你想从实际数据库反向生成 schema:
+
+```bash
+# 安装
+pnpm add drizzle-orm drizzle-kit pg @types/pg
+
+# drizzle.config.ts
+export default {
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+  out: "./drizzle",
+}
+
+# 反向生成
+pnpm drizzle-kit introspect
+```
+
+生成的文件在 `./drizzle/` 目录下，但建议参考本文档手动编写 schema，因为:
+1. introspect 生成的 schema 不含关系定义
+2. 没有类型注解（如 jsonb 字段的 TypeScript 类型）
+3. 无法区分 computed 字段
+
+## 9. 注意事项
+
+1. **不要创建新的 migration**: 如果复用 Medusa 的数据库，不要执行 `drizzle-kit push` 或 `drizzle-kit migrate`，避免修改现有表结构
+2. **只读模式**: 如果 Medusa 后端仍在运行，Drizzle schema 仅用于读取操作或辅助查询
+3. **表名精确匹配**: Medusa 的表名使用 snake_case，确保 Drizzle 的 `pgTable("exact_table_name")` 与之一致
+4. **自增字段**: `display_id` (serial) 是数据库自增的，不要在插入时指定值
+5. **计算字段**: Cart 和 LineItem 的 `total`, `subtotal`, `tax_total` 等是运行时计算的，不存储在数据库中

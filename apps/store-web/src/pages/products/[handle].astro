@@ -1,0 +1,62 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro"
+
+const { handle } = Astro.params
+const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+
+let product: Record<string, unknown> | null = null
+let error: string | null = null
+
+try {
+  const res = await fetch(`${apiUrl}/api/store/products/${handle}`)
+  if (res.ok) {
+    const data = await res.json()
+    product = data.product
+  } else {
+    error = "商品不存在"
+  }
+} catch {
+  error = "加载失败"
+}
+---
+
+<BaseLayout title={product ? String(product.title) : "商品详情"}>
+  {error && (
+    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+      {error}
+      <a href="/" class="ml-2 underline">返回首页</a>
+    </div>
+  )}
+
+  {product && (
+    <article class="grid gap-8 md:grid-cols-2">
+      <div>
+        {product.thumbnail ? (
+          <img
+            src={String(product.thumbnail)}
+            alt={String(product.title)}
+            class="w-full rounded-lg object-cover"
+          />
+        ) : (
+          <div class="flex aspect-square items-center justify-center rounded-lg bg-gray-100 text-gray-400">
+            无图
+          </div>
+        )}
+      </div>
+      <div>
+        <h1 class="text-3xl font-bold">{product.title}</h1>
+        {product.subtitle && (
+          <p class="mt-2 text-lg text-gray-600">{product.subtitle}</p>
+        )}
+        {product.description && (
+          <div class="prose mt-6 max-w-none text-gray-700">
+            <p>{product.description}</p>
+          </div>
+        )}
+        <p class="mt-4 font-mono text-xs text-gray-400">
+          {product.handle}
+        </p>
+      </div>
+    </article>
+  )}
+</BaseLayout>

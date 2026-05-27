@@ -1,0 +1,36 @@
+{
+  "name": "@my-store/server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./app": {
+      "types": "./src/app.ts",
+      "default": "./src/app.ts"
+    }
+  },
+  "scripts": {
+    "dev": "bun run --watch entry.bun.ts",
+    "dev:node": "tsx watch entry.node.ts",
+    "build": "tsc --noEmit",
+    "start": "bun run entry.bun.ts",
+    "start:node": "tsx entry.node.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.1",
+    "@hono/zod-validator": "^0.4.3",
+    "@my-store/db": "workspace:*",
+    "@my-store/validators": "workspace:*",
+    "bcryptjs": "^3.0.2",
+    "drizzle-orm": "^0.39.3",
+    "hono": "^4.7.4",
+    "jose": "^6.0.8",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

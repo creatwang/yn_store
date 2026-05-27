@@ -1,0 +1,51 @@
+---
+description: Hono 全栈跨境电商平台开发规则
+globs: ["**/*.ts", "**/*.tsx", "**/*.astro"]
+alwaysApply: true
+---
+
+# 项目规则
+
+## 项目架构
+- **后端**: Hono + Drizzle + Bun（`apps/server`）
+- **Admin**: Vite + React Router + @medusajs/ui（`apps/admin`）
+- **Storefront**: Astro（`apps/store-web`）
+- **共享**: `packages/validators`（Zod）、`packages/db`（Drizzle）
+- **数据库**: Supabase PostgreSQL（Medusa 表，不修改结构）
+
+## 核心规则
+1. 不修改 `apps/backend/`（旧 Medusa，仅作参考）
+2. Hono 路由必须**链式定义**，导出 `AppType` 供 RPC
+3. 请求校验使用 `@my-store/validators` + `zValidator`
+4. 前端通过 `hc<AppType>()` 调用 API，配合 TanStack Query
+5. 所有 UI 文本使用中文
+
+## Hono RPC 模式
+```typescript
+// server: 链式路由 + export type AppType = typeof app
+// admin: import type { AppType } from '@my-store/server/app'
+//        export const api = hc<AppType>(import.meta.env.VITE_API_URL)
+```
+
+## 数据库注意
+- 查询必须过滤 `deleted_at IS NULL`
+- 金额使用 `amount` + `raw_amount` 双列
+- 不创建/修改 Medusa 管理的表
+- 新增表使用 `custom_` 前缀
+
+## API 路径
+- 前缀: `/api`
+- Admin: `/api/admin/*`（JWT Bearer）
+- Store: `/api/store/*`
+- Auth: `POST /api/auth/user/emailpass`
+
+## 参考文档
+- `docs/07-feature-spec.mdx` — 功能规格
+- `docs/01-database-schema.mdx` — 数据库
+- `docs/06-drizzle-migration-guide.mdx` — Drizzle 映射
+
+## 编码规范
+- TypeScript strict
+- 文件名: kebab-case
+- 表单: React Hook Form + Zod（共享 validators）
+- 数据获取: TanStack Query v5 + Hono RPC

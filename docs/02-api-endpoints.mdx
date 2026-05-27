@@ -1,0 +1,867 @@
+# Medusa v2.15.3 API 端点参考
+
+> 本文档列出 Medusa v2.15.3 所有 REST API 端点，基于 `@medusajs/medusa/dist/api/` 文件系统路由提取。
+
+---
+
+## 认证说明
+
+| 项目 | 说明 |
+|------|------|
+| **Admin API** | 需要 JWT Bearer Token（通过 `POST /auth/user/emailpass` 获取），请求头：`Authorization: Bearer <token>` |
+| **Store API** | 需要 Publishable API Key，请求头：`x-publishable-api-key: <key>` |
+| **分页** | `offset` / `limit` 参数，默认 `limit=20` |
+| **排序** | `order` 参数，如 `order=created_at` 或 `order=-created_at`（降序） |
+| **过滤** | `fields` 参数选择返回字段，`expand` 参数展开关联关系 |
+
+---
+
+## Admin API 端点 (52 模块, ~220 路由)
+
+### API Keys（API 密钥）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/api-keys` | 获取 API 密钥列表 |
+| POST | `/admin/api-keys` | 创建 API 密钥 |
+| GET | `/admin/api-keys/:id` | 获取 API 密钥详情 |
+| POST | `/admin/api-keys/:id` | 更新/删除 API 密钥 |
+| POST | `/admin/api-keys/:id/revoke` | 撤销 API 密钥 |
+| POST | `/admin/api-keys/:id/sales-channels` | 关联销售渠道 |
+
+### Campaigns（营销活动）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/campaigns` | 获取营销活动列表 |
+| POST | `/admin/campaigns` | 创建营销活动 |
+| GET | `/admin/campaigns/:id` | 获取营销活动详情 |
+| POST | `/admin/campaigns/:id` | 更新/删除营销活动 |
+| POST | `/admin/campaigns/:id/promotions` | 管理活动关联的促销 |
+
+### Claims（索赔）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/claims` | 获取索赔列表 |
+| POST | `/admin/claims` | 创建索赔 |
+| GET | `/admin/claims/:id` | 获取索赔详情 |
+| POST | `/admin/claims/:id/cancel` | 取消索赔 |
+| POST | `/admin/claims/:id/inbound/items` | 添加入库商品 |
+| POST | `/admin/claims/:id/inbound/items/:action_id` | 更新/删除入库商品 |
+| POST | `/admin/claims/:id/inbound/shipping-method` | 添加入库运输方式 |
+| POST | `/admin/claims/:id/inbound/shipping-method/:action_id` | 更新/删除入库运输方式 |
+| POST | `/admin/claims/:id/outbound/items` | 添加出库商品 |
+| POST | `/admin/claims/:id/outbound/items/:action_id` | 更新/删除出库商品 |
+| POST | `/admin/claims/:id/outbound/shipping-method` | 添加出库运输方式 |
+| POST | `/admin/claims/:id/outbound/shipping-method/:action_id` | 更新/删除出库运输方式 |
+| POST | `/admin/claims/:id/request` | 提交索赔请求 |
+
+### Collections（产品集合）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/collections` | 获取产品集合列表 |
+| POST | `/admin/collections` | 创建产品集合 |
+| GET | `/admin/collections/:id` | 获取产品集合详情 |
+| POST | `/admin/collections/:id` | 更新/删除产品集合 |
+| POST | `/admin/collections/:id/products` | 管理集合中的产品 |
+
+### Currencies（货币）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/currencies` | 获取货币列表 |
+| GET | `/admin/currencies/:code` | 获取货币详情 |
+
+### Customer Groups（客户分组）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/customer-groups` | 获取客户分组列表 |
+| POST | `/admin/customer-groups` | 创建客户分组 |
+| GET | `/admin/customer-groups/:id` | 获取客户分组详情 |
+| POST | `/admin/customer-groups/:id` | 更新/删除客户分组 |
+| POST | `/admin/customer-groups/:id/customers` | 管理分组中的客户 |
+
+### Customers（客户）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/customers` | 获取客户列表 |
+| POST | `/admin/customers` | 创建客户 |
+| GET | `/admin/customers/:id` | 获取客户详情 |
+| POST | `/admin/customers/:id` | 更新/删除客户 |
+| GET | `/admin/customers/:id/addresses` | 获取客户地址列表 |
+| POST | `/admin/customers/:id/addresses` | 添加客户地址 |
+| GET | `/admin/customers/:id/addresses/:address_id` | 获取客户地址详情 |
+| POST | `/admin/customers/:id/addresses/:address_id` | 更新/删除客户地址 |
+| POST | `/admin/customers/:id/customer-groups` | 管理客户的分组 |
+
+### Draft Orders（草稿订单）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/draft-orders` | 获取草稿订单列表 |
+| POST | `/admin/draft-orders` | 创建草稿订单 |
+| GET | `/admin/draft-orders/:id` | 获取草稿订单详情 |
+| POST | `/admin/draft-orders/:id` | 更新/删除草稿订单 |
+| POST | `/admin/draft-orders/:id/convert-to-order` | 将草稿转换为正式订单 |
+| POST | `/admin/draft-orders/:id/edit/items` | 编辑草稿订单商品 |
+| POST | `/admin/draft-orders/:id/edit/items/:action_id` | 更新/删除草稿订单商品编辑 |
+| POST | `/admin/draft-orders/:id/edit/promotions` | 编辑草稿订单促销 |
+| POST | `/admin/draft-orders/:id/edit/shipping-methods` | 编辑草稿订单运输方式 |
+| POST | `/admin/draft-orders/:id/edit/shipping-methods/:action_id` | 更新/删除草稿订单运输方式编辑 |
+| POST | `/admin/draft-orders/:id/edit/request` | 提交草稿订单编辑请求 |
+| POST | `/admin/draft-orders/:id/edit/confirm` | 确认草稿订单编辑 |
+
+### Exchanges（换货）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/exchanges` | 获取换货列表 |
+| POST | `/admin/exchanges` | 创建换货 |
+| GET | `/admin/exchanges/:id` | 获取换货详情 |
+| POST | `/admin/exchanges/:id/cancel` | 取消换货 |
+| POST | `/admin/exchanges/:id/inbound/items` | 添加入库商品 |
+| POST | `/admin/exchanges/:id/inbound/items/:action_id` | 更新/删除入库商品 |
+| POST | `/admin/exchanges/:id/inbound/shipping-method` | 添加入库运输方式 |
+| POST | `/admin/exchanges/:id/inbound/shipping-method/:action_id` | 更新/删除入库运输方式 |
+| POST | `/admin/exchanges/:id/outbound/items` | 添加出库商品 |
+| POST | `/admin/exchanges/:id/outbound/items/:action_id` | 更新/删除出库商品 |
+| POST | `/admin/exchanges/:id/outbound/shipping-method` | 添加出库运输方式 |
+| POST | `/admin/exchanges/:id/outbound/shipping-method/:action_id` | 更新/删除出库运输方式 |
+| POST | `/admin/exchanges/:id/request` | 提交换货请求 |
+
+### Feature Flags（功能开关）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/feature-flags` | 获取功能开关列表 |
+
+### Fulfillment Providers（履约服务商）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/fulfillment-providers` | 获取履约服务商列表 |
+| GET | `/admin/fulfillment-providers/:id/options` | 获取服务商配送选项 |
+
+### Fulfillment Sets（履约集合）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/fulfillment-sets/:id` | 获取履约集合详情 |
+| GET | `/admin/fulfillment-sets/:id/service-zones` | 获取服务区域列表 |
+| POST | `/admin/fulfillment-sets/:id/service-zones` | 创建服务区域 |
+| GET | `/admin/fulfillment-sets/:id/service-zones/:zone_id` | 获取服务区域详情 |
+
+### Fulfillments（履约）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/admin/fulfillments` | 创建履约 |
+| POST | `/admin/fulfillments/:id/cancel` | 取消履约 |
+| POST | `/admin/fulfillments/:id/shipment` | 创建发货 |
+
+### Index（索引）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/index/details` | 获取索引详情 |
+| POST | `/admin/index/sync` | 触发索引同步 |
+
+### Inventory Items（库存项）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/inventory-items` | 获取库存项列表 |
+| POST | `/admin/inventory-items` | 创建库存项 |
+| POST | `/admin/inventory-items/location-levels/batch` | 批量操作库存位置级别 |
+| POST | `/admin/inventory-items/:id` | 更新/删除库存项 |
+| POST | `/admin/inventory-items/:id/location-levels` | 添加库存位置级别 |
+| POST | `/admin/inventory-items/:id/location-levels/batch` | 批量操作指定库存项的位置级别 |
+| POST | `/admin/inventory-items/:id/location-levels/:location_id` | 更新/删除库存位置级别 |
+
+### Invites（邀请）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/invites` | 获取邀请列表 |
+| POST | `/admin/invites` | 创建邀请 |
+| POST | `/admin/invites/accept` | 接受邀请 |
+| POST | `/admin/invites/:id` | 更新/删除邀请 |
+| POST | `/admin/invites/:id/resend` | 重新发送邀请 |
+
+### Locales（语言区域）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/locales` | 获取语言区域列表 |
+| GET | `/admin/locales/:code` | 获取语言区域详情 |
+
+### Notifications（通知）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/notifications` | 获取通知列表 |
+| GET | `/admin/notifications/:id` | 获取通知详情 |
+
+### Order Changes（订单变更）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/order-changes/:id` | 获取订单变更详情 |
+
+### Order Edits（订单编辑）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/admin/order-edits` | 创建订单编辑 |
+| POST | `/admin/order-edits/:id` | 更新/删除订单编辑 |
+| POST | `/admin/order-edits/:id/confirm` | 确认订单编辑 |
+| POST | `/admin/order-edits/:id/items` | 添加编辑商品 |
+| POST | `/admin/order-edits/:id/items/:action_id` | 更新/删除编辑商品 |
+| POST | `/admin/order-edits/:id/shipping-method` | 添加编辑运输方式 |
+| POST | `/admin/order-edits/:id/shipping-method/:action_id` | 更新/删除编辑运输方式 |
+| POST | `/admin/order-edits/:id/request` | 提交订单编辑请求 |
+
+### Orders（订单）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/orders` | 获取订单列表 |
+| POST | `/admin/orders/export` | 导出订单 |
+| POST | `/admin/orders/:id` | 更新订单 |
+| POST | `/admin/orders/:id/archive` | 归档订单 |
+| POST | `/admin/orders/:id/cancel` | 取消订单 |
+| POST | `/admin/orders/:id/changes` | 创建订单变更 |
+| POST | `/admin/orders/:id/complete` | 完成订单 |
+| POST | `/admin/orders/:id/credit-lines` | 管理订单信用额度 |
+| POST | `/admin/orders/:id/fulfillments` | 创建订单履约 |
+| POST | `/admin/orders/:id/fulfillments/:fulfillment_id/cancel` | 取消订单履约 |
+| POST | `/admin/orders/:id/fulfillments/:fulfillment_id/mark-as-delivered` | 标记履约为已送达 |
+| POST | `/admin/orders/:id/fulfillments/:fulfillment_id/shipments` | 创建订单发货 |
+| POST | `/admin/orders/:id/line-items` | 管理订单商品行 |
+| POST | `/admin/orders/:id/preview` | 预览订单 |
+| POST | `/admin/orders/:id/shipping-options` | 管理订单运输选项 |
+| POST | `/admin/orders/:id/transfer` | 转移订单 |
+| POST | `/admin/orders/:id/transfer/cancel` | 取消订单转移 |
+
+### Payment Collections（支付集合）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/admin/payment-collections` | 创建支付集合 |
+| POST | `/admin/payment-collections/:id` | 更新/删除支付集合 |
+| POST | `/admin/payment-collections/:id/mark-as-paid` | 标记为已支付 |
+| POST | `/admin/payment-collections/:id/payment-sessions` | 管理支付会话 |
+
+### Payments（支付）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/payments` | 获取支付列表 |
+| GET | `/admin/payments/payment-providers` | 获取支付服务商列表 |
+| GET | `/admin/payments/:id` | 获取支付详情 |
+| GET | `/admin/payments/:id/capture` | 获取支付捕获信息 |
+| GET | `/admin/payments/:id/refund` | 获取支付退款信息 |
+
+### Plugins（插件）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/plugins` | 获取插件列表 |
+
+### Price Lists（价格表）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/price-lists` | 获取价格表列表 |
+| POST | `/admin/price-lists` | 创建价格表 |
+| GET | `/admin/price-lists/:id` | 获取价格表详情 |
+| POST | `/admin/price-lists/:id` | 更新/删除价格表 |
+| GET | `/admin/price-lists/:id/prices` | 获取价格表价格列表 |
+| POST | `/admin/price-lists/:id/prices` | 添加价格 |
+| POST | `/admin/price-lists/:id/prices/batch` | 批量操作价格 |
+| GET | `/admin/price-lists/:id/products` | 获取价格表关联产品 |
+| POST | `/admin/price-lists/:id/products` | 管理价格表关联产品 |
+
+### Price Preferences（价格偏好）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/price-preferences` | 获取价格偏好列表 |
+| POST | `/admin/price-preferences` | 创建价格偏好 |
+| GET | `/admin/price-preferences/:id` | 获取价格偏好详情 |
+| POST | `/admin/price-preferences/:id` | 更新/删除价格偏好 |
+
+### Product Categories（产品分类）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/product-categories` | 获取产品分类列表 |
+| POST | `/admin/product-categories` | 创建产品分类 |
+| GET | `/admin/product-categories/:id` | 获取产品分类详情 |
+| POST | `/admin/product-categories/:id` | 更新/删除产品分类 |
+| POST | `/admin/product-categories/:id/products` | 管理分类中的产品 |
+
+### Product Tags（产品标签）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/product-tags` | 获取产品标签列表 |
+| POST | `/admin/product-tags` | 创建产品标签 |
+| GET | `/admin/product-tags/:id` | 获取产品标签详情 |
+| POST | `/admin/product-tags/:id` | 更新/删除产品标签 |
+
+### Product Types（产品类型）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/product-types` | 获取产品类型列表 |
+| POST | `/admin/product-types` | 创建产品类型 |
+| GET | `/admin/product-types/:id` | 获取产品类型详情 |
+| POST | `/admin/product-types/:id` | 更新/删除产品类型 |
+
+### Product Variants（产品变体）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/product-variants` | 获取所有产品变体列表 |
+
+### Products（产品）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/products` | 获取产品列表 |
+| POST | `/admin/products` | 创建产品 |
+| POST | `/admin/products/batch` | 批量操作产品 |
+| POST | `/admin/products/export` | 导出产品 |
+| POST | `/admin/products/import` | 导入产品 |
+| POST | `/admin/products/import/:transaction_id/confirm` | 确认产品导入 |
+| GET | `/admin/products/:id` | 获取产品详情 |
+| POST | `/admin/products/:id` | 更新/删除产品 |
+| GET | `/admin/products/:id/options` | 获取产品选项列表 |
+| POST | `/admin/products/:id/options` | 创建产品选项 |
+| POST | `/admin/products/:id/options/:option_id` | 更新/删除产品选项 |
+| GET | `/admin/products/:id/variants` | 获取产品变体列表 |
+| POST | `/admin/products/:id/variants` | 创建产品变体 |
+| POST | `/admin/products/:id/variants/batch` | 批量操作产品变体 |
+| POST | `/admin/products/:id/variants/:variant_id` | 更新/删除产品变体 |
+| POST | `/admin/products/:id/images` | 管理产品图片 |
+
+### Promotions（促销）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/promotions` | 获取促销列表 |
+| POST | `/admin/promotions` | 创建促销 |
+| GET | `/admin/promotions/:id` | 获取促销详情 |
+| POST | `/admin/promotions/:id` | 更新/删除促销 |
+| GET | `/admin/promotions/:id/rules` | 获取促销规则 |
+| POST | `/admin/promotions/:id/rules/batch` | 批量操作促销规则 |
+| POST | `/admin/promotions/:id/:rule_type/rules/batch` | 批量操作指定类型的促销规则 |
+
+### Property Labels（属性标签）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/property-labels` | 获取属性标签列表 |
+| POST | `/admin/property-labels` | 创建属性标签 |
+| POST | `/admin/property-labels/batch` | 批量操作属性标签 |
+| POST | `/admin/property-labels/:id` | 更新/删除属性标签 |
+
+### RBAC（基于角色的访问控制）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/rbac/policies` | 获取策略列表 |
+| POST | `/admin/rbac/policies` | 创建策略 |
+| GET | `/admin/rbac/policies/:id` | 获取策略详情 |
+| POST | `/admin/rbac/policies/:id` | 更新/删除策略 |
+| GET | `/admin/rbac/roles` | 获取角色列表 |
+| POST | `/admin/rbac/roles` | 创建角色 |
+| GET | `/admin/rbac/roles/:id` | 获取角色详情 |
+| POST | `/admin/rbac/roles/:id` | 更新/删除角色 |
+| GET | `/admin/rbac/roles/:id/policies` | 获取角色的策略 |
+| POST | `/admin/rbac/roles/:id/policies` | 管理角色的策略 |
+| GET | `/admin/rbac/roles/:id/users` | 获取角色的用户 |
+| POST | `/admin/rbac/roles/:id/users` | 管理角色的用户 |
+
+### Refund Reasons（退款原因）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/refund-reasons` | 获取退款原因列表 |
+| POST | `/admin/refund-reasons` | 创建退款原因 |
+| GET | `/admin/refund-reasons/:id` | 获取退款原因详情 |
+| POST | `/admin/refund-reasons/:id` | 更新/删除退款原因 |
+
+### Regions（区域）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/regions` | 获取区域列表 |
+| POST | `/admin/regions` | 创建区域 |
+| GET | `/admin/regions/:id` | 获取区域详情 |
+| POST | `/admin/regions/:id` | 更新/删除区域 |
+
+### Reservations（库存预留）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/reservations` | 获取库存预留列表 |
+| POST | `/admin/reservations` | 创建库存预留 |
+| GET | `/admin/reservations/:id` | 获取库存预留详情 |
+| POST | `/admin/reservations/:id` | 更新/删除库存预留 |
+
+### Return Reasons（退货原因）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/return-reasons` | 获取退货原因列表 |
+| POST | `/admin/return-reasons` | 创建退货原因 |
+| GET | `/admin/return-reasons/:id` | 获取退货原因详情 |
+| POST | `/admin/return-reasons/:id` | 更新/删除退货原因 |
+
+### Returns（退货）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/returns` | 获取退货列表 |
+| POST | `/admin/returns` | 创建退货 |
+| GET | `/admin/returns/:id` | 获取退货详情 |
+| POST | `/admin/returns/:id` | 更新退货 |
+| POST | `/admin/returns/:id/cancel` | 取消退货 |
+| POST | `/admin/returns/:id/dismiss-items` | 驳回退货商品 |
+| POST | `/admin/returns/:id/dismiss-items/:action_id` | 更新/删除驳回操作 |
+| POST | `/admin/returns/:id/receive` | 确认收货 |
+| POST | `/admin/returns/:id/receive-items` | 添加收货商品 |
+| POST | `/admin/returns/:id/receive-items/:action_id` | 更新/删除收货商品 |
+| POST | `/admin/returns/:id/request` | 提交退货请求 |
+| POST | `/admin/returns/:id/request-items` | 添加退货请求商品 |
+| POST | `/admin/returns/:id/request-items/:action_id` | 更新/删除退货请求商品 |
+| POST | `/admin/returns/:id/shipping-method` | 添加退货运输方式 |
+| POST | `/admin/returns/:id/shipping-method/:action_id` | 更新/删除退货运输方式 |
+
+### Sales Channels（销售渠道）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/sales-channels` | 获取销售渠道列表 |
+| POST | `/admin/sales-channels` | 创建销售渠道 |
+| GET | `/admin/sales-channels/:id` | 获取销售渠道详情 |
+| POST | `/admin/sales-channels/:id` | 更新/删除销售渠道 |
+| POST | `/admin/sales-channels/:id/products` | 管理渠道中的产品 |
+
+### Shipping Option Types（运输选项类型）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/shipping-option-types` | 获取运输选项类型列表 |
+| POST | `/admin/shipping-option-types` | 创建运输选项类型 |
+| GET | `/admin/shipping-option-types/:id` | 获取运输选项类型详情 |
+| POST | `/admin/shipping-option-types/:id` | 更新/删除运输选项类型 |
+
+### Shipping Options（运输选项）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/shipping-options` | 获取运输选项列表 |
+| POST | `/admin/shipping-options` | 创建运输选项 |
+| GET | `/admin/shipping-options/:id` | 获取运输选项详情 |
+| POST | `/admin/shipping-options/:id` | 更新/删除运输选项 |
+| POST | `/admin/shipping-options/:id/rules/batch` | 批量操作运输选项规则 |
+
+### Shipping Profiles（运输配置）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/shipping-profiles` | 获取运输配置列表 |
+| POST | `/admin/shipping-profiles` | 创建运输配置 |
+| GET | `/admin/shipping-profiles/:id` | 获取运输配置详情 |
+| POST | `/admin/shipping-profiles/:id` | 更新/删除运输配置 |
+
+### Stock Locations（库存位置）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/stock-locations` | 获取库存位置列表 |
+| POST | `/admin/stock-locations` | 创建库存位置 |
+| GET | `/admin/stock-locations/:id` | 获取库存位置详情 |
+| POST | `/admin/stock-locations/:id` | 更新/删除库存位置 |
+| POST | `/admin/stock-locations/:id/fulfillment-providers` | 管理关联的履约服务商 |
+| POST | `/admin/stock-locations/:id/fulfillment-sets` | 管理关联的履约集合 |
+| POST | `/admin/stock-locations/:id/sales-channels` | 管理关联的销售渠道 |
+
+### Stores（商店）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/stores` | 获取商店列表 |
+| GET | `/admin/stores/:id` | 获取商店详情 |
+
+### Tax Providers（税务服务商）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/tax-providers` | 获取税务服务商列表 |
+
+### Tax Rates（税率）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/tax-rates` | 获取税率列表 |
+| POST | `/admin/tax-rates` | 创建税率 |
+| GET | `/admin/tax-rates/:id` | 获取税率详情 |
+| POST | `/admin/tax-rates/:id` | 更新/删除税率 |
+| GET | `/admin/tax-rates/:id/rules` | 获取税率规则列表 |
+| POST | `/admin/tax-rates/:id/rules` | 创建税率规则 |
+| GET | `/admin/tax-rates/:id/rules/:rule_id` | 获取税率规则详情 |
+| POST | `/admin/tax-rates/:id/rules/:rule_id` | 更新/删除税率规则 |
+
+### Tax Regions（税务区域）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/tax-regions` | 获取税务区域列表 |
+| POST | `/admin/tax-regions` | 创建税务区域 |
+| GET | `/admin/tax-regions/:id` | 获取税务区域详情 |
+| POST | `/admin/tax-regions/:id` | 更新/删除税务区域 |
+
+### Translations（翻译）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/translations` | 获取翻译列表 |
+| POST | `/admin/translations/batch` | 批量操作翻译 |
+| GET | `/admin/translations/entities` | 获取可翻译实体 |
+| GET | `/admin/translations/settings` | 获取翻译设置 |
+| POST | `/admin/translations/settings/batch` | 批量更新翻译设置 |
+| GET | `/admin/translations/statistics` | 获取翻译统计 |
+
+### Uploads（文件上传）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/admin/uploads` | 上传文件 |
+| POST | `/admin/uploads/presigned-urls` | 获取预签名上传 URL |
+| POST | `/admin/uploads/:id` | 更新/删除上传文件 |
+
+### Users（用户）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/users` | 获取用户列表 |
+| GET | `/admin/users/me` | 获取当前用户信息 |
+| GET | `/admin/users/:id` | 获取用户详情 |
+| GET | `/admin/users/:id/roles` | 获取用户角色列表 |
+| GET | `/admin/users/:id/roles/:role_id` | 获取用户角色详情 |
+
+### Views（视图）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/views/entities` | 获取可配置视图的实体 |
+| GET | `/admin/views/:entity/columns` | 获取实体的列配置 |
+| GET | `/admin/views/:entity/configurations` | 获取实体的视图配置列表 |
+| GET | `/admin/views/:entity/configurations/active` | 获取实体的活跃视图配置 |
+| GET | `/admin/views/:entity/configurations/:id` | 获取视图配置详情 |
+
+### Workflows Executions（工作流执行）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/admin/workflows-executions` | 获取工作流执行列表 |
+| GET | `/admin/workflows-executions/:id` | 获取工作流执行详情 |
+| POST | `/admin/workflows-executions/:workflow_id/run` | 运行工作流 |
+| POST | `/admin/workflows-executions/:id/steps/failure` | 报告步骤失败 |
+| POST | `/admin/workflows-executions/:id/steps/success` | 报告步骤成功 |
+| POST | `/admin/workflows-executions/:id/subscribe` | 订阅工作流执行 |
+| GET | `/admin/workflows-executions/:id/:transaction_id` | 获取事务详情 |
+| POST | `/admin/workflows-executions/:id/:transaction_id/subscribe` | 订阅事务 |
+
+---
+
+## Store API 端点 (17 模块, ~44 路由)
+
+### Carts（购物车）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/store/carts` | 创建购物车 |
+| GET | `/store/carts/:id` | 获取购物车详情 |
+| POST | `/store/carts/:id` | 更新购物车 |
+| POST | `/store/carts/:id/complete` | 完成购物车（下单） |
+| POST | `/store/carts/:id/customer` | 关联客户 |
+| POST | `/store/carts/:id/line-items` | 添加商品行 |
+| POST | `/store/carts/:id/line-items/:line_id` | 更新/删除商品行 |
+| POST | `/store/carts/:id/promotions` | 应用促销 |
+| POST | `/store/carts/:id/shipping-methods` | 设置运输方式 |
+| POST | `/store/carts/:id/taxes` | 计算税费 |
+
+### Collections（产品集合）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/collections` | 获取产品集合列表 |
+| GET | `/store/collections/:id` | 获取产品集合详情 |
+
+### Currencies（货币）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/currencies` | 获取货币列表 |
+| GET | `/store/currencies/:code` | 获取货币详情 |
+
+### Customers（客户）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/store/customers` | 注册客户 |
+| GET | `/store/customers/me` | 获取当前客户信息 |
+| GET | `/store/customers/me/addresses` | 获取当前客户地址列表 |
+| POST | `/store/customers/me/addresses` | 添加地址 |
+| GET | `/store/customers/me/addresses/:address_id` | 获取地址详情 |
+| POST | `/store/customers/me/addresses/:address_id` | 更新/删除地址 |
+
+### Locales（语言区域）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/locales` | 获取语言区域列表 |
+
+### Orders（订单）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/orders` | 获取订单列表 |
+| GET | `/store/orders/:id` | 获取订单详情 |
+| POST | `/store/orders/:id/transfer/accept` | 接受订单转移 |
+| POST | `/store/orders/:id/transfer/cancel` | 取消订单转移 |
+| POST | `/store/orders/:id/transfer/decline` | 拒绝订单转移 |
+| POST | `/store/orders/:id/transfer/request` | 请求订单转移 |
+
+### Payment Collections（支付集合）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/store/payment-collections` | 创建支付集合 |
+| POST | `/store/payment-collections/:id/payment-sessions` | 创建支付会话 |
+
+### Payment Providers（支付服务商）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/payment-providers` | 获取支付服务商列表 |
+
+### Product Categories（产品分类）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/product-categories` | 获取产品分类列表 |
+| GET | `/store/product-categories/:id` | 获取产品分类详情 |
+
+### Product Tags（产品标签）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/product-tags` | 获取产品标签列表 |
+| GET | `/store/product-tags/:id` | 获取产品标签详情 |
+
+### Product Types（产品类型）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/product-types` | 获取产品类型列表 |
+| GET | `/store/product-types/:id` | 获取产品类型详情 |
+
+### Product Variants（产品变体）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/product-variants` | 获取产品变体列表 |
+| GET | `/store/product-variants/:id` | 获取产品变体详情 |
+
+### Products（产品）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/products` | 获取产品列表 |
+| GET | `/store/products/:id` | 获取产品详情 |
+
+### Regions（区域）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/regions` | 获取区域列表 |
+| GET | `/store/regions/:id` | 获取区域详情 |
+
+### Return Reasons（退货原因）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/return-reasons` | 获取退货原因列表 |
+| GET | `/store/return-reasons/:id` | 获取退货原因详情 |
+
+### Returns（退货）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/store/returns` | 创建退货请求 |
+
+### Shipping Options（运输选项）
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/store/shipping-options` | 获取运输选项列表 |
+| POST | `/store/shipping-options/:id/calculate` | 计算运费 |
+
+---
+
+## Auth API 端点
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/auth/:actor_type/:provider` | 认证（如 `POST /auth/user/emailpass`） |
+| POST | `/auth/:actor_type/:provider/callback` | OAuth 回调 |
+| POST | `/auth/:actor_type/:provider/register` | 注册 |
+| POST | `/auth/token/refresh` | 刷新 Token |
+
+**actor_type 常用值：**
+
+| actor_type | 说明 |
+|-----------|------|
+| `user` | 管理员用户 |
+| `customer` | 店铺客户 |
+
+**provider 常用值：**
+
+| provider | 说明 |
+|----------|------|
+| `emailpass` | 邮箱密码认证 |
+| `google` | Google OAuth |
+| `github` | GitHub OAuth |
+
+**认证流程示例：**
+
+```bash
+# 1. 管理员登录获取 Token
+curl -X POST http://localhost:9000/auth/user/emailpass \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@example.com", "password": "supersecret"}'
+
+# 返回: { "token": "eyJhbGciOiJIUzI1NiIs..." }
+
+# 2. 使用 Token 调用 Admin API
+curl http://localhost:9000/admin/products \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+
+# 3. 客户登录
+curl -X POST http://localhost:9000/auth/customer/emailpass \
+  -H "Content-Type: application/json" \
+  -d '{"email": "customer@example.com", "password": "password123"}'
+
+# 4. 使用 Token + Publishable API Key 调用 Store API
+curl http://localhost:9000/store/products \
+  -H "Authorization: Bearer <customer_token>" \
+  -H "x-publishable-api-key: <your_publishable_key>"
+```
+
+---
+
+## MVP 必需端点
+
+以下是构建基础 Admin 管理后台 + 店铺前端所需的最小端点集合：
+
+### 认证（必需）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| POST | `/auth/user/emailpass` | 管理员登录 |
+| POST | `/auth/customer/emailpass` | 客户登录 |
+| POST | `/auth/customer/emailpass/register` | 客户注册 |
+| POST | `/auth/token/refresh` | Token 续期 |
+
+### 产品管理（Admin）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| GET | `/admin/products` | 获取产品列表 |
+| POST | `/admin/products` | 创建产品 |
+| GET | `/admin/products/:id` | 获取产品详情 |
+| POST | `/admin/products/:id` | 更新/删除产品 |
+| POST | `/admin/products/:id/variants` | 创建变体 |
+| POST | `/admin/products/:id/options` | 创建选项 |
+
+### 产品浏览（Store）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| GET | `/store/products` | 浏览产品列表 |
+| GET | `/store/products/:id` | 查看产品详情 |
+| GET | `/store/product-categories` | 浏览分类 |
+
+### 购物车与结账（Store）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| POST | `/store/carts` | 创建购物车 |
+| GET | `/store/carts/:id` | 获取购物车 |
+| POST | `/store/carts/:id` | 更新购物车 |
+| POST | `/store/carts/:id/line-items` | 添加商品 |
+| POST | `/store/carts/:id/line-items/:line_id` | 更新/删除商品 |
+| POST | `/store/carts/:id/shipping-methods` | 选择运输方式 |
+| POST | `/store/carts/:id/complete` | 完成下单 |
+
+### 支付（Store + Admin）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| POST | `/store/payment-collections` | 创建支付集合 |
+| POST | `/store/payment-collections/:id/payment-sessions` | 创建支付会话 |
+| GET | `/store/payment-providers` | 获取可用支付方式 |
+| GET | `/admin/payments` | 管理支付 |
+| GET | `/admin/payments/:id` | 查看支付详情 |
+
+### 订单管理（Admin + Store）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| GET | `/admin/orders` | 管理订单列表 |
+| POST | `/admin/orders/:id` | 更新订单 |
+| POST | `/admin/orders/:id/fulfillments` | 创建履约 |
+| POST | `/admin/orders/:id/cancel` | 取消订单 |
+| GET | `/store/orders` | 客户查看订单 |
+| GET | `/store/orders/:id` | 客户查看订单详情 |
+
+### 客户管理（Admin + Store）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| GET | `/admin/customers` | 管理客户列表 |
+| GET | `/admin/customers/:id` | 查看客户详情 |
+| POST | `/store/customers` | 客户注册 |
+| GET | `/store/customers/me` | 获取当前客户 |
+| POST | `/store/customers/me/addresses` | 管理地址 |
+
+### 区域与货币（Admin + Store）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| GET | `/admin/regions` | 管理区域 |
+| POST | `/admin/regions` | 创建区域 |
+| GET | `/store/regions` | 获取可用区域 |
+| GET | `/admin/currencies` | 查看货币列表 |
+| GET | `/store/currencies` | 获取可用货币 |
+
+### 运输（Admin + Store）
+
+| 方法 | 路径 | 用途 |
+|------|------|------|
+| GET | `/admin/shipping-options` | 管理运输选项 |
+| POST | `/admin/shipping-options` | 创建运输选项 |
+| GET | `/store/shipping-options` | 获取可用运输选项 |
+| POST | `/store/shipping-options/:id/calculate` | 计算运费 |
+
+> **提示：** 以上 MVP 端点约 40+ 个，覆盖了产品展示、购物车、结账支付、订单管理、客户系统的核心流程。根据业务需求可逐步添加促销、退货、库存等高级模块。

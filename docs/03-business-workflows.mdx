@@ -1,0 +1,328 @@
+# Medusa v2 核心业务流程
+
+> 本文档描述 Medusa 的核心业务流程（Workflows），用于在新项目中重新实现相同的业务逻辑。
+> 源码位置: `@medusajs/medusa/dist/core-flows/`
+
+## 业务流程架构
+
+Medusa 使用 **Workflow** 编排复杂业务逻辑。每个 Workflow 由多个 **Step** 组成，支持:
+- 事务性补偿（compensation）: 某步骤失败时自动回滚之前的步骤
+- 异步执行: 长时间操作可异步运行
+- 幂等性: 通过 transaction_id 确保操作不重复
+
+## 1. 购物车 → 订单流程 (最核心)
+
+### 1.1 创建购物车
+```
+POST /store/carts
+→ createCartWorkflow
+  ├── Step 1: 验证输入 (region, currency, sales_channel)
+  ├── Step 2: 创建 Cart 记录
+  ├── Step 3: 关联 Address (shipping + billing)
+  └── Step 4: 设置 Cart 的 context 信息
+```
+
+### 1.2 添加商品到购物车
+```
+POST /store/carts/:id/line-items
+→ addToCartWorkflow
+  ├── Step 1: 验证 variant 存在且可购买
+  ├── Step 2: 获取 variant 的价格 (PricingModule)
+  ├── Step 3: 创建 LineItem (快照商品信息)
+  ├── Step 4: 检查库存 (InventoryModule)
+  └── Step 5: 重新计算 Cart totals
+```
+
+### 1.3 更新行项目数量
+```
+POST /store/carts/:id/line-items/:line_id
+→ updateLineItemInCartWorkflow
+  ├── Step 1: 验证 LineItem 存在
+  ├── Step 2: 更新数量
+  ├── Step 3: 检查库存
+  └── Step 4: 重新计算 Cart totals
+```
+
+### 1.4 设置配送方式
+```
+POST /store/carts/:id/shipping-methods
+→ addShippingMethodToCartWorkflow
+  ├── Step 1: 验证 ShippingOption 存在且适用
+  ├── Step 2: 获取配送价格
+  ├── Step 3: 创建 ShippingMethod
+  └── Step 4: 重新计算 Cart totals
+```
+
+### 1.5 应用促销代码
+```
+POST /store/carts/:id/promotions
+→ updateCartPromotionsWorkflow
+  ├── Step 1: 验证促销代码有效
+  ├── Step 2: 计算折扣金额
+  ├── Step 3: 创建 LineItemAdjustment / ShippingMethodAdjustment
+  └── Step 4: 重新计算 Cart totals
+```
+
+### 1.6 完成订单 (核心!!!)
+```
+POST /store/carts/:id/complete
+→ completeCartWorkflow
+  ├── Step 1: 验证 Cart 完整性
+  │   ├── 必须有 email
+  │   ├── 必须有 shipping_address
+  │   ├── 必须有 shipping_method
+  │   └── 必须有有效的 payment_session
+  ├── Step 2: 授权支付 (PaymentModule → 外部支付网关)
+  ├── Step 3: 确认库存预留 (InventoryModule)
+  ├── Step 4: 创建 Order
+  │   ├── 复制 Cart 数据到 Order
+  │   ├── 创建 OrderItem (关联 LineItem)
+  │   ├── 创建 OrderShipping (关联 ShippingMethod)
+  │   ├── 创建 OrderTransaction (支付记录)
+  │   └── 创建 OrderSummary (汇总金额)
+  ├── Step 5: 标记 Cart completed_at
+  ├── Step 6: 发送订单确认通知
+  └── 补偿: 如果任何步骤失败
+      ├── 取消支付授权
+      ├── 释放库存预留
+      └── 回滚 Order 创建
+```
+
+## 2. 订单管理流程
+
+### 2.1 创建发货
+```
+POST /admin/orders/:id/fulfillments
+→ createFulfillmentWorkflow
+  ├── Step 1: 验证订单状态
+  ├── Step 2: 验证物品可发货 (数量检查)
+  ├── Step 3: 创建 Fulfillment 记录
+  ├── Step 4: 创建 FulfillmentItem
+  ├── Step 5: 更新 OrderItem 的 fulfilled_quantity
+  ├── Step 6: 扣减库存 (InventoryModule)
+  ├── Step 7: 发送发货通知
+  └── Step 8: 更新订单版本
+```
+
+### 2.2 标记已发运
+```
+POST /admin/orders/:id/fulfillments/:fulfillment_id/shipments
+→ createShipmentWorkflow
+  ├── Step 1: 更新 Fulfillment 的 shipped_at
+  ├── Step 2: 创建 FulfillmentLabel (追踪号)
+  ├── Step 3: 更新 OrderItem 的 shipped_quantity
+  └── Step 4: 发送发运通知
+```
+
+### 2.3 取消订单
+```
+POST /admin/orders/:id/cancel
+→ cancelOrderWorkflow
+  ├── Step 1: 验证订单可取消
+  ├── Step 2: 取消未发货的 Fulfillment
+  ├── Step 3: 释放库存预留
+  ├── Step 4: 退款 (如已支付)
+  ├── Step 5: 更新 Order status = "canceled"
+  ├── Step 6: 更新 canceled_at
+  └── Step 7: 发送取消通知
+```
+
+### 2.4 完成订单
+```
+POST /admin/orders/:id/complete
+→ completeOrderWorkflow
+  ├── Step 1: 验证所有商品已发货
+  ├── Step 2: 验证支付已捕获
+  ├── Step 3: 更新 Order status = "completed"
+  └── Step 4: 发送完成通知
+```
+
+## 3. 退货流程
+
+### 3.1 客户发起退货
+```
+POST /admin/returns
+→ createReturnWorkflow
+  ├── Step 1: 创建 Return 记录
+  ├── Step 2: 创建 ReturnItem (关联 OrderLineItem)
+  ├── Step 3: 计算退款金额
+  ├── Step 4: 创建 OrderChange 记录
+  └── Step 5: 发送退货通知
+```
+
+### 3.2 确认收到退货
+```
+POST /admin/returns/:id/receive/confirm
+→ confirmReturnReceiveWorkflow
+  ├── Step 1: 更新 ReturnItem 的 received_quantity
+  ├── Step 2: 增加库存 (InventoryModule)
+  ├── Step 3: 创建退款 (PaymentModule)
+  ├── Step 4: 更新 Return 状态
+  └── Step 5: 更新订单版本
+```
+
+## 4. 索赔 (Claim) 流程
+
+```
+POST /admin/claims
+→ createClaimWorkflow
+  ├── Step 1: 创建 OrderClaim 记录
+  ├── Step 2: 创建 ClaimItem (原商品)
+  ├── Step 3: 如果是 replace 类型:
+  │   ├── 创建新的 LineItem (替换商品)
+  │   └── 创建新的发货
+  ├── Step 4: 如果是 refund 类型:
+  │   └── 创建退款
+  ├── Step 5: 创建 OrderChange
+  └── Step 6: 更新订单版本
+```
+
+## 5. 换货 (Exchange) 流程
+
+```
+POST /admin/exchanges
+→ createExchangeWorkflow
+  ├── Step 1: 创建 OrderExchange 记录
+  ├── Step 2: 创建退回商品的 ShippingMethod
+  ├── Step 3: 创建新商品的 LineItem
+  ├── Step 4: 计算差价 (difference_due)
+  ├── Step 5: 如需补差价 → 创建 PaymentCollection
+  ├── Step 6: 如需退差价 → 创建退款
+  ├── Step 7: 创建 OrderChange
+  └── Step 8: 更新订单版本
+```
+
+## 6. 商品管理流程
+
+### 6.1 创建商品
+```
+POST /admin/products
+→ createProductsWorkflow
+  ├── Step 1: 验证输入 (handle 唯一性)
+  ├── Step 2: 创建 Product 记录
+  ├── Step 3: 创建 ProductOption
+  ├── Step 4: 创建 ProductVariant + OptionValue
+  ├── Step 5: 上传图片 (FileModule)
+  ├── Step 6: 创建 ProductImage
+  ├── Step 7: 为每个 Variant 创建 PriceSet (PricingModule)
+  ├── Step 8: 创建价格 (Price)
+  ├── Step 9: 创建 InventoryItem (InventoryModule)
+  ├── Step 10: 关联 Variant ↔ InventoryItem (Link)
+  └── Step 11: 关联 Product ↔ SalesChannel (Link)
+```
+
+### 6.2 更新商品
+```
+POST /admin/products/:id
+→ updateProductsWorkflow
+  ├── Step 1: 更新 Product 基础信息
+  ├── Step 2: 同步 Tags (创建新的, 移除旧的)
+  ├── Step 3: 同步 Images
+  └── Step 4: 更新关联 (Collection, Type, Categories)
+```
+
+### 6.3 批量操作
+```
+POST /admin/products/batch
+→ batchProductsWorkflow
+  ├── create: 批量创建
+  ├── update: 批量更新
+  └── delete: 批量软删除
+```
+
+## 7. 支付流程
+
+### 7.1 创建支付会话
+```
+POST /store/payment-collections/:id/payment-sessions
+→ createPaymentSessionsWorkflow
+  ├── Step 1: 验证 PaymentCollection 状态
+  ├── Step 2: 调用支付提供商创建会话 (如 Stripe)
+  └── Step 3: 创建 PaymentSession 记录
+```
+
+### 7.2 支付捕获
+```
+POST /admin/payments/:id/capture
+→ capturePaymentWorkflow
+  ├── Step 1: 调用支付提供商捕获
+  ├── Step 2: 创建 Capture 记录
+  ├── Step 3: 更新 PaymentCollection 的 captured_amount
+  └── Step 4: 更新 Payment 的 captured_at
+```
+
+### 7.3 退款
+```
+POST /admin/payments/:id/refund
+→ refundPaymentWorkflow
+  ├── Step 1: 调用支付提供商退款
+  ├── Step 2: 创建 Refund 记录
+  ├── Step 3: 更新 PaymentCollection 的 refunded_amount
+  └── Step 4: 创建 OrderTransaction (退款记录)
+```
+
+## 8. 库存管理流程
+
+### 8.1 库存预留 (下单时)
+```
+reserveInventoryWorkflow
+  ├── Step 1: 查找 InventoryLevel (variant → inventory_item → location)
+  ├── Step 2: 验证可用数量 >= 需求数量
+  ├── Step 3: 增加 reserved_quantity
+  └── Step 4: 创建 ReservationItem
+```
+
+### 8.2 库存扣减 (发货时)
+```
+adjustInventoryWorkflow
+  ├── Step 1: 减少 stocked_quantity
+  ├── Step 2: 减少 reserved_quantity
+  └── Step 3: 删除 ReservationItem
+```
+
+## 9. Cart Totals 计算逻辑
+
+每次购物车变更后都会重新计算:
+
+```
+calculateCartTotals
+  ├── 1. 每个 LineItem:
+  │   ├── original_subtotal = unit_price × quantity
+  │   ├── discount_total = Σ adjustments.amount
+  │   ├── item_subtotal = original_subtotal - discount_total
+  │   ├── tax_total = Σ tax_lines.rate × taxable_amount
+  │   └── total = item_subtotal + tax_total (或 item_subtotal 如果 is_tax_inclusive)
+  │
+  ├── 2. 每个 ShippingMethod:
+  │   ├── original_subtotal = amount
+  │   ├── discount_total = Σ adjustments.amount
+  │   ├── shipping_subtotal = original_subtotal - discount_total
+  │   ├── tax_total = Σ tax_lines.rate × taxable_amount
+  │   └── total = shipping_subtotal + tax_total
+  │
+  └── 3. Cart 汇总:
+      ├── item_total = Σ line_items.total
+      ├── shipping_total = Σ shipping_methods.total
+      ├── discount_total = Σ all adjustments
+      ├── tax_total = Σ all tax_lines
+      ├── subtotal = item_total + shipping_total - tax_total
+      ├── gift_card_total = Σ credit_lines.amount
+      └── total = subtotal + tax_total - gift_card_total
+```
+
+## 10. 实现优先级建议
+
+对于新项目，建议按以下顺序实现:
+
+| 优先级 | 流程 | 复杂度 | 说明 |
+|-------|------|--------|------|
+| P0 | Cart → Order | 高 | 核心转化链路，必须完整 |
+| P0 | 商品 CRUD | 中 | 基础数据管理 |
+| P0 | 认证 | 低 | 调用 Medusa Auth API 即可 |
+| P1 | 创建发货 | 中 | 订单履约核心 |
+| P1 | 支付捕获/退款 | 中 | 依赖支付提供商 |
+| P1 | Cart Totals 计算 | 中 | 建议先用 Medusa API，后续自实现 |
+| P2 | 退货 | 中 | 售后核心 |
+| P2 | 库存管理 | 中 | 可先简化处理 |
+| P3 | 索赔/换货 | 高 | 复杂场景，可后续迭代 |
+| P3 | 促销规则 | 高 | 规则引擎复杂 |

@@ -1,0 +1,718 @@
+# 技术规范与编码约定
+
+## 1. 项目结构约定
+
+### 1.1 Monorepo 组织
+
+```
+my-ecommerce/
+├── apps/                    # 应用层
+│   ├── admin/               # Next.js 15 管理后台
+│   ├── storefront/          # Astro 5 店铺前端
+│   └── backend/             # Medusa v2 后端
+├── packages/                # 共享包
+│   ├── db/                  # Drizzle ORM schema & 查询
+│   ├── services/            # 共享业务逻辑
+│   ├── api-client/          # 类型安全的 API 客户端
+│   └── shared/              # 共享类型、工具函数
+├── docs/                    # 项目文档
+├── turbo.json               # Turborepo 任务配置
+├── pnpm-workspace.yaml      # pnpm 工作空间配置
+└── package.json             # 根 package.json
+```
+
+### 1.2 命名规范
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| 文件名 | `kebab-case` | `product-list.tsx`, `use-cart.ts` |
+| React 组件 | `PascalCase` | `ProductList`, `CartDrawer` |
+| 函数 / 变量 | `camelCase` | `getProducts`, `cartTotal` |
+| 常量 | `UPPER_SNAKE_CASE` | `API_BASE_URL`, `DEFAULT_LIMIT` |
+| 类型 / 接口 | `PascalCase` | `Product`, `OrderResponse` |
+| 数据库表名 | `snake_case` | `product`, `order_item` |
+| 数据库列名 | `snake_case` | `created_at`, `deleted_at` |
+| CSS 类名 | `kebab-case` (Tailwind 优先) | `text-primary`, `btn-outline` |
+
+### 1.3 包结构
+
+每个 `packages/*` 必须包含：
+
+```
+packages/db/
+├── src/
+│   ├── index.ts             # 统一导出
+│   ├── schema/              # 表定义
+│   └── queries/             # 查询函数
+├── package.json             # 包名: @ecommerce/db
+├── tsconfig.json            # 继承根 tsconfig
+└── README.md                # 包说明
+```
+
+包命名统一使用 `@ecommerce/` 作为 scope：
+
+- `@ecommerce/db`
+- `@ecommerce/services`
+- `@ecommerce/api-client`
+- `@ecommerce/shared`
+
+---
+
+## 2. Drizzle ORM 规范
+
+### 2.1 Schema 文件组织
+
+按 Medusa 模块划分文件，每个模块一个 schema 文件：
+
+```
+packages/db/src/schema/
+├── index.ts                 # 统一导出所有 schema
+├── product.ts               # Product 模块表定义
+├── pricing.ts               # Pricing 模块表定义
+├── order.ts                 # Order 模块表定义
+├── cart.ts                  # Cart 模块表定义
+├── customer.ts              # Customer 模块表定义
+├── inventory.ts             # Inventory 模块表定义
+├── fulfillment.ts           # Fulfillment 模块表定义
+├── payment.ts               # Payment 模块表定义
+├── promotion.ts             # Promotion 模块表定义
+├── tax.ts                   # Tax 模块表定义
+├── region.ts                # Region 模块表定义
+├── store.ts                 # Store 模块表定义
+├── user.ts                  # User 模块表定义
+├── auth.ts                  # Auth 模块表定义
+├── notification.ts          # Notification 模块表定义
+├── file.ts                  # File 模块表定义
+└── links.ts                 # 模块间 Link 关联表
+```
+
+### 2.2 表定义规范
+
+```typescript
+import { pgTable, text, timestamp, jsonb, numeric, boolean } from "drizzle-orm/pg-core";
+
+export const product = pgTable("product", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  description: text("description"),
+  handle: text("handle").unique(),
+  is_giftcard: boolean("is_giftcard").default(false).notNull(),
+  status: text("status").default("draft").notNull(),
+  thumbnail: text("thumbnail"),
+  metadata: jsonb("metadata"),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deleted_at: timestamp("deleted_at", { withTimezone: true }),
+});
+```
+
+关键规则：
+
+- **表名**与 Medusa 现有表名保持完全一致（`snake_case`），不要加前缀或后缀
+- **id 字段**统一使用 `text` 类型（Medusa 使用字符串 ID）
+- **时间戳**统一使用 `timestamp("xxx", { withTimezone: true })`
+- **软删除**：所有表都有 `deleted_at` 字段
+
+### 2.3 BigNumber 字段处理
+
+Medusa 使用 BigNumber 存储金额，实际表中存两列：
+
+```typescript
+export const lineItem = pgTable("cart_line_item", {
+  // ... 其他字段
+
+  unit_price: numeric("unit_price"),
+  raw_unit_price: jsonb("raw_unit_price"),
+
+  quantity: numeric("quantity"),
+  raw_quantity: jsonb("raw_quantity"),
+});
+```
+
+- `amount` 列（`numeric`）：用于数据库排序和聚合
+- `raw_amount` 列（`jsonb`）：存储精确值 `{ value: "1999", precision: 20 }`，前端展示时使用
+
+### 2.4 软删除查询
+
+所有查询默认需要排除已软删除的记录：
+
+```typescript
+import { isNull } from "drizzle-orm";
+
+const products = await db
+  .select()
+  .from(product)
+  .where(isNull(product.deleted_at));
+```
+
+建议封装为查询工具函数：
+
+```typescript
+export function notDeleted<T extends { deleted_at: unknown }>(table: T) {
+  return isNull(table.deleted_at);
+}
+
+const products = await db
+  .select()
+  .from(product)
+  .where(notDeleted(product));
+```
+
+### 2.5 关系定义
+
+使用 Drizzle `relations()` 定义模块内关系：
+
+```typescript
+import { relations } from "drizzle-orm";
+
+export const productRelations = relations(product, ({ many }) => ({
+  variants: many(productVariant),
+  options: many(productOption),
+  images: many(productImage),
+}));
+
+export const productVariantRelations = relations(productVariant, ({ one, many }) => ({
+  product: one(product, {
+    fields: [productVariant.product_id],
+    references: [product.id],
+  }),
+  prices: many(price),
+}));
+```
+
+---
+
+## 3. Next.js Admin 规范
+
+### 3.1 目录结构
+
+```
+apps/admin/
+├── src/
+│   ├── app/                       # App Router
+│   │   ├── layout.tsx             # 根布局 (侧边栏 + 顶栏)
+│   │   ├── page.tsx               # 仪表盘 /
+│   │   ├── products/
+│   │   │   ├── page.tsx           # 商品列表 /products
+│   │   │   ├── [id]/
+│   │   │   │   └── page.tsx       # 商品详情 /products/[id]
+│   │   │   └── new/
+│   │   │       └── page.tsx       # 新建商品 /products/new
+│   │   ├── orders/
+│   │   │   ├── page.tsx           # 订单列表
+│   │   │   └── [id]/
+│   │   │       └── page.tsx       # 订单详情
+│   │   ├── customers/
+│   │   ├── inventory/
+│   │   ├── promotions/
+│   │   ├── settings/
+│   │   └── api/
+│   │       └── admin/
+│   │           └── [...path]/
+│   │               └── route.ts   # API 代理路由
+│   ├── components/
+│   │   ├── ui/                    # Shadcn/ui 组件
+│   │   ├── layout/                # 布局组件 (Sidebar, Header)
+│   │   ├── data-table/            # 通用数据表格
+│   │   └── forms/                 # 表单组件
+│   ├── hooks/                     # 自定义 hooks
+│   ├── lib/                       # 工具函数
+│   └── providers/                 # Context providers
+├── public/
+├── next.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+### 3.2 UI 组件库
+
+使用 **Shadcn/ui** 作为基础组件库：
+
+```bash
+npx shadcn@latest init
+npx shadcn@latest add button card dialog table form input select
+```
+
+组件使用规范：
+
+- 所有 UI 组件放在 `src/components/ui/`
+- 业务组件放在 `src/components/` 对应子目录
+- 避免直接修改 Shadcn/ui 组件源码，通过组合和包装扩展
+
+### 3.3 数据表格
+
+使用 **TanStack Table v8** 实现所有列表页面：
+
+```typescript
+import { useReactTable, getCoreRowModel, getPaginationRowModel } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+
+const columns: ColumnDef<Product>[] = [
+  { accessorKey: "title", header: "商品名称" },
+  { accessorKey: "status", header: "状态" },
+  { accessorKey: "created_at", header: "创建时间" },
+];
+```
+
+表格功能清单：
+
+- 服务端分页（offset + limit）
+- 列排序（单列、多列）
+- 列过滤
+- 列可见性切换
+- 行选择（批量操作）
+- 行展开（子表格）
+
+### 3.4 表单处理
+
+使用 **React Hook Form** + **Zod** 处理所有表单：
+
+```typescript
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const productSchema = z.object({
+  title: z.string().min(1, "商品名称不能为空"),
+  description: z.string().optional(),
+  status: z.enum(["draft", "published", "rejected"]),
+  handle: z.string().regex(/^[a-z0-9-]+$/, "只允许小写字母、数字和连字符"),
+});
+
+type ProductFormValues = z.infer<typeof productSchema>;
+
+function ProductForm() {
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
+    defaultValues: { title: "", status: "draft" },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        {/* 表单字段 */}
+      </form>
+    </Form>
+  );
+}
+```
+
+### 3.5 数据获取
+
+使用 **TanStack Query v5** 管理所有服务端状态：
+
+```typescript
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+export function useProducts(params: ListProductsParams) {
+  return useQuery({
+    queryKey: ["products", params],
+    queryFn: () => adminClient.products.list(params),
+  });
+}
+
+export function useCreateProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateProductInput) => adminClient.products.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+}
+```
+
+Query Key 规范：
+
+- `["products"]` — 商品列表
+- `["products", { offset, limit, status }]` — 带参数的商品列表
+- `["products", id]` — 单个商品
+- `["products", id, "variants"]` — 商品的变体
+
+### 3.6 国际化
+
+中文优先，使用 **next-intl** 或 **i18next**：
+
+```
+src/
+├── messages/
+│   ├── zh.json              # 中文（默认）
+│   └── en.json              # 英文
+```
+
+翻译键规范：
+
+```json
+{
+  "products": {
+    "title": "商品管理",
+    "create": "新建商品",
+    "fields": {
+      "title": "商品名称",
+      "status": "状态"
+    }
+  }
+}
+```
+
+### 3.7 API 代理
+
+通过 Next.js API Routes 代理 Medusa Admin API：
+
+```typescript
+// src/app/api/admin/[...path]/route.ts
+import { NextRequest, NextResponse } from "next/server";
+
+const MEDUSA_BACKEND_URL = process.env.MEDUSA_BACKEND_URL || "http://localhost:9000";
+
+async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params;
+  const targetUrl = `${MEDUSA_BACKEND_URL}/admin/${path.join("/")}${req.nextUrl.search}`;
+
+  const response = await fetch(targetUrl, {
+    method: req.method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: req.headers.get("Authorization") || "",
+    },
+    body: req.method !== "GET" ? await req.text() : undefined,
+  });
+
+  const data = await response.json();
+  return NextResponse.json(data, { status: response.status });
+}
+
+export { handler as GET, handler as POST, handler as DELETE };
+```
+
+---
+
+## 4. Astro Storefront 规范
+
+### 4.1 目录结构
+
+```
+apps/storefront/
+├── src/
+│   ├── pages/
+│   │   ├── index.astro            # 首页
+│   │   ├── products/
+│   │   │   ├── index.astro        # 商品列表
+│   │   │   └── [handle].astro     # 商品详情
+│   │   ├── categories/
+│   │   │   └── [handle].astro     # 分类页
+│   │   ├── cart.astro             # 购物车
+│   │   ├── checkout.astro         # 结账
+│   │   └── account/
+│   │       ├── index.astro        # 个人中心
+│   │       ├── orders.astro       # 订单历史
+│   │       └── addresses.astro    # 地址管理
+│   ├── layouts/
+│   │   └── BaseLayout.astro       # 基础布局
+│   ├── components/
+│   │   ├── astro/                 # 纯 Astro 组件（无 JS）
+│   │   └── react/                 # React Islands 组件
+│   │       ├── CartDrawer.tsx     # 购物车抽屉
+│   │       ├── AddToCartButton.tsx
+│   │       └── CheckoutForm.tsx
+│   ├── lib/
+│   │   └── medusa.ts              # Medusa Store API 客户端
+│   └── styles/
+│       └── global.css             # Tailwind 全局样式
+├── astro.config.mjs
+├── tailwind.config.mjs
+├── tsconfig.json
+└── package.json
+```
+
+### 4.2 SSR 模式
+
+使用 Astro SSR 模式以支持动态数据获取：
+
+```javascript
+// astro.config.mjs
+import { defineConfig } from "astro/config";
+import react from "@astrojs/react";
+import tailwind from "@astrojs/tailwind";
+import node from "@astrojs/node";
+
+export default defineConfig({
+  output: "server",
+  adapter: node({ mode: "standalone" }),
+  integrations: [react(), tailwind()],
+});
+```
+
+### 4.3 数据获取
+
+在 Astro frontmatter 中获取数据：
+
+```astro
+---
+// src/pages/products/[handle].astro
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AddToCartButton from "../../components/react/AddToCartButton";
+import { getProduct } from "../../lib/medusa";
+
+const { handle } = Astro.params;
+const product = await getProduct(handle!);
+
+if (!product) {
+  return Astro.redirect("/404");
+}
+---
+
+<BaseLayout title={product.title}>
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold">{product.title}</h1>
+    <p class="mt-4 text-gray-600">{product.description}</p>
+    <AddToCartButton client:load productId={product.id} variants={product.variants} />
+  </div>
+</BaseLayout>
+```
+
+### 4.4 React Islands
+
+交互组件使用 React Islands 模式：
+
+| 指令 | 用途 | 使用场景 |
+|------|------|---------|
+| `client:load` | 页面加载时立即 hydrate | 购物车、结账表单、导航菜单 |
+| `client:visible` | 滚入视口时 hydrate | 商品评价、推荐商品 |
+| `client:idle` | 浏览器空闲时 hydrate | 非关键交互组件 |
+| `client:only="react"` | 仅客户端渲染 | 依赖 window/document 的组件 |
+
+### 4.5 样式
+
+使用 **Tailwind CSS** 作为唯一样式方案：
+
+- 不使用 CSS Modules 或 styled-components
+- 使用 Tailwind 的设计系统（颜色、间距、排版）
+- 自定义主题通过 `tailwind.config.mjs` 的 `extend` 配置
+
+---
+
+## 5. TypeScript 规范
+
+### 5.1 tsconfig 基础配置
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noUncheckedIndexedAccess": true
+  }
+}
+```
+
+### 5.2 类型定义
+
+所有 API 响应必须有明确的类型定义：
+
+```typescript
+// packages/shared/src/types/product.ts
+export type Product = {
+  id: string;
+  title: string;
+  handle: string;
+  status: "draft" | "published" | "rejected";
+  variants: ProductVariant[];
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+export type ListProductsResponse = {
+  products: Product[];
+  count: number;
+  offset: number;
+  limit: number;
+};
+```
+
+### 5.3 Zod 双重用途
+
+Zod schema 同时用于运行时验证和类型推导：
+
+```typescript
+import { z } from "zod";
+
+export const createProductSchema = z.object({
+  title: z.string().min(1),
+  handle: z.string().regex(/^[a-z0-9-]+$/),
+  status: z.enum(["draft", "published", "rejected"]).default("draft"),
+});
+
+export type CreateProductInput = z.infer<typeof createProductSchema>;
+```
+
+### 5.4 导出规范
+
+- 类型导出使用 `export type`：
+
+```typescript
+export type { Product, ProductVariant } from "./types/product";
+```
+
+- 避免 `export default`，统一使用命名导出
+- 每个包的 `src/index.ts` 作为统一导出入口
+
+---
+
+## 6. API 设计规范
+
+> 以下规范适用于自建 API Routes（Next.js API Routes 或独立 API 服务）。调用 Medusa API 时遵循 Medusa 自身的规范。
+
+### 6.1 RESTful 风格
+
+| 操作 | 方法 | 路径 | 示例 |
+|------|------|------|------|
+| 列表 | `GET` | `/api/admin/{resource}` | `GET /api/admin/products` |
+| 详情 | `GET` | `/api/admin/{resource}/{id}` | `GET /api/admin/products/prod_01` |
+| 创建 | `POST` | `/api/admin/{resource}` | `POST /api/admin/products` |
+| 更新 | `POST` | `/api/admin/{resource}/{id}` | `POST /api/admin/products/prod_01` |
+| 删除 | `DELETE` | `/api/admin/{resource}/{id}` | `DELETE /api/admin/products/prod_01` |
+
+### 6.2 列表响应格式
+
+```json
+{
+  "products": [
+    { "id": "prod_01", "title": "T恤" }
+  ],
+  "count": 100,
+  "offset": 0,
+  "limit": 20
+}
+```
+
+### 6.3 单条响应格式
+
+```json
+{
+  "product": {
+    "id": "prod_01",
+    "title": "T恤",
+    "variants": []
+  }
+}
+```
+
+### 6.4 错误响应格式
+
+```json
+{
+  "type": "not_found",
+  "message": "Product with id prod_01 not found"
+}
+```
+
+常见错误类型：
+
+| type | HTTP Status | 说明 |
+|------|------------|------|
+| `invalid_data` | 400 | 请求数据验证失败 |
+| `unauthorized` | 401 | 未认证 |
+| `not_allowed` | 403 | 无权限 |
+| `not_found` | 404 | 资源不存在 |
+| `duplicate_error` | 409 | 资源冲突/重复 |
+| `unexpected_state` | 409 | 资源状态不允许该操作 |
+| `unknown_error` | 500 | 服务器内部错误 |
+
+### 6.5 分页与排序
+
+- **分页参数**：`offset`（偏移量，默认 0）+ `limit`（每页数量，默认 20，最大 100）
+- **排序参数**：`order=created_at:desc` 或 `order=title:asc`
+- **多字段排序**：`order=status:asc,created_at:desc`
+
+### 6.6 字段选择与关系展开
+
+- **字段选择**：`fields=id,title,status` — 只返回指定字段
+- **关系展开**：`expand=variants,variants.prices` — 展开嵌套关系
+
+### 6.7 认证
+
+所有 Admin API 需要携带 JWT：
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+---
+
+## 7. Git 规范
+
+### 7.1 分支策略
+
+```
+main           ← 生产环境，只通过 PR 合并
+  └── develop  ← 开发主分支
+       ├── feature/admin-product-list    ← 功能分支
+       ├── feature/store-checkout        ← 功能分支
+       ├── fix/cart-calculation          ← 修复分支
+       └── refactor/db-schema            ← 重构分支
+```
+
+分支命名规范：
+
+- `feature/xxx` — 新功能
+- `fix/xxx` — Bug 修复
+- `refactor/xxx` — 代码重构
+- `docs/xxx` — 文档更新
+- `chore/xxx` — 构建/工具更新
+
+### 7.2 Commit 规范
+
+使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+类型：
+
+| type | 说明 | 示例 |
+|------|------|------|
+| `feat` | 新功能 | `feat(admin): 添加商品列表页面` |
+| `fix` | Bug 修复 | `fix(cart): 修复数量计算错误` |
+| `docs` | 文档更新 | `docs: 更新架构文档` |
+| `refactor` | 代码重构 | `refactor(db): 重构 product schema` |
+| `style` | 样式调整 | `style(admin): 调整侧边栏布局` |
+| `test` | 测试 | `test(services): 添加订单服务测试` |
+| `chore` | 构建/工具 | `chore: 更新 turborepo 配置` |
+| `perf` | 性能优化 | `perf(store): 优化商品列表加载` |
+
+### 7.3 Pull Request 规范
+
+每个 PR 必须包含：
+
+1. **标题**：遵循 Conventional Commits 格式
+2. **描述**：
+   - 变更内容概述
+   - 相关 Issue 链接
+   - 截图（UI 变更时）
+3. **测试计划**：
+   - 手动测试步骤
+   - 自动化测试覆盖情况
+4. **Review Checklist**：
+   - [ ] TypeScript 类型完整
+   - [ ] 软删除查询已处理
+   - [ ] 错误处理完善
+   - [ ] 国际化文案已添加
+   - [ ] 响应式布局已测试

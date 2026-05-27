@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "paths": {
+      "@my-store/db": ["../../packages/db/src"],
+      "@my-store/validators": ["../../packages/validators/src"]
+    }
+  },
+  "include": ["src/**/*", "entry.*.ts"]
+}

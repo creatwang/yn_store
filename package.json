@@ -1,0 +1,32 @@
+{
+  "name": "my-medusa-store-hono",
+  "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo dev --filter=@my-store/server --filter=@my-store/admin --filter=@my-store/store-web",
+    "dev:server": "turbo dev --filter=@my-store/server",
+    "dev:admin": "turbo dev --filter=@my-store/admin",
+    "dev:store": "turbo dev --filter=@my-store/store-web",
+    "build": "turbo build --filter=@my-store/server --filter=@my-store/admin --filter=@my-store/store-web",
+    "start": "turbo start --filter=@my-store/server",
+    "typecheck": "turbo typecheck",
+    "init": "powershell -ExecutionPolicy Bypass -File ./scripts/init.ps1",
+    "sync:handoff": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-handoff-from-old.ps1",
+    "migrate": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-from-legacy.ps1",
+    "patch:hono-docs": "powershell -ExecutionPolicy Bypass -File ./scripts/patch-hono-docs.ps1",
+    "copy:dashboard-ui": "powershell -ExecutionPolicy Bypass -File ./scripts/copy-dashboard-ui.ps1"
+  },
+  "pnpm": {
+    "overrides": {
+      "zod": "^4.2.0"
+    }
+  },
+  "devDependencies": {
+    "turbo": "^2.0.14",
+    "prettier": "^3.2.5",
+    "typescript": "^5.7.3"
+  }
+}

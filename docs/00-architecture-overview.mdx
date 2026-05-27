@@ -1,0 +1,301 @@
+# 项目架构总览
+
+> **注意（2026）**：下文部分仍描述「Next.js Admin + 不修改 Medusa 后端」。当前定案以 **[00-agent-handoff.md](00-agent-handoff.md)** 与 **[07-feature-spec.mdx](07-feature-spec.mdx)** 为准：**Hono 自建 API + Vite Admin + Astro store-web**。
+
+## 1. 项目背景
+
+- 基于 **Medusa v2.15.3** 的跨境电商平台
+- 重新构建前端（Admin + Storefront），复用 Medusa 后端 API 和数据库
+- 技术栈：**Next.js**（Admin）、**Astro**（Storefront）、**Drizzle ORM**、**pnpm + Turborepo**
+
+本项目的核心思路是：保留 Medusa 强大的后端引擎（模块系统、工作流、事件总线），但用现代前端框架完全替换其自带的 Admin Dashboard 和 Storefront，以获得更好的开发体验和更灵活的定制能力。
+
+---
+
+## 2. 目标架构
+
+### 2.1 Monorepo 结构
+
+```
+my-ecommerce/
+├── apps/
+│   ├── admin/          # Next.js 15 + Shadcn/ui + TanStack Table/Query
+│   ├── storefront/     # Astro 5 + React Islands + Tailwind
+│   └── backend/        # Medusa v2 后端 (保持不变)
+├── packages/
+│   ├── db/             # Drizzle ORM schema (映射 Medusa 表)
+│   ├── services/       # 共享业务逻辑 (参考 Medusa 重写)
+│   ├── api-client/     # 类型安全的 API 客户端
+│   └── shared/         # 共享类型、工具函数
+├── docs/               # 蓝图文档
+├── AGENTS.md           # AI 开发指令
+└── turbo.json          # Turborepo 配置
+```
+
+### 2.2 架构总览图
+
+```mermaid
+graph TB
+    subgraph "客户端"
+        B1[管理员浏览器]
+        B2[消费者浏览器]
+    end
+
+    subgraph "apps/"
+        A[Next.js Admin<br/>App Router + Shadcn/ui]
+        S[Astro Storefront<br/>SSR + React Islands]
+        M[Medusa Backend<br/>v2.15.3]
+    end
+
+    subgraph "packages/"
+        DB[db<br/>Drizzle ORM Schema]
+        SVC[services<br/>共享业务逻辑]
+        AC[api-client<br/>类型安全 API 客户端]
+        SH[shared<br/>共享类型 & 工具]
+    end
+
+    subgraph "基础设施"
+        PG[(PostgreSQL)]
+        REDIS[(Redis)]
+    end
+
+    B1 --> A
+    B2 --> S
+    A -->|Admin API| M
+    S -->|Store API| M
+    A -.->|直连查询| DB
+    M --> PG
+    M --> REDIS
+    DB --> PG
+    A --> AC
+    S --> AC
+    A --> SVC
+    S --> SVC
+    AC --> SH
+    SVC --> SH
+    SVC --> DB
+```
+
+---
+
+## 3. Medusa 模块清单
+
+Medusa v2 采用模块化架构，以下是所有 20 个业务模块的详细清单：
+
+| # | 模块名称 | 表数量 | 核心实体 | Admin 页面 | Store 页面 |
+|---|---------|--------|---------|-----------|-----------|
+| 1 | **Product** | 9 | Product, ProductVariant, ProductOption, ProductType, ProductCategory, ProductTag, ProductCollection | 商品列表、商品详情编辑、变体管理、分类管理、合集管理 | 商品列表、商品详情、分类浏览 |
+| 2 | **Pricing** | 6 | PriceSet, Price, PriceList, PriceRule, PricePreference | 价格列表管理、价格规则配置 | 商品价格展示 |
+| 3 | **Order** | 12 | Order, OrderItem, OrderChange, OrderShippingMethod, Return, Exchange, Claim, OrderTransaction | 订单列表、订单详情、退货/换货处理 | 订单历史、订单跟踪 |
+| 4 | **Cart** | 5 | Cart, CartLineItem, CartAddress, CartShippingMethod | — | 购物车、结账流程 |
+| 5 | **Customer** | 3 | Customer, CustomerGroup, CustomerAddress | 客户列表、客户详情、客户组管理 | 个人中心、地址管理 |
+| 6 | **Auth** | 2 | AuthIdentity, ProviderIdentity | — | 登录、注册 |
+| 7 | **Inventory** | 3 | InventoryItem, InventoryLevel, ReservationItem | 库存管理、库存水平调整 | 库存状态展示 |
+| 8 | **Stock Location** | 2 | StockLocation, StockLocationAddress | 仓库管理 | — |
+| 9 | **Sales Channel** | 1 | SalesChannel | 销售渠道管理 | — |
+| 10 | **Fulfillment** | 7 | Fulfillment, FulfillmentSet, FulfillmentProvider, ServiceZone, ShippingOption, ShippingProfile, GeoZone | 发货管理、物流配置、运费模板 | 物流选择、物流跟踪 |
+| 11 | **Payment** | 4 | PaymentCollection, Payment, PaymentSession, PaymentProvider | 支付记录查看、退款处理 | 支付流程 |
+| 12 | **Promotion** | 5 | Promotion, PromotionRule, Campaign, CampaignBudget, ApplicationMethod | 促销活动管理、优惠券管理 | 优惠码输入 |
+| 13 | **Tax** | 4 | TaxRegion, TaxRate, TaxRateRule, TaxProvider | 税率配置 | 税费计算展示 |
+| 14 | **Currency** | 1 | Currency | 货币管理 | 货币切换 |
+| 15 | **Region** | 1 | Region | 区域管理 | 区域选择 |
+| 16 | **Store** | 1 | Store | 店铺设置 | — |
+| 17 | **API Key** | 1 | ApiKey | API 密钥管理 | — |
+| 18 | **User** | 2 | User, Invite | 用户管理、邀请管理 | — |
+| 19 | **Notification** | 2 | Notification, NotificationProvider | 通知记录查看、通知配置 | — |
+| 20 | **File** | 1 | File | 文件管理 | — |
+
+> **总计**：约 72 张核心表（不含 Link 关联表和内部元数据表）
+
+---
+
+## 4. 模块间关系
+
+```mermaid
+erDiagram
+    Product ||--o{ ProductVariant : "拥有变体"
+    Product }o--o{ ProductCategory : "属于分类"
+    Product }o--o{ ProductCollection : "属于合集"
+    Product }o--o{ ProductTag : "打标签"
+    Product }o--o{ SalesChannel : "发布到渠道"
+    ProductVariant ||--|| PriceSet : "关联价格集"
+    ProductVariant ||--o{ InventoryItem : "关联库存"
+    InventoryItem ||--o{ InventoryLevel : "各仓库库存"
+    InventoryLevel }o--|| StockLocation : "所在仓库"
+
+    Cart ||--o{ CartLineItem : "包含商品"
+    Cart ||--|| PaymentCollection : "关联支付"
+    Cart ||--o{ CartShippingMethod : "选择物流"
+    Cart }o--|| Region : "所属区域"
+    Cart }o--|| Customer : "所属客户"
+    Cart }o--|| SalesChannel : "销售渠道"
+
+    Order ||--o{ OrderItem : "包含商品"
+    Order ||--|| PaymentCollection : "关联支付"
+    Order ||--o{ Fulfillment : "关联发货"
+    Order }o--|| Customer : "所属客户"
+    Order }o--|| SalesChannel : "销售渠道"
+    Order ||--o{ Return : "退货记录"
+    Order ||--o{ Exchange : "换货记录"
+
+    PaymentCollection ||--o{ PaymentSession : "支付会话"
+    PaymentCollection ||--o{ Payment : "支付记录"
+
+    Fulfillment }o--|| FulfillmentProvider : "使用物流商"
+    ShippingOption }o--|| FulfillmentProvider : "配置物流商"
+    ShippingOption }o--|| ServiceZone : "服务区域"
+    ServiceZone }o--|| FulfillmentSet : "发货集合"
+
+    Region ||--o{ TaxRegion : "税区关联"
+    TaxRegion ||--o{ TaxRate : "税率"
+
+    Promotion ||--o{ PromotionRule : "促销规则"
+    Promotion }o--|| Campaign : "所属活动"
+
+    Customer ||--o{ CustomerAddress : "收货地址"
+    Customer }o--o{ CustomerGroup : "客户组"
+    Customer ||--|| AuthIdentity : "认证身份"
+```
+
+---
+
+## 5. 数据流
+
+### 5.1 Admin 数据流
+
+```mermaid
+sequenceDiagram
+    participant B as 管理员浏览器
+    participant N as Next.js Admin
+    participant M as Medusa Backend
+    participant DB as PostgreSQL
+
+    B->>N: 访问 /admin/products
+    N->>N: App Router 渲染页面
+    B->>N: TanStack Query 发起请求
+    N->>M: GET /admin/products (Bearer JWT)
+    M->>DB: 查询数据
+    DB-->>M: 返回结果
+    M-->>N: JSON 响应 { data, count, offset, limit }
+    N-->>B: 渲染表格
+
+    Note over N,DB: 可选：复杂聚合查询直连数据库
+    B->>N: 请求仪表盘统计
+    N->>DB: Drizzle ORM 查询
+    DB-->>N: 聚合结果
+    N-->>B: 渲染图表
+```
+
+### 5.2 Store 数据流
+
+```mermaid
+sequenceDiagram
+    participant B as 消费者浏览器
+    participant A as Astro Storefront
+    participant M as Medusa Backend
+    participant DB as PostgreSQL
+
+    B->>A: 访问 /products/hoodie
+    A->>M: GET /store/products/hoodie (SSR frontmatter)
+    M->>DB: 查询商品数据
+    DB-->>M: 返回结果
+    M-->>A: JSON 响应
+    A-->>B: 返回 HTML (Astro 渲染)
+
+    Note over B,A: 交互组件使用 React Islands
+    B->>A: 点击"加入购物车"
+    A->>M: POST /store/carts/{id}/line-items
+    M->>DB: 更新购物车
+    DB-->>M: 确认
+    M-->>A: 更新后的 Cart 数据
+    A-->>B: 更新购物车 UI (React Island)
+```
+
+### 5.3 认证流程
+
+| 角色 | 认证方式 | Token 类型 | 存储位置 | 过期时间 |
+|------|---------|-----------|---------|---------|
+| Admin 用户 | 邮箱 + 密码 | JWT (Bearer) | httpOnly Cookie / localStorage | 7 天 |
+| Store 顾客 | 邮箱 + 密码 / 社交登录 | JWT (Bearer) | httpOnly Cookie | 30 天 |
+| 匿名顾客 | — | Session Token | Cookie | 无过期 |
+
+认证流程：
+
+1. **Admin 登录**：`POST /auth/user/emailpass` → 获取 JWT → 后续请求携带 `Authorization: Bearer <token>`
+2. **顾客登录**：`POST /auth/customer/emailpass` → 获取 JWT → 后续请求携带 `Authorization: Bearer <token>`
+3. **匿名购物**：首次访问时创建 Cart，通过 Cart ID 跟踪会话；注册/登录后将匿名 Cart 关联到客户
+
+---
+
+## 6. 开发模式选择
+
+### 方案 A：完全重写
+
+```mermaid
+graph LR
+    A[Next.js / Astro] --> B[自建 API Routes]
+    B --> C[Drizzle ORM]
+    C --> D[(PostgreSQL)]
+    style A fill:#f9f,stroke:#333
+    style B fill:#ff9,stroke:#333
+    style C fill:#9ff,stroke:#333
+```
+
+**做法**：完全不启动 Medusa Backend，自行用 Drizzle ORM 操作数据库。
+
+**优点**：
+- 完全掌控数据层，无中间依赖
+- 可以设计更适合业务的 API 结构
+- 减少一个运行时进程
+
+**缺点**：
+- 需要重新实现 Medusa 的所有业务逻辑（支付流程、库存扣减、订单状态机等）
+- 丢失 Medusa 的工作流引擎、事件系统、插件生态
+- 开发量巨大，容易遗漏边界情况
+- 数据库迁移需要自行管理
+
+### 方案 B：API 代理模式（推荐）
+
+```mermaid
+graph LR
+    A[Next.js / Astro] --> B[API Routes / SSR]
+    B --> C[Medusa Admin/Store API]
+    C --> D[Medusa Backend]
+    D --> E[(PostgreSQL)]
+    B -.->|复杂查询| F[Drizzle ORM]
+    F -.-> E
+    style A fill:#f9f,stroke:#333
+    style C fill:#9f9,stroke:#333
+    style D fill:#9f9,stroke:#333
+    style F fill:#9ff,stroke:#333
+```
+
+**做法**：保持 Medusa Backend 运行，Next.js/Astro 通过其 REST API 进行操作。仅在需要复杂查询或聚合时，通过 Drizzle ORM 直连数据库。
+
+**优点**：
+- 复用 Medusa 的全部业务逻辑（支付、库存、订单等）
+- 保留工作流引擎和事件系统
+- 可通过 Medusa 自定义模块扩展后端功能
+- 开发量小，可以逐步推进
+
+**缺点**：
+- 多一个后端进程需要部署和维护
+- 部分操作需要多次 API 调用
+- 受限于 Medusa API 的设计
+
+### 推荐策略
+
+**采用方案 B（API 代理模式）**，并结合以下策略：
+
+1. **默认使用 Medusa API**：所有标准 CRUD 操作通过 Medusa Admin/Store API 完成
+2. **Drizzle 直连用于只读查询**：仪表盘统计、复杂报表、搜索聚合等场景直连数据库
+3. **Medusa 自定义模块用于扩展**：需要新增后端逻辑时，通过 Medusa Module 方式扩展而非绕过
+4. **逐步迁移**：未来如果需要，可以逐模块将 Medusa API 替换为自建 API
+
+```mermaid
+pie title 数据获取方式占比预估
+    "Medusa Admin API" : 45
+    "Medusa Store API" : 30
+    "Drizzle 直连查询" : 15
+    "Medusa 自定义模块" : 10
+```
