@@ -24,7 +24,8 @@ alwaysApply: true
 ```typescript
 // server: 链式路由 + export type AppType = typeof app
 // admin: import type { AppType } from '@my-store/server/app'
-//        export const api = hc<AppType>(import.meta.env.VITE_API_URL)
+//        const client = hc<AppType>(import.meta.env.VITE_API_URL || '')
+//        export const api = client.api
 ```
 
 ## 数据库注意

@@ -11,7 +11,7 @@ const statusLabel: Record<string, string> = {
 }
 
 export function OrderListPage() {
-  const { data, isLoading, error } = useOrders({ limit: 50 })
+  const { data, isLoading, error } = useOrders()
 
   return (
     <PageContainer>
@@ -21,7 +21,11 @@ export function OrderListPage() {
       />
 
       {isLoading && <Text>加载中...</Text>}
-      {error && <Text className="text-ui-fg-error">加载失败</Text>}
+      {error && (
+        <Text className="text-ui-fg-error">
+          {error instanceof Error ? error.message : "加载失败"}
+        </Text>
+      )}
 
       {data && (
         <Table>
@@ -46,7 +50,9 @@ export function OrderListPage() {
                 </Table.Cell>
                 <Table.Cell>
                   <Text className="text-ui-fg-subtle text-sm">
-                    {new Date(o.created_at).toLocaleDateString()}
+                    {o.created_at
+                      ? new Date(o.created_at).toLocaleDateString()
+                      : "—"}
                   </Text>
                 </Table.Cell>
                 <Table.Cell>

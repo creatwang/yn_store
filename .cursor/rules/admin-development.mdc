@@ -24,13 +24,17 @@ alwaysApply: false
 
 ```typescript
 // apps/admin/src/lib/api.ts
-import { hc } from 'hono/client'
-import type { AppType } from '@my-store/server/app'
+import { hc } from "hono/client"
+import type { AppType } from "@my-store/server/app"
 
-export const api = hc<AppType>(import.meta.env.VITE_API_URL)
+const client = hc<AppType>(import.meta.env.VITE_API_URL || "", { fetch: /* 注入 Bearer */ })
+export const api = client.api // server 挂载在 app.route('/api', apiRoutes)
 ```
 
-开发时 `VITE_API_URL` 留空，走 Vite proxy `/api` → `localhost:9000`。
+开发时 `VITE_API_URL` **留空**，走 Vite proxy `/api` → `localhost:9000`。  
+直连后端：`http://localhost:9000`（**不要** 加 `/api` 后缀）。
+
+列表/变更请求用 `parseJsonResponse()` 校验 `res.ok` 并解析 JSON。
 
 ## 目录
 
@@ -52,3 +56,5 @@ pnpm run copy:dashboard-ui   # 仓库根目录
 - `/login` — 登录
 - `/` — 概览
 - `/products`、`/products/new`、`/products/:id` — 商品
+
+访问地址：`http://localhost:5173/admin/`

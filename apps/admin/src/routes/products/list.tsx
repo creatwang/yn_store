@@ -11,7 +11,7 @@ const statusLabel: Record<string, string> = {
 }
 
 export function ProductListPage() {
-  const { data, isLoading, error } = useProducts({ limit: 50 })
+  const { data, isLoading, error } = useProducts()
 
   return (
     <PageContainer>
@@ -26,7 +26,11 @@ export function ProductListPage() {
       />
 
       {isLoading && <Text>加载中...</Text>}
-      {error && <Text className="text-ui-fg-error">加载失败</Text>}
+      {error && (
+        <Text className="text-ui-fg-error">
+          {error instanceof Error ? error.message : "加载失败"}
+        </Text>
+      )}
 
       {data && (
         <Table>

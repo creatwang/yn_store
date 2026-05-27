@@ -1,7 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { api } from "@/lib/api"
+import { api, parseJsonResponse } from "@/lib/api"
 import { authStorage } from "@/lib/auth-storage"
 import type { LoginInput } from "@my-store/validators"
+
+type LoginResponse = {
+  token: string
+  user: {
+    id: string
+    email: string
+    first_name: string | null
+    last_name: string | null
+  }
+}
+
+type SessionResponse = {
+  user: LoginResponse["user"]
+}
 
 export function useLogin() {
   const queryClient = useQueryClient()
@@ -9,7 +23,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: async (data: LoginInput) => {
       const res = await api.auth.user.emailpass.$post({ json: data })
-      const result = await res.json()
+      const result = await parseJsonResponse<LoginResponse>(res)
       if (!result.token) {
         throw new Error("登录失败")
       }
@@ -41,10 +55,7 @@ export function useSession() {
         throw new Error("未登录")
       }
       const res = await api.auth.session.$get()
-      if (!res.ok) {
-        throw new Error("获取会话失败")
-      }
-      return await res.json()
+      return parseJsonResponse<SessionResponse>(res)
     },
     retry: false,
     staleTime: 5 * 60 * 1000,

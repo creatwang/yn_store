@@ -9,19 +9,20 @@
 
 ## 1. 架构总览
 
+> **目标架构（已实施）**：见 [`08-target-architecture.mdx`](./08-target-architecture.mdx) — **`server`** 提供 `/api` + `/app`（`public/app`）；**`store-web` 独立部署**。
+
 ```mermaid
 graph TB
-    Admin["apps/admin<br/>Vite + React Router"]
-    Store["apps/store-web<br/>Astro"]
-    RPC["Hono RPC<br/>hc AppType"]
-    Server["apps/server<br/>Hono"]
+    Admin["apps/admin<br/>Vite 源码"]
+    Store["apps/store-web<br/>Astro 独立部署"]
+    Server["apps/server<br/>后台运行时"]
     Validators["packages/validators"]
     DB["packages/db<br/>Drizzle"]
     PG[(Supabase PostgreSQL)]
 
-    Admin --> RPC
-    Store --> RPC
-    RPC --> Server
+    Admin -->|build → resources/admin| Server
+    Admin -->|dev: Vite HMR on :9000| Server
+    Store -->|PUBLIC_API_URL| Server
     Server --> Validators
     Server --> DB
     Admin --> Validators
@@ -30,11 +31,12 @@ graph TB
 
 | 层级 | 技术 | 职责 |
 |------|------|------|
-| `apps/server` | Hono + Bun/Node/CF/Vercel 入口 | REST API、认证、业务逻辑、静态资源（生产） |
-| `apps/admin` | Vite + React Router + @medusajs/ui | 管理后台 UI |
-| `apps/store-web` | Astro | C 端商城 |
+| `apps/server` | Hono + Bun compile / Docker | 后台唯一运行时：`/api` + 生产 `/app` |
+| `apps/admin` | Vite + React Router + @medusajs/ui | Admin 源码（build 进 `resources/admin`） |
+| `apps/store-web` | Astro（SSG/SSR/hybrid） | C 端，**独立**部署，经 `PUBLIC_API_URL` 调 API |
 | `packages/validators` | Zod | 前后端共享请求/表单校验 |
 | `packages/db` | Drizzle ORM | 映射 Medusa 表、查询函数 |
+| `packages/release` | 打包脚本（可选） | `resources/admin` + 跨平台 `my-store` |
 
 ---
 
@@ -193,7 +195,7 @@ packages/validators/src/
 | `entry.cf-worker.ts` | Cloudflare Workers | 边缘（需 Hyperdrive） |
 | `entry.vercel.ts` | Vercel Edge | Serverless |
 
-生产 All-in-One：`entry.bun.ts` 同时 serve `/api/*`、`/admin/*` 静态、`/*` Storefront。
+生产 All-in-One：见 **`docs/08-target-architecture.mdx`**（单进程 `platform`；C 端保留 Astro 全能力：SSG / SSR / hybrid，由 `STORE_OUTPUT` 决定挂载方式）。当前实现仍为分应用 + 多端口开发，迁移前以现结构为准。
 
 ---
 
@@ -280,8 +282,8 @@ JWT_SECRET=your-secret-min-32-chars
 PORT=9000
 NODE_ENV=development
 
-# apps/admin (Vite)
-VITE_API_URL=http://localhost:9000
+# apps/admin (Vite) — 开发留空走 proxy；直连用 http://localhost:9000（勿加 /api）
+VITE_API_URL=
 
 # apps/store-web
 PUBLIC_API_URL=http://localhost:9000

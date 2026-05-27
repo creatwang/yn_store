@@ -1,13 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { api } from "@/lib/api"
-import type { ListOrdersQuery, CreateOrderInput, UpdateOrderInput } from "@my-store/validators"
+import { api, parseJsonResponse, toRpcQuery } from "@/lib/api"
+import type {
+  CreateOrderInput,
+  ListOrdersQuery,
+  UpdateOrderInput,
+} from "@my-store/validators"
+import type { OrderDetailResponse, OrderListResponse } from "@/types/api"
 
-export function useOrders(params?: ListOrdersQuery) {
+const defaultListQuery: ListOrdersQuery = { limit: 50, offset: 0 }
+
+export function useOrders(params: ListOrdersQuery = defaultListQuery) {
   return useQuery({
     queryKey: ["orders", params],
     queryFn: async () => {
-      const res = await api.admin.orders.$get({ query: params })
-      return await res.json()
+      const res = await api.admin.orders.$get({ query: toRpcQuery(params) })
+      return parseJsonResponse<OrderListResponse>(res)
     },
   })
 }
@@ -17,7 +24,7 @@ export function useOrder(id: string) {
     queryKey: ["order", id],
     queryFn: async () => {
       const res = await api.admin.orders[":id"].$get({ param: { id } })
-      return await res.json()
+      return parseJsonResponse<OrderDetailResponse>(res)
     },
   })
 }
@@ -28,7 +35,7 @@ export function useCreateOrder() {
   return useMutation({
     mutationFn: async (data: CreateOrderInput) => {
       const res = await api.admin.orders.$post({ json: data })
-      return await res.json()
+      return parseJsonResponse<OrderDetailResponse>(res)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] })
@@ -42,7 +49,7 @@ export function useUpdateOrder(id: string) {
   return useMutation({
     mutationFn: async (data: UpdateOrderInput) => {
       const res = await api.admin.orders[":id"].$post({ param: { id }, json: data })
-      return await res.json()
+      return parseJsonResponse<OrderDetailResponse>(res)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] })
@@ -57,7 +64,7 @@ export function useCancelOrder(id: string) {
   return useMutation({
     mutationFn: async () => {
       const res = await api.admin.orders[":id"].cancel.$post({ param: { id } })
-      return await res.json()
+      return parseJsonResponse<OrderDetailResponse>(res)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] })

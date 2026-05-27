@@ -28,3 +28,8 @@ export function getDb(): Database {
 export function setDb(db: Database) {
   _db = db
 }
+
+/** 开发时 .env 变更后需重置连接池（一般由 tsx 重启进程，通常不必手动调用） */
+export function resetDb() {
+  _db = null
+}

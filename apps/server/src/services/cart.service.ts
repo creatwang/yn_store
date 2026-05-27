@@ -1,7 +1,12 @@
 import { and, eq, isNull, sql } from "drizzle-orm"
-import { cart, cartLineItem, order, orderLineItem, getDb, generateId } from "@my-store/db"
+import { cart, cartLineItem, order, getDb, generateId } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import type { CreateCartInput, AddToCartInput, UpdateCartInput } from "@my-store/validators"
+
+const ZERO_UNIT_PRICE = {
+  unit_price: "0",
+  raw_unit_price: { value: "0", precision: 20 },
+} as const
 
 export const cartService = {
   async create(input: CreateCartInput) {
@@ -41,7 +46,9 @@ export const cartService = {
     const items = await db
       .select()
       .from(cartLineItem)
-      .where(eq(cartLineItem.cart_id, id))
+      .where(
+        and(eq(cartLineItem.cart_id, id), isNull(cartLineItem.deleted_at))
+      )
 
     return { cart: cartItem, items }
   },
@@ -62,6 +69,7 @@ export const cartService = {
         title: input.title ?? "",
         quantity: input.quantity,
         metadata: input.metadata ?? null,
+        ...ZERO_UNIT_PRICE,
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
@@ -77,7 +85,13 @@ export const cartService = {
     const [item] = await db
       .update(cartLineItem)
       .set({ quantity: input.quantity, updated_at: sql`now()` })
-      .where(and(eq(cartLineItem.id, itemId), eq(cartLineItem.cart_id, cartId)))
+      .where(
+        and(
+          eq(cartLineItem.id, itemId),
+          eq(cartLineItem.cart_id, cartId),
+          isNull(cartLineItem.deleted_at)
+        )
+      )
       .returning()
 
     if (!item) {
@@ -91,11 +105,18 @@ export const cartService = {
     const db = getDb()
     await this.getById(cartId)
 
-    const result = await db
+    const deleted = await db
       .delete(cartLineItem)
-      .where(and(eq(cartLineItem.id, itemId), eq(cartLineItem.cart_id, cartId)))
+      .where(
+        and(
+          eq(cartLineItem.id, itemId),
+          eq(cartLineItem.cart_id, cartId),
+          isNull(cartLineItem.deleted_at)
+        )
+      )
+      .returning({ id: cartLineItem.id })
 
-    if (result.rowCount === 0) {
+    if (deleted.length === 0) {
       throw new HTTPException(404, { message: "Item not found" })
     }
 

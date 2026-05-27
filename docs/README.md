@@ -12,6 +12,7 @@
 | 文件 | 主题 |
 |------|------|
 | [07-feature-spec.mdx](07-feature-spec.mdx) | 功能规格、Admin 方案 A、模块与 API |
+| [**08-target-architecture.mdx**](08-target-architecture.mdx) | **目标架构 v3**：/api + /app（public/app）、Docker、Bun compile |
 | [01-database-schema.mdx](01-database-schema.mdx) | 102 张表、字段、关系 |
 | [02-api-endpoints.mdx](02-api-endpoints.mdx) | Medusa REST 全量 + MVP 节 |
 | [03-business-workflows.mdx](03-business-workflows.mdx) | 购物车→订单等业务流 |

@@ -8,4 +8,6 @@ dist/
 apps/*/.astro/
 apps/admin/dist/
 apps/server/dist/
+apps/server/public/app/
+release/
 .pnpm-store/

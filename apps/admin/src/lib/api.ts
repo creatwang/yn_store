@@ -2,6 +2,10 @@ import { hc } from "hono/client"
 import type { AppType } from "@my-store/server/app"
 import { authStorage } from "./auth-storage"
 
+/**
+ * 留空 = 与页面同源（Hono 挂 /app 静态时请求 /api）。
+ * 独立 Vite :5173 时可设 VITE_API_URL=http://localhost:9000，或依赖 vite proxy /api
+ */
 const baseUrl = import.meta.env.VITE_API_URL || ""
 
 export function getAuthHeaders(): Record<string, string> {
@@ -21,6 +25,43 @@ function createFetchWithAuth(baseFetch: typeof fetch = fetch) {
   }
 }
 
-export const api = hc<AppType>(baseUrl, {
+const client = hc<AppType>(baseUrl, {
   fetch: createFetchWithAuth(),
 })
+
+/** 挂载在 /api 下的 RPC 客户端（对应 server app.route('/api', apiRoutes)） */
+export const api = client.api
+
+type ApiErrorBody = {
+  message?: string
+  type?: string
+}
+
+/** Hono RPC 的 query 参数需为字符串 */
+export function toRpcQuery<T extends Record<string, unknown>>(params: T) {
+  const query: Record<string, string> = {}
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) {
+      query[key] = String(value)
+    }
+  }
+  return query
+}
+
+/** 校验 HTTP 状态并解析 JSON；失败时抛出带服务端 message 的 Error */
+export async function parseJsonResponse<T>(res: Response): Promise<T> {
+  if (res.ok) {
+    return res.json() as Promise<T>
+  }
+
+  let message = `请求失败 (${res.status})`
+  try {
+    const body = (await res.json()) as ApiErrorBody
+    if (body.message) {
+      message = body.message
+    }
+  } catch {
+    // 非 JSON 响应
+  }
+  throw new Error(message)
+}

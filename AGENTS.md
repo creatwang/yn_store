@@ -16,14 +16,18 @@
 ## 项目结构
 
 ```
-apps/server/         # Hono API（多运行时入口）
-apps/admin/          # Vite Admin Dashboard
-apps/store-web/      # Astro Storefront
+apps/server/         # 后台运行时：/api + /app（public/app 静态）
+apps/admin/          # Admin 源码 → build 到 server/public/app
+apps/store-web/      # Astro 商城，独立部署，PUBLIC_API_URL → server
 apps/backend/        # 旧 Medusa 后端（参考用，不修改）
 packages/db/         # Drizzle schema + 查询
 packages/validators/ # 共享 Zod schema
-docs/                # 蓝图文档
+docs/                # 蓝图（08-target-architecture.mdx）
 ```
+
+**本地地址**：API `http://localhost:9000/api`；Admin 挂载后 `http://localhost:9000/app/`；Vite dev `http://localhost:5173/app/`
+
+**脚本**：`pnpm build:admin` | `pnpm build:backend` | `pnpm dev:admin-on-server` | `pnpm build:release`
 
 ## 核心规则
 
@@ -79,7 +83,7 @@ Auth:       POST /api/auth/user/emailpass
 
 | 文件 | 命令 |
 |------|------|
-| `apps/server/entry.bun.ts` | `pnpm dev --filter=@my-store/server` |
-| `apps/server/entry.node.ts` | Node.js 兼容 |
+| `apps/server/entry.node.ts` | `pnpm dev --filter=@my-store/server`（默认） |
+| `apps/server/entry.bun.ts` | `pnpm dev:bun --filter=@my-store/server` |
 | `apps/server/entry.cf-worker.ts` | Cloudflare Workers |
 | `apps/server/entry.vercel.ts` | Vercel Edge |

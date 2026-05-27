@@ -4,7 +4,11 @@ import path from "node:path"
 
 export default defineConfig({
   plugins: [react()],
-  base: "/admin/",
+  base: "/app/",
+  build: {
+    outDir: path.resolve(__dirname, "../server/public/app"),
+    emptyOutDir: true,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 import { logger } from "hono/logger"
+import { getHealthStatus, logHealthToConsole } from "./lib/check-db"
 import { corsMiddleware } from "./middleware/cors"
 import { errorHandler } from "./middleware/error-handler"
 import { authRoutes } from "./routes/auth"
@@ -11,23 +12,32 @@ import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
 import { storeCustomers } from "./routes/store/customers"
+import { mountAppSpa } from "./host/mount-app"
+
+/** /api 下所有路由，供 RPC 客户端通过 client.api.* 访问 */
+const apiRoutes = new Hono()
+  .get("/health", async (c) => {
+    const { payload, statusCode } = await getHealthStatus()
+    logHealthToConsole(payload, "request")
+    return c.json(payload, statusCode)
+  })
+  .route("/auth", authRoutes)
+  .route("/admin/products", adminProducts)
+  .route("/admin/orders", adminOrders)
+  .route("/admin/customers", adminCustomers)
+  .route("/admin/carts", adminCarts)
+  .route("/store/products", storeProducts)
+  .route("/store/orders", storeOrders)
+  .route("/store/carts", storeCarts)
+  .route("/store/customers", storeCustomers)
 
 const app = new Hono()
   .onError(errorHandler)
   .use("*", logger())
   .use("*", corsMiddleware)
-  .get("/api/health", (c) =>
-    c.json({ status: "ok", timestamp: new Date().toISOString() })
-  )
-  .route("/api/auth", authRoutes)
-  .route("/api/admin/products", adminProducts)
-  .route("/api/admin/orders", adminOrders)
-  .route("/api/admin/customers", adminCustomers)
-  .route("/api/admin/carts", adminCarts)
-  .route("/api/store/products", storeProducts)
-  .route("/api/store/orders", storeOrders)
-  .route("/api/store/carts", storeCarts)
-  .route("/api/store/customers", storeCustomers)
+  .route("/api", apiRoutes)
+
+const appMount = mountAppSpa(app)
 
 export type AppType = typeof app
-export { app }
+export { app, appMount }

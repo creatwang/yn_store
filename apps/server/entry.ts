@@ -1,9 +1,11 @@
+/**
+ * 生产 / Bun compile 入口（与 entry.node.ts 相同）
+ */
 import { loadEnv, maskDatabaseUrl } from "./load-env"
 import { serve } from "@hono/node-server"
 import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
 import { app, appMount } from "./src/app"
 
-// Node 不会自动读 .env，须在 import app 之前加载（app 依赖 DATABASE_URL 等）
 loadEnv()
 
 const dbUrl = process.env.DATABASE_URL
@@ -11,7 +13,7 @@ if (dbUrl) {
   console.log(`📦 DATABASE_URL → ${maskDatabaseUrl(dbUrl)}`)
   if (dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1")) {
     console.warn(
-      "⚠️  当前连接指向本机 PostgreSQL。若使用 Supabase，请检查 apps/server/.env 并完整重启 dev。"
+      "⚠️  当前连接指向本机 PostgreSQL。若使用 Supabase，请检查 apps/server/.env 并完整重启。"
     )
   }
 }
@@ -19,9 +21,7 @@ if (dbUrl) {
 void getHealthStatus().then(({ payload }) => {
   logHealthToConsole(payload, "startup")
   if (payload.status !== "ok") {
-    console.error(
-      "   请编辑 apps/server/.env 中的 DATABASE_URL 后执行: pnpm predev && pnpm dev:server"
-    )
+    console.error("   请配置 apps/server/.env 中的 DATABASE_URL")
   }
 })
 
@@ -34,22 +34,17 @@ const server = serve({
 
 server.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {
-    console.error(
-      `端口 ${port} 已被占用。请先执行: pnpm predev  或关闭占用该端口的进程。`
-    )
+    console.error(`端口 ${port} 已被占用。`)
     process.exit(1)
   }
   throw err
 })
 
-console.log(`🚀 Server (Node) running on http://localhost:${port}`)
+console.log(`🚀 Server running on http://localhost:${port}`)
 console.log(`   健康检查: http://localhost:${port}/api/health`)
 if (appMount.mounted) {
-  console.log(`   管理后台: http://localhost:${port}/app/ （静态，同源 /api）`)
+  console.log(`   管理后台: http://localhost:${port}/app/`)
   console.log(`   静态目录: ${appMount.distDir}`)
 } else {
-  console.log(
-    "   管理后台: 未挂载（先执行 pnpm build:admin，或设置 ADMIN_STATIC_ROOT）"
-  )
-  console.log("   开发也可用独立 Vite: pnpm --filter @my-store/admin dev → :5173/app/")
+  console.log("   管理后台: 未挂载（执行 pnpm build:admin）")
 }

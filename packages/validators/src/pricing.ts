@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { metadataSchema } from "./common"
 
 export const listPriceListsSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
@@ -15,7 +16,7 @@ export const createPriceListSchema = z.object({
   type: z.enum(["sale", "override"]).default("sale"),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: metadataSchema.optional(),
 })
 
 export type CreatePriceListInput = z.infer<typeof createPriceListSchema>

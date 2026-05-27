@@ -4,7 +4,7 @@ import { PageContainer, PageHeader } from "@/components/layout/shell"
 import { useCustomers } from "@/hooks/use-customers"
 
 export function CustomerListPage() {
-  const { data, isLoading, error } = useCustomers({ limit: 50 })
+  const { data, isLoading, error } = useCustomers()
 
   return (
     <PageContainer>
@@ -14,7 +14,11 @@ export function CustomerListPage() {
       />
 
       {isLoading && <Text>加载中...</Text>}
-      {error && <Text className="text-ui-fg-error">加载失败</Text>}
+      {error && (
+        <Text className="text-ui-fg-error">
+          {error instanceof Error ? error.message : "加载失败"}
+        </Text>
+      )}
 
       {data && (
         <Table>
@@ -35,7 +39,9 @@ export function CustomerListPage() {
                 <Table.Cell>{c.email}</Table.Cell>
                 <Table.Cell>
                   <Text className="text-ui-fg-subtle text-sm">
-                    {new Date(c.created_at).toLocaleDateString()}
+                    {c.created_at
+                      ? new Date(c.created_at).toLocaleDateString()
+                      : "—"}
                   </Text>
                 </Table.Cell>
                 <Table.Cell>

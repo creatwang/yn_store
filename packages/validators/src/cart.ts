@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { paginationSchema } from "./common"
 
 export const createCartSchema = z.object({
   region_id: z.string().optional(),
@@ -17,7 +16,7 @@ export const updateCartSchema = createCartSchema.partial()
 export type UpdateCartInput = z.infer<typeof updateCartSchema>
 
 export const createCartLineItemSchema = z.object({
-  variant_id: z.string().optional(),
+  variant_id: z.string().min(1),
   product_id: z.string().optional(),
   quantity: z.number().int().min(1),
   metadata: z.record(z.string(), z.unknown()).optional(),

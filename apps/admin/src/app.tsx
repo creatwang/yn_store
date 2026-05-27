@@ -13,7 +13,7 @@ import { CustomerDetailPage } from "@/routes/customers/detail"
 
 export default function App() {
   return (
-    <BrowserRouter basename="/admin">
+    <BrowserRouter basename="/app">
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route

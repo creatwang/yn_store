@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { metadataSchema } from "./common"
 
 export const listFulfillmentsSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
@@ -16,7 +17,7 @@ export const createFulfillmentSchema = z.object({
   })),
   tracking_numbers: z.array(z.string()).optional(),
   tracking_url: z.string().url().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: metadataSchema.optional(),
 })
 
 export type CreateFulfillmentInput = z.infer<typeof createFulfillmentSchema>

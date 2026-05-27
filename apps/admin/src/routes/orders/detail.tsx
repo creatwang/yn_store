@@ -1,5 +1,4 @@
 import { Badge, Button, Container, Heading, Text } from "@medusajs/ui"
-import { useEffect } from "react"
 import { Link, useParams } from "react-router-dom"
 import { PageContainer, PageHeader } from "@/components/layout/shell"
 import { useOrder, useCancelOrder } from "@/hooks/use-orders"
@@ -58,7 +57,10 @@ export function OrderDetailPage() {
           <div>
             <Badge>{statusLabel[o.status ?? "pending"] ?? o.status}</Badge>
             <Text className="text-ui-fg-subtle mt-2">
-              创建于 {new Date(o.created_at).toLocaleString()}
+              创建于{" "}
+              {o.created_at
+                ? new Date(o.created_at).toLocaleString()
+                : "—"}
             </Text>
           </div>
         </div>

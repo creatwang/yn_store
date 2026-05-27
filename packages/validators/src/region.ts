@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { metadataSchema } from "./common"
 
 export const listRegionsSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
@@ -12,7 +13,7 @@ export const createRegionSchema = z.object({
   currency_code: z.string().min(1),
   tax_rate: z.number().min(0).max(100),
   countries: z.array(z.string()).min(1),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: metadataSchema.optional(),
 })
 
 export type CreateRegionInput = z.infer<typeof createRegionSchema>
@@ -32,7 +33,7 @@ export const createSalesChannelSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   is_disabled: z.boolean().default(false),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: metadataSchema.optional(),
 })
 
 export type CreateSalesChannelInput = z.infer<typeof createSalesChannelSchema>

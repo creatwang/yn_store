@@ -25,7 +25,10 @@ export function CustomerDetailPage() {
       />
       <Container className="mb-4">
         <Text className="text-ui-fg-subtle">
-          创建于 {new Date(c.created_at).toLocaleString()}
+          创建于{" "}
+          {c.created_at
+            ? new Date(c.created_at).toLocaleString()
+            : "—"}
         </Text>
       </Container>
       <Container>

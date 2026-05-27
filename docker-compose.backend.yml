@@ -1,0 +1,13 @@
+# 仅后台 API + Admin UI（/app）。需配置 DATABASE_URL、JWT_SECRET。
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "9000:9000"
+    env_file:
+      - apps/server/.env
+    environment:
+      NODE_ENV: production
+      PORT: 9000

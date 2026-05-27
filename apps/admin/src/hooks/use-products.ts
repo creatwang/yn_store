@@ -1,13 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { api } from "@/lib/api"
-import type { CreateProductInput, UpdateProductInput } from "@my-store/validators"
+import { api, parseJsonResponse, toRpcQuery } from "@/lib/api"
+import type {
+  CreateProductInput,
+  ListProductsQuery,
+  UpdateProductInput,
+} from "@my-store/validators"
+import type {
+  CreateProductResponse,
+  ProductDetailResponse,
+  ProductListResponse,
+} from "@/types/api"
 
-export function useProducts(params?: { limit?: number; offset?: number }) {
+const defaultListQuery: ListProductsQuery = { limit: 50, offset: 0 }
+
+export function useProducts(params: ListProductsQuery = defaultListQuery) {
   return useQuery({
     queryKey: ["products", params],
     queryFn: async () => {
-      const res = await api.admin.products.$get({ query: params })
-      return await res.json()
+      const res = await api.admin.products.$get({ query: toRpcQuery(params) })
+      return parseJsonResponse<ProductListResponse>(res)
     },
   })
 }
@@ -17,7 +28,7 @@ export function useProduct(id: string) {
     queryKey: ["product", id],
     queryFn: async () => {
       const res = await api.admin.products[":id"].$get({ param: { id } })
-      return await res.json()
+      return parseJsonResponse<ProductDetailResponse>(res)
     },
   })
 }
@@ -28,7 +39,7 @@ export function useCreateProduct() {
   return useMutation({
     mutationFn: async (data: CreateProductInput) => {
       const res = await api.admin.products.$post({ json: data })
-      return await res.json()
+      return parseJsonResponse<CreateProductResponse>(res)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] })
@@ -42,7 +53,7 @@ export function useUpdateProduct(id: string) {
   return useMutation({
     mutationFn: async (data: UpdateProductInput) => {
       const res = await api.admin.products[":id"].$post({ param: { id }, json: data })
-      return await res.json()
+      return parseJsonResponse<ProductDetailResponse>(res)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] })

@@ -10,10 +10,14 @@
     }
   },
   "scripts": {
-    "dev": "bun run --watch entry.bun.ts",
+    "dev": "tsx watch entry.node.ts",
+    "dev:bun": "bun run --watch entry.bun.ts",
     "dev:node": "tsx watch entry.node.ts",
     "build": "tsc --noEmit",
-    "start": "bun run entry.bun.ts",
+    "typecheck": "tsc --noEmit",
+    "seed:admin": "tsx scripts/seed-admin.ts",
+    "start": "tsx entry.node.ts",
+    "start:bun": "bun run entry.bun.ts",
     "start:node": "tsx entry.node.ts"
   },
   "dependencies": {
