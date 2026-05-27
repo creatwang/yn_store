@@ -9,7 +9,7 @@ alwaysApply: true
 ## 项目架构
 - **后端**: Hono + Drizzle + Bun（`apps/server`）
 - **Admin**: Vite + React Router + @medusajs/ui（`apps/admin`）
-- **Storefront**: Astro（`apps/store-web`）
+- **Storefront**: Astro（`apps/storefront`）
 - **共享**: `packages/validators`（Zod）、`packages/db`（Drizzle）
 - **数据库**: Supabase PostgreSQL（Medusa 表，不修改结构）
 

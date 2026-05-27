@@ -9,12 +9,12 @@
 
 ## 1. 架构总览
 
-> **目标架构（已实施）**：见 [`08-target-architecture.mdx`](./08-target-architecture.mdx) — **`server`** 提供 `/api` + `/app`（`public/app`）；**`store-web` 独立部署**。
+> **目标架构（已实施）**：见 [`08-target-architecture.mdx`](./08-target-architecture.mdx) — **`server`** 提供 `/api` + `/app`（`public/app`）；**`storefront` 独立部署**。
 
 ```mermaid
 graph TB
     Admin["apps/admin<br/>Vite 源码"]
-    Store["apps/store-web<br/>Astro 独立部署"]
+    Store["apps/storefront<br/>Astro 独立部署"]
     Server["apps/server<br/>后台运行时"]
     Validators["packages/validators"]
     DB["packages/db<br/>Drizzle"]
@@ -33,7 +33,7 @@ graph TB
 |------|------|------|
 | `apps/server` | Hono + Bun compile / Docker | 后台唯一运行时：`/api` + 生产 `/app` |
 | `apps/admin` | Vite + React Router + @medusajs/ui | Admin 源码（build 进 `resources/admin`） |
-| `apps/store-web` | Astro（SSG/SSR/hybrid） | C 端，**独立**部署，经 `PUBLIC_API_URL` 调 API |
+| `apps/storefront` | Astro（SSG/SSR/hybrid） | C 端，**独立**部署，经 `PUBLIC_API_URL` 调 API |
 | `packages/validators` | Zod | 前后端共享请求/表单校验 |
 | `packages/db` | Drizzle ORM | 映射 Medusa 表、查询函数 |
 | `packages/release` | 打包脚本（可选） | `resources/admin` + 跨平台 `my-store` |
@@ -285,7 +285,7 @@ NODE_ENV=development
 # apps/admin (Vite) — 开发留空走 proxy；直连用 http://localhost:9000（勿加 /api）
 VITE_API_URL=
 
-# apps/store-web
+# apps/storefront
 PUBLIC_API_URL=http://localhost:9000
 ```
 
@@ -295,7 +295,7 @@ PUBLIC_API_URL=http://localhost:9000
 
 ```bash
 pnpm install
-pnpm dev                    # 并行启动 server + admin + store-web
+pnpm dev                    # 并行启动 server + admin + storefront
 pnpm dev --filter=@my-store/server
 pnpm build                  # 构建全部
 ```

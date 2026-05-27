@@ -51,7 +51,7 @@ $requiredPaths = @(
   "apps/server/src/app.ts",
   "apps/server/entry.node.ts",
   "apps/admin/src/main.tsx",
-  "apps/store-web/src/pages/index.astro",
+  "apps/storefront/src/pages/index.astro",
   "packages/db/package.json",
   "packages/validators/package.json",
   "pnpm-workspace.yaml",
@@ -84,7 +84,7 @@ Write-Step "Setup .env files"
 $envPairs = @(
   @{ Example = "apps/server/.env.example"; Target = "apps/server/.env" },
   @{ Example = "apps/admin/.env.example"; Target = "apps/admin/.env" },
-  @{ Example = "apps/store-web/.env.example"; Target = "apps/store-web/.env" }
+  @{ Example = "apps/storefront/.env.example"; Target = "apps/storefront/.env" }
 )
 
 foreach ($pair in $envPairs) {

@@ -24,7 +24,7 @@ $dirs = @(
   "packages\validators",
   "apps\server",
   "apps\admin",
-  "apps\store-web"
+  "apps\storefront"
 )
 
 foreach ($sub in $dirs) {

@@ -15,7 +15,7 @@ alwaysApply: true
 - ORM：**Drizzle**（`packages/db`），映射 Medusa 表，不改表结构。
 - 校验：**Zod**（`packages/validators`），与 `@hono/zod-validator`、RHF 共用。
 - Admin：**Vite + React Router + @medusajs/ui**，**仅** `apps/admin`；**方案 A**（拷贝 UI，禁止 js-sdk、禁止 alias dashboard 源码）。
-- Store：**Astro**（`apps/store-web`）。
+- Store：**Astro**（`apps/storefront`）。
 - 参考：**不修改** `apps/backend/`。
 
 # 实现硬规则

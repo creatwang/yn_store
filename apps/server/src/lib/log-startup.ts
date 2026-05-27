@@ -34,6 +34,6 @@ export function logServerStartup(port: number, appMount: AppUiMountStatus) {
   }
 
   if (isDev) {
-    console.log(`   商城 dev:  http://localhost:4321/ （store-web，若已 pnpm dev）`)
+    console.log(`   商城 dev:  http://localhost:4321/ （storefront，若已 pnpm dev）`)
   }
 }

@@ -17,14 +17,14 @@ flowchart LR
   Browser --> API
   Browser --> UI
   UI -->|同源 fetch| API
-  Store[store-web] -->|PUBLIC_API_URL| API
+  Store[storefront] -->|PUBLIC_API_URL| API
 ```
 
 | 项 | 说明 |
 |----|------|
 | 运行时 | [`apps/server`](../apps/server) |
 | Admin 源码 | [`apps/admin`](../apps/admin) |
-| 商城 | [`apps/store-web`](../apps/store-web) 独立部署 |
+| 商城 | [`apps/storefront`](../apps/storefront) 独立部署 |
 
 ---
 
@@ -91,7 +91,7 @@ mount-app.ts  把  GET /app/*  映射到这些文件
 开发 pnpm dev:
   :9000  server     →  /api/*
   :5173  admin Vite →  /app/*  （源码 + HMR，无需 build）
-  :4321  store-web  →  商城（独立）
+  :4321  storefront  →  商城（独立）
 
 生产 / 联调:
   :9000  server     →  /api/*  +  /app/*（public/app 静态）
@@ -120,7 +120,7 @@ mount-app.ts  把  GET /app/*  映射到这些文件
 
 | 项 | 以前常见 | 现在 |
 |----|----------|------|
-| Monorepo | server + admin + store-web | 相同 |
+| Monorepo | server + admin + storefront | 相同 |
 | 开发 | 多端口 | 相同（`pnpm dev`） |
 | 生产 Admin | 常单独部署静态或另开端口 | **与 API 同一 server**：`/app` |
 | server 职责 | 多半只有 `/api` | `/api` + `/app`（有 build 时） |

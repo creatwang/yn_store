@@ -21,7 +21,7 @@ Trae **可以**在对话中指定路径读取 `.cursor` 下文件，但**不会*
 2. **不依赖** `@medusajs/medusa` 运行时；**不修改** 旧 Medusa 后端（本仓库无 `apps/backend/`，对照 `../my-medusa-store/apps/backend/`）。
 3. **自建 API**：`apps/server`（Hono），路径前缀 **`/api`**，与 Medusa REST 形状对齐（便于对照 `docs/02-api-endpoints.mdx`）。
 4. **Admin**：`apps/admin` — **Vite + React Router + @medusajs/ui + Hono RPC**（**方案 A**：唯一开发入口；从 Medusa 源码拷 UI 进 admin，不维护第二套 dashboard 应用）。
-5. **Storefront**：`apps/store-web` — **Astro**（已定），调用 `/api/store/*`。
+5. **Storefront**：`apps/storefront` — **Astro**（已定），调用 `/api/store/*`。
 6. **类型安全**：服务端 `export type AppType = typeof app`；客户端 `hc<AppType>()`；请求体用 **`packages/validators`** 的 Zod，前后端共用。
 
 ---
@@ -34,7 +34,7 @@ Trae **可以**在对话中指定路径读取 `.cursor` 下文件，但**不会*
 apps/
   server/          # Hono：routes + services + workflows，entry.bun|node|cf|vercel
   admin/           # Vite Admin（唯一后台前端）
-  store-web/       # Astro 商城
+  storefront/      # Astro 商城
 
 packages/
   db/              # Drizzle schema、getDb、generateId
@@ -120,7 +120,7 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 
 - `apps/server/.env.example` → `apps/server/.env`：`DATABASE_URL`、`JWT_SECRET`、`PORT`
 - `apps/admin/.env.example`：开发可 `VITE_API_URL=` 空串，走 Vite `proxy` 的 `/api`
-- `apps/store-web/.env.example`：`PUBLIC_API_URL=http://localhost:9000`
+- `apps/storefront/.env.example`：`PUBLIC_API_URL=http://localhost:9000`
 
 ---
 
@@ -157,7 +157,7 @@ pnpm run copy:dashboard-ui
 2. **补齐 `packages/validators`**：与每个 `POST/PATCH` 对齐。
 3. **`apps/server` 路由**：先 `auth` → `admin/products` → `store/products`，再按 `docs/02` MVP 扩展 cart、order、payment、customer、region、shipping。
 4. **`apps/admin` 页面**：登录 → Shell → 商品列表/新建/编辑；再按模块加路由与 `hooks`。
-5. **`apps/store-web`**：首页列表、详情；再 cart/checkout（React islands）。
+5. **`apps/storefront`**：首页列表、详情；再 cart/checkout（React islands）。
 6. **生产 All-in-One（可选）**：`astro build` + `vite build` 产物拷到 `apps/server/static/`，在 `app.ts` 加 `serveStatic`（Bun 用 `hono/bun`，Node 用 `@hono/node-server/serve-static`）。
 
 ---

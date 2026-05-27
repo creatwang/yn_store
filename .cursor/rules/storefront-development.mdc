@@ -1,6 +1,6 @@
 ---
 description: Astro Storefront 开发规则
-globs: ["apps/store-web/**/*"]
+globs: ["apps/storefront/**/*"]
 alwaysApply: false
 ---
 

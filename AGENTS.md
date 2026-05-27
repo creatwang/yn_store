@@ -18,7 +18,7 @@
 ```
 apps/server/         # 后台运行时：/api + /app（public/app 静态）
 apps/admin/          # Admin 源码 → build 到 server/public/app
-apps/store-web/      # Astro 商城，独立部署，PUBLIC_API_URL → server
+apps/storefront/     # Astro 商城，独立部署，PUBLIC_API_URL → server
 apps/backend/        # 旧 Medusa 后端（参考用，不修改）
 packages/db/         # Drizzle schema + 查询
 packages/validators/ # 共享 Zod schema

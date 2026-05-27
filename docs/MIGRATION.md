@@ -8,7 +8,7 @@
 - `.cursor/rules` + `.cursor/skills`
 - `AGENTS.md`、`AGENT_HANDOFF.md`
 - `scripts/` 三个 PowerShell 脚本
-- `apps/server`、`apps/admin`、`apps/store-web`
+- `apps/server`、`apps/admin`、`apps/storefront`
 - `packages/db`、`packages/validators`
 
 ## 未迁入（对照用）

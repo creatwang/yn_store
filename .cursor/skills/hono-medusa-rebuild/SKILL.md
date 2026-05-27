@@ -40,7 +40,7 @@ description: 在 my-medusa-store 中用 Hono+Drizzle 重写 Medusa 能力、Vite
 pnpm install
 pnpm dev --filter=@my-store/server
 pnpm dev --filter=@my-store/admin
-pnpm dev --filter=@my-store/store-web
+pnpm dev --filter=@my-store/storefront
 pnpm run copy:dashboard-ui
 ```
 

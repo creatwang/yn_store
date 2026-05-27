@@ -11,7 +11,7 @@ my-medusa-store-hono/
 ├── apps/
 │   ├── server/          # Hono 后端 API（多运行时支持）
 │   ├── admin/           # Vite Admin 管理后台
-│   └── store-web/       # Astro C 端商城
+│   └── storefront/       # Astro C 端商城
 ├── packages/
 │   ├── db/              # Drizzle ORM Schema + 数据库客户端
 │   └── validators/      # 共享 Zod 验证器
@@ -79,7 +79,7 @@ Copy-Item apps/server/.env.example apps/server/.env
 Copy-Item apps/admin/.env.example apps/admin/.env
 
 # Store 前端
-Copy-Item apps/store-web/.env.example apps/store-web/.env
+Copy-Item apps/storefront/.env.example apps/storefront/.env
 ```
 
 **Server 环境变量 (`apps/server/.env`)：**
@@ -102,7 +102,7 @@ pnpm dev
 这会同时启动：
 - `@my-store/server`（后端，端口 9000）
 - `@my-store/admin`（Admin 前端，端口 5173）
-- `@my-store/store-web`（Store 前端，端口 4321）
+- `@my-store/storefront`（Store 前端，端口 4321）
 
 ---
 
@@ -154,7 +154,7 @@ pnpm dev --filter=@my-store/admin
 #### 3. 启动 Store 商城前端
 
 ```powershell
-pnpm dev --filter=@my-store/store-web
+pnpm dev --filter=@my-store/storefront
 ```
 
 **端口：** http://localhost:4321  
@@ -284,7 +284,7 @@ pnpm install
 | 脚本 | `scripts/init.ps1`、`sync-handoff-from-old.ps1`、`copy-dashboard-ui.ps1` |
 | 后端 | `apps/server/` |
 | Admin | `apps/admin/`（含已拷贝的 `dashboard-ui`） |
-| 商城 | `apps/store-web/` |
+| 商城 | `apps/storefront/` |
 | 共享包 | `packages/db`、`packages/validators` |
 
 ## 不含（故意不拷）
