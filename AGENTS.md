@@ -27,6 +27,8 @@ docs/                # 蓝图（08-target-architecture.mdx）
 
 **本地地址**：API `http://localhost:9000/api`；Admin 挂载后 `http://localhost:9000/app/`；Vite dev `http://localhost:5173/app/`
 
+**开发是否 build**：日常 `pnpm dev` **不需要** build；只有 server 提供 `/app` 时才 `pnpm build:admin`。见 [`docs/08-target-architecture.mdx`](docs/08-target-architecture.mdx)。
+
 **脚本**：`pnpm build:admin` | `pnpm build:backend` | `pnpm dev:admin-on-server` | `pnpm build:release`
 
 ## 核心规则

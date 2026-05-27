@@ -5,6 +5,7 @@ import { loadEnv, maskDatabaseUrl } from "./load-env"
 import { serve } from "@hono/node-server"
 import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
 import { app, appMount } from "./src/app"
+import { logServerStartup } from "./src/lib/log-startup"
 
 loadEnv()
 
@@ -40,11 +41,4 @@ server.on("error", (err: NodeJS.ErrnoException) => {
   throw err
 })
 
-console.log(`🚀 Server running on http://localhost:${port}`)
-console.log(`   健康检查: http://localhost:${port}/api/health`)
-if (appMount.mounted) {
-  console.log(`   管理后台: http://localhost:${port}/app/`)
-  console.log(`   静态目录: ${appMount.distDir}`)
-} else {
-  console.log("   管理后台: 未挂载（执行 pnpm build:admin）")
-}
+logServerStartup(port, appMount)

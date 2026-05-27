@@ -2,6 +2,7 @@ import { loadEnv, maskDatabaseUrl } from "./load-env"
 import { serve } from "@hono/node-server"
 import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
 import { app, appMount } from "./src/app"
+import { logServerStartup } from "./src/lib/log-startup"
 
 // Node 不会自动读 .env，须在 import app 之前加载（app 依赖 DATABASE_URL 等）
 loadEnv()
@@ -42,14 +43,4 @@ server.on("error", (err: NodeJS.ErrnoException) => {
   throw err
 })
 
-console.log(`🚀 Server (Node) running on http://localhost:${port}`)
-console.log(`   健康检查: http://localhost:${port}/api/health`)
-if (appMount.mounted) {
-  console.log(`   管理后台: http://localhost:${port}/app/ （静态，同源 /api）`)
-  console.log(`   静态目录: ${appMount.distDir}`)
-} else {
-  console.log(
-    "   管理后台: 未挂载（先执行 pnpm build:admin，或设置 ADMIN_STATIC_ROOT）"
-  )
-  console.log("   开发也可用独立 Vite: pnpm --filter @my-store/admin dev → :5173/app/")
-}
+logServerStartup(port, appMount)
