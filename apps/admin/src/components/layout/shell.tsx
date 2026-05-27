@@ -5,6 +5,8 @@ import { useLogout } from "@/hooks/use-auth"
 const navItems = [
   { label: "概览", path: "/" },
   { label: "商品", path: "/products" },
+  { label: "订单", path: "/orders" },
+  { label: "客户", path: "/customers" },
 ]
 
 export function Shell() {

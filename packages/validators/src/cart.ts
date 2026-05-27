@@ -28,3 +28,19 @@ export type CreateCartLineItemInput = z.infer<typeof createCartLineItemSchema>
 export const updateCartLineItemSchema = createCartLineItemSchema.partial()
 
 export type UpdateCartLineItemInput = z.infer<typeof updateCartLineItemSchema>
+
+export const addToCartSchema = z.object({
+  variant_id: z.string().min(1),
+  product_id: z.string().optional(),
+  title: z.string().optional(),
+  quantity: z.number().int().min(1),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+})
+
+export type AddToCartInput = z.infer<typeof addToCartSchema>
+
+export const updateCartItemSchema = z.object({
+  quantity: z.number().int().min(1),
+})
+
+export type UpdateCartItemInput = z.infer<typeof updateCartItemSchema>

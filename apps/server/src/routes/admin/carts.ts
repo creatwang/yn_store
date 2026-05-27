@@ -7,8 +7,10 @@ import {
   updateCartLineItemSchema,
 } from "@my-store/validators"
 import { cartService } from "../../services/cart.service"
+import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
-export const storeCarts = new Hono()
+export const adminCarts = new Hono<{ Variables: AuthVariables }>()
+  .use("*", adminAuth)
   .post("/", zValidator("json", createCartSchema), async (c) => {
     const body = c.req.valid("json")
     const result = await cartService.create(body)

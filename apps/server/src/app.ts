@@ -6,6 +6,7 @@ import { authRoutes } from "./routes/auth"
 import { adminProducts } from "./routes/admin/products"
 import { adminOrders } from "./routes/admin/orders"
 import { adminCustomers } from "./routes/admin/customers"
+import { adminCarts } from "./routes/admin/carts"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
@@ -22,6 +23,7 @@ const app = new Hono()
   .route("/api/admin/products", adminProducts)
   .route("/api/admin/orders", adminOrders)
   .route("/api/admin/customers", adminCustomers)
+  .route("/api/admin/carts", adminCarts)
   .route("/api/store/products", storeProducts)
   .route("/api/store/orders", storeOrders)
   .route("/api/store/carts", storeCarts)

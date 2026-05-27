@@ -6,6 +6,10 @@ import { DashboardPage } from "@/routes/dashboard"
 import { ProductListPage } from "@/routes/products/list"
 import { ProductCreatePage } from "@/routes/products/create"
 import { ProductDetailPage } from "@/routes/products/detail"
+import { OrderListPage } from "@/routes/orders/list"
+import { OrderDetailPage } from "@/routes/orders/detail"
+import { CustomerListPage } from "@/routes/customers/list"
+import { CustomerDetailPage } from "@/routes/customers/detail"
 
 export default function App() {
   return (
@@ -23,6 +27,10 @@ export default function App() {
           <Route path="products" element={<ProductListPage />} />
           <Route path="products/new" element={<ProductCreatePage />} />
           <Route path="products/:id" element={<ProductDetailPage />} />
+          <Route path="orders" element={<OrderListPage />} />
+          <Route path="orders/:id" element={<OrderDetailPage />} />
+          <Route path="customers" element={<CustomerListPage />} />
+          <Route path="customers/:id" element={<CustomerDetailPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
