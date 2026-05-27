@@ -1,0 +1,42 @@
+name: backend
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend
+        run: pnpm build:backend
+
+      - name: Smoke test
+        env:
+          JWT_SECRET: ci-smoke-test-secret-at-least-32-chars-long
+          SERVE_ADMIN: "1"
+        run: |
+          cd apps/server
+          npx tsx entry.ts &
+          PID=$!
+          sleep 3
+          curl -s http://localhost:9000/api/health -o /tmp/health.json
+          curl -sfI http://localhost:9000/app/ | head -n 1 | grep -qE "200|301|302"
+          node -e "const j=JSON.parse(require('fs').readFileSync('/tmp/health.json','utf8')); if(!j.admin_ui?.mounted) throw new Error('admin_ui not mounted: '+JSON.stringify(j));"
+          kill $PID

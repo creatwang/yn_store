@@ -56,6 +56,7 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 |---|------|------|
 | 1 | `docs/00-agent-handoff.md` | 本文件：全局约束与流程 |
 | 2 | `docs/07-feature-spec.mdx` | 模块、页面、API、表、方案 A |
+| 2b | `docs/08-target-architecture.mdx` | Admin `/app` 内嵌 server、何时 build、mount-app |
 | 3 | `docs/01-database-schema.mdx` | 表与字段 |
 | 4 | `docs/02-api-endpoints.mdx` | 全量路由；实现时对齐 **MVP** 节再扩展 |
 | 5 | `docs/03-business-workflows.mdx` | 购物车→订单等流程 |
@@ -84,7 +85,9 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 
 ### 4.3 Admin（方案 A）
 
-- **唯一**日常开发目录：`apps/admin`（`pnpm dev --filter=@my-store/admin`）。
+- **唯一**日常开发目录：`apps/admin`（`pnpm dev --filter=@my-store/admin` → `http://localhost:5173/app/`）。
+- **日常开发无需** `pnpm build:admin`；只有 server 要提供 `/app`（生产、Docker、`pnpm dev:admin-on-server`）时才 build 到 `apps/server/public/app`。详见 **`docs/08-target-architecture.mdx`**。
+- 管理界面路径 **`/app`**；REST API 仍在 **`/api/*`**（如 `/api/admin/products`）。
 - 禁止 Vite `alias` 到外部 dashboard 源码；禁止在 Admin 使用 `@medusajs/js-sdk`。
 - UI 从 Medusa 拷贝进 `apps/admin/src/`（脚本：`pnpm run copy:dashboard-ui`），拷贝后改写 hooks 为 Hono RPC。
 
@@ -126,20 +129,25 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 ```bash
 pnpm install
 
-# 开发（三进程，各自 HMR）
-pnpm dev --filter=@my-store/server
-pnpm dev --filter=@my-store/admin
-pnpm dev --filter=@my-store/store-web
+# 开发（三进程，改 Admin 无需 build）
+pnpm dev
+# 或分别：server :9000 /api  |  admin :5173 /app  |  store :4321
+
+# 与生产一致：先 build Admin 静态，仅起 server（:9000/app + :9000/api）
+pnpm dev:admin-on-server
+
+# 生产静态与 Docker
+pnpm build:admin          # → apps/server/public/app
+pnpm build:backend        # build:admin + server 检查
 
 # 类型检查（示例）
-cd apps/server && pnpm exec tsc --noEmit
-cd apps/admin && pnpm exec tsc --noEmit
+pnpm typecheck
 
 # 从 Medusa Dashboard 拷贝 UI 块到 admin（Windows）
 pnpm run copy:dashboard-ui
 ```
 
-根 `package.json` 的 `dev`/`build` 以仓库内实际 scripts 为准。
+根 `package.json` 的 `dev`/`build` 以仓库内实际 scripts 为准。架构说明见 **`docs/08-target-architecture.mdx`**。
 
 ---
 
