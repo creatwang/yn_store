@@ -50,6 +50,7 @@ export const productVariant = pgTable("product_variant", {
   length: real("length"),
   height: real("height"),
   width: real("width"),
+  thumbnail: text("thumbnail"),
   metadata: jsonb("metadata"),
   variant_rank: integer("variant_rank").default(0),
   product_id: text("product_id").notNull(),
@@ -72,7 +73,7 @@ export const productOptionValue = pgTable("product_option_value", {
   ...timestamps,
 })
 
-export const productImage = pgTable("product_image", {
+export const productImage = pgTable("image", {
   id: text("id").primaryKey(),
   url: text("url").notNull(),
   metadata: jsonb("metadata"),

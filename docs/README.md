@@ -19,6 +19,7 @@
 | [06-drizzle-migration-guide.mdx](06-drizzle-migration-guide.mdx) | Drizzle 映射与软删、bigNumber |
 | [04-implementation-plan.mdx](04-implementation-plan.mdx) | 分阶段计划（部分表述偏旧栈，以 handoff 为准） |
 | [05-tech-conventions.mdx](05-tech-conventions.mdx) | 编码约定 |
+| [**09-stitching-alignment.mdx**](09-stitching-alignment.mdx) | **缝合对齐规则**：Dashboard ↔ SDK 适配层 ↔ Hono Server |
 | [00-architecture-overview.mdx](00-architecture-overview.mdx) | 历史总览（若与 handoff 冲突以 handoff 为准） |
 
 ## 仓库级 AI 说明

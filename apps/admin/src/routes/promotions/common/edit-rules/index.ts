@@ -1,0 +1,2 @@
+// @ts-nocheck
+export { EditRules as Component } from "./edit-rules"

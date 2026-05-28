@@ -63,7 +63,8 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 | 6 | `docs/06-drizzle-migration-guide.mdx` | Drizzle 写法、软删、bigNumber |
 | 7 | `docs/04-implementation-plan.mdx` | 分阶段（部分内容仍写 Next，以本 handoff 技术栈为准） |
 | 8 | `docs/05-tech-conventions.mdx` | 代码风格 |
-| 9 | `docs/00-architecture-overview.mdx` | 历史总览；若与本文冲突以 **本文 + 07** 为准 |
+| **9** | **`docs/09-stitching-alignment.mdx`** | **缝合对齐规则（必读！Dashboard ↔ API 后端对照）** |
+| 10 | `docs/00-architecture-overview.mdx` | 历史总览；若与本文冲突以 **本文 + 07** 为准 |
 
 ---
 

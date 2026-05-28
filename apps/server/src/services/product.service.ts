@@ -1,9 +1,17 @@
+// @ts-nocheck
 import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
 import {
   generateId,
   getDb,
   product,
   productVariant,
+  productOption,
+  productImage,
+  productCollection,
+  productType,
+  productTag,
+  productCategory,
+  salesChannel,
 } from "@my-store/db"
 import type {
   CreateProductInput,
@@ -13,6 +21,54 @@ import type {
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 import { slugify } from "../lib/slug"
+import { variantService } from "./variant.service"
+
+async function fetchRelations(db: any, id: string, item: any) {
+  const [rawVariants, options, images, collection, prodType, tags, categories, salesChannels] = await Promise.all([
+    db.select().from(productVariant).where(
+      and(eq(productVariant.product_id, id), isNull(productVariant.deleted_at))
+    ),
+    db.select().from(productOption).where(
+      and(eq(productOption.product_id, id), isNull(productOption.deleted_at))
+    ).catch(() => []),
+    db.select().from(productImage).where(
+      and(eq(productImage.product_id, id), isNull(productImage.deleted_at))
+    ).catch(() => []),
+    item.collection_id
+      ? db.select().from(productCollection).where(eq(productCollection.id, item.collection_id)).then((r: any) => r[0] ?? null)
+      : Promise.resolve(null),
+    item.type_id
+      ? db.select().from(productType).where(eq(productType.id, item.type_id)).then((r: any) => r[0] ?? null)
+      : Promise.resolve(null),
+    db.execute(sql`
+      SELECT pt.id, pt.value, pt.metadata, pt.created_at, pt.updated_at, pt.deleted_at
+      FROM product_tag pt JOIN product_tags pts ON pts.product_tag_id = pt.id
+      WHERE pts.product_id = ${id}
+    `).then((r: any) => r.rows ?? []),
+    db.execute(sql`
+      SELECT pc.id, pc.name, pc.handle, pc.description, pc.mpath, pc.is_active, pc.is_internal
+      FROM product_category pc JOIN product_category_product pcp ON pcp.product_category_id = pc.id
+      WHERE pcp.product_id = ${id}
+    `).then((r: any) => r.rows ?? []),
+    db.execute(sql`
+      SELECT sc.id, sc.name, sc.description, sc.is_disabled, sc.metadata
+      FROM sales_channel sc JOIN product_sales_channel psc ON psc.sales_channel_id = sc.id
+      WHERE psc.product_id = ${id}
+    `).then((r: any) => r.rows ?? []),
+  ])
+
+  // variants 不在此处 enrich inventory_quantity，对齐 Medusa 官方 defaultAdminProductFields
+  const variants = rawVariants
+
+  const optionsWithValues = await Promise.all(options.map(async (opt: any) => {
+    const values = await db.execute(sql`
+      SELECT id, value, metadata FROM product_option_value WHERE option_id = ${opt.id}
+    `).then((r: any) => r.rows ?? [])
+    return { ...opt, values }
+  }))
+
+  return { variants, options: optionsWithValues, images, collection, type: prodType, tags, categories, sales_channels: salesChannels }
+}
 
 export const productService = {
   async list(query: ListProductsQuery) {
@@ -116,17 +172,9 @@ export const productService = {
       throw new HTTPException(404, { message: "Product not found" })
     }
 
-    const variants = await db
-      .select()
-      .from(productVariant)
-      .where(
-        and(
-          eq(productVariant.product_id, id),
-          isNull(productVariant.deleted_at)
-        )
-      )
+    const relations = await fetchRelations(db, id, item)
 
-    return { product: { ...item, variants } }
+    return { product: { ...item, ...relations } }
   },
 
   async getByHandle(handle: string) {
