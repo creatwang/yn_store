@@ -153,6 +153,14 @@ export const sdk = {
     // ── Sales Channel ──────────────────────────────────────────
     salesChannel: {
       ...entityClient("sales-channels"),
+      retrieve: async (id: string) => {
+        try {
+          const res = await (api as any).admin["sales-channels"][":id"].$get({ param: { id } })
+          return parseJsonResponse(res)
+        } catch {
+          return { sales_channel: { id, name: "", description: "", is_disabled: false } }
+        }
+      },
       batchProducts: noop,
       updateProducts: noop,
     },

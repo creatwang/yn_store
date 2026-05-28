@@ -8,6 +8,7 @@ export default defineConfig({
   base: "/app/",
   define: {
     __BASE__: JSON.stringify("/app/"),
+    __MAX_UPLOAD_FILE_SIZE__: JSON.stringify(10 * 1024 * 1024), // 10MB
   },
   build: {
     outDir: path.resolve(__dirname, "../server/public/app"),

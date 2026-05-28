@@ -232,6 +232,70 @@ export const productService = {
       })
       .returning()
 
+    // 保存 images
+    if (input.images?.length) {
+      await db.insert(productImage).values(
+        input.images.map((img: any) => ({
+          id: generateId("img"),
+          url: img.url,
+          product_id: id,
+          rank: img.rank ?? 0,
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        }))
+      )
+    }
+
+    // 保存 options + option values
+    if (input.options?.length) {
+      for (const opt of input.options) {
+        const optId = generateId("opt")
+        await db.insert(productOption).values({
+          id: optId,
+          title: opt.title,
+          product_id: id,
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+        if (opt.values?.length) {
+          for (const val of opt.values) {
+            await db.execute(sql`
+              INSERT INTO product_option_value (id, value, option_id, created_at, updated_at)
+              VALUES (${generateId("optval")}, ${val.value || val}, ${optId}, now(), now())
+            `)
+          }
+        }
+      }
+    }
+
+    // 保存 variants
+    if (input.variants?.length) {
+      for (const v of input.variants) {
+        const vid = generateId("variant")
+        await db.insert(productVariant).values({
+          id: vid,
+          product_id: id,
+          title: v.title,
+          sku: v.sku ?? null,
+          manage_inventory: v.manage_inventory ?? true,
+          allow_backorder: v.allow_backorder ?? false,
+          variant_rank: v.variant_rank ?? 0,
+          thumbnail: v.thumbnail ?? null,
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+        // raw SQL: product_variant_option 表无 Drizzle schema 映射
+        for (const [_, optVal] of Object.entries(v.options || {})) {
+          if (optVal) {
+            await db.execute(sql`
+              INSERT INTO product_variant_option (id, variant_id, option_value_id, created_at, updated_at)
+              VALUES (${generateId("pvo")}, ${vid}, ${optVal}, now(), now())
+            `)
+          }
+        }
+      }
+    }
+
     return { product: created }
   },
 
@@ -266,6 +330,23 @@ export const productService = {
 
     if (!updated) {
       throw new HTTPException(404, { message: "Product not found" })
+    }
+
+    // 更新 images（全量替换）
+    if (input.images !== undefined) {
+      await db.delete(productImage).where(eq(productImage.product_id, id))
+      if (input.images.length) {
+        await db.insert(productImage).values(
+          input.images.map((img: any) => ({
+            id: generateId("img"),
+            url: img.url,
+            product_id: id,
+            rank: img.rank ?? 0,
+            created_at: sql`now()`,
+            updated_at: sql`now()`,
+          }))
+        )
+      }
     }
 
     return { product: updated }
