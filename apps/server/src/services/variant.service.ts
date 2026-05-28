@@ -128,4 +128,56 @@ export const variantService = {
     const db = getDb()
     return getVariantsInventoryQuantity(db, variantIds)
   },
+
+  /**
+   * 批量操作变体：create + update + delete。
+   * 对齐 Medusa 官方 batchProductVariantsWorkflow。
+   */
+  async batchVariants(productId: string, input: {
+    create?: any[]
+    update?: any[]
+    delete?: string[]
+  }) {
+    const created: any[] = []
+    const updated: any[] = []
+    const deletedIds: string[] = []
+
+    if (input.create?.length) {
+      for (const c of input.create) {
+        const r = await this.createVariant(productId, c)
+        created.push(r.variant)
+      }
+    }
+    if (input.update?.length) {
+      for (const u of input.update) {
+        const r = await this.updateVariant(productId, u.id, u)
+        updated.push(r.variant)
+      }
+    }
+    if (input.delete?.length) {
+      for (const id of input.delete) {
+        await this.deleteVariant(productId, id)
+        deletedIds.push(id)
+      }
+    }
+
+    return {
+      created,
+      updated,
+      deleted: { ids: deletedIds, object: "variant", deleted: true },
+    }
+  },
+
+  /**
+   * 给变体列表挂载 inventory_quantity（Middleware 后处理）。
+   */
+  async withInventoryQuantity(variants: any[]) {
+    if (!variants.length) return variants
+    const variantIds = variants.map(v => v.id)
+    const quantityMap = await this.getInventoryQuantity(variantIds)
+    return variants.map(v => ({
+      ...v,
+      inventory_quantity: quantityMap[v.id] ?? 0,
+    }))
+  },
 }

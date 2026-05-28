@@ -1,0 +1,458 @@
+# 完整重构计划 — 从 Medusa 官方源码到 Hono 全栈
+
+> **使用方式**：按阶段顺序执行，每完成一个模块的所有层次再进入下一个模块。
+
+---
+
+## 0. 参考源速查
+
+| 官方源 | 路径 | 用途 |
+|--------|------|------|
+| Dashboard UI 源码 | `apps/admin/demo/backend/node_modules/@medusajs/dashboard/src/` | 拷贝 UI 页面、hooks、lib |
+| JS-SDK 接口定义 | `apps/admin/demo/dashboard/node_modules/@medusajs/js-sdk/dist/` | 对齐 client.ts 方法签名 |
+| Backend API 路由 | `apps/admin/demo/backend/node_modules/@medusajs/medusa/dist/api/admin/` | 对齐路由路径、query-config（响应字段）、route（处理逻辑） |
+| Backend 中间件 | `.../medusa/dist/api/utils/middlewares/products/` | 对齐跨模块数据聚合模式 |
+| Node.js 驱动表结构 | `apps/admin/demo/backend/node_modules/@medusajs/medusa/node_modules/...` | 确认表字段类型 |
+
+---
+
+## 1. 分层架构 & 文件对应规则
+
+```
+Dashboard UI            SDK 适配层            Hono Server                Drizzle DB
+────────────────────    ────────────          ────────────               ──────────
+apps/admin/src/         client.ts             apps/server/src/           packages/db/src/
+  hooks/api/              └ method → RPC        routes/admin/             schema/
+  routes/                                        services/               client.ts
+  lib/api.ts                                     middleware/
+  components/
+```
+
+### 1.1 每个模块需要实现的文件清单
+
+```
+模块 X（例如 product）：
+
+✅ packages/db/src/schema/{module}.ts       → Drizzle 表定义（如已存在，补充缺失表）
+✅ packages/validators/src/{module}.ts      → Zod schema（create/update/list query）
+✅ apps/server/src/routes/admin/{module}.ts → Hono 链式路由（路径对齐 Medusa）
+✅ apps/server/src/services/{module}.service.ts → 业务逻辑（本模块查询，不跨模块 JOIN）
+✅ apps/admin/src/hooks/api/{module}.tsx    → 从 Dashboard 拷贝 hooks
+✅ apps/admin/src/lib/client.ts             → SDK 适配方法（list/retrieve/create/update/delete）
+✅ apps/admin/src/routes/{module}/           → 从 Dashboard 拷贝 UI 页面
+```
+
+### 1.2 命名规范
+
+| 元素 | 规范 | 示例 |
+|------|------|------|
+| 路由文件 | 驼峰英文，复数 | `products.ts`, `orders.ts` |
+| Service 文件 | `{entity}.service.ts` | `product.service.ts` |
+| Schema 文件 | 按业务域命名 | `product.ts`, `inventory.ts` |
+| Validator 文件 | 按业务域命名 | `product.ts` |
+| 导出变量 | 带 `admin` 前缀用于 admin 路由 | `export const adminProducts = new Hono()...` |
+| Service 方法 | `list`, `getById`, `create`, `update`, `delete` | 统一命名 |
+| 中间件 | API 层存放，函数式 | `wrapVariantsWithInventoryQuantity()` |
+| 注释语言 | 中文 | `// 对齐 Medusa 官方 defaultAdminProductFields` |
+
+### 1.3 代码模板
+
+#### 路由文件模板 (`routes/admin/{module}.ts`)
+
+```typescript
+import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
+import { {Module}Service } from "../../services/{module}.service"
+import { adminAuth, type AuthVariables } from "../../middleware/auth"
+
+export const admin{Modules} = new Hono<{ Variables: AuthVariables }>()
+  .use("*", adminAuth)
+  .get("/", async (c) => {
+    const result = await {module}Service.list(/* query params */)
+    return c.json(result)
+  })
+  .get("/:id", async (c) => {
+    const result = await {module}Service.getById(c.req.param("id"))
+    return c.json(result)
+  })
+  .post("/", async (c) => {
+    const body = await c.req.json()
+    const result = await {module}Service.create(body)
+    return c.json(result, 201)
+  })
+  .post("/:id", async (c) => {
+    const body = await c.req.json()
+    const result = await {module}Service.update(c.req.param("id"), body)
+    return c.json(result)
+  })
+  .delete("/:id", async (c) => {
+    await {module}Service.delete(c.req.param("id"))
+    return c.json({ id: c.req.param("id"), object: "{entity}", deleted: true })
+  })
+```
+
+#### Service 文件模板 (`services/{module}.service.ts`)
+
+```typescript
+import { and, count, eq, isNull } from "drizzle-orm"
+import { getDb, {table} } from "@my-store/db"
+import { HTTPException } from "hono/http-exception"
+
+export const {module}Service = {
+  async list(query: { limit?: number; offset?: number }) {
+    const db = getDb()
+    const conditions = [isNull({table}.deleted_at)]
+    const where = and(...conditions)
+    const [rows, [{ total }]] = await Promise.all([
+      db.select().from({table}).where(where).limit(query.limit ?? 50).offset(query.offset ?? 0),
+      db.select({ total: count() }).from({table}).where(where),
+    ])
+    return { {entities}: rows, count: Number(total), limit: query.limit ?? 50, offset: query.offset ?? 0 }
+  },
+
+  async getById(id: string) {
+    const db = getDb()
+    const [item] = await db.select().from({table}).where(eq({table}.id, id)).limit(1)
+    if (!item) throw new HTTPException(404, { message: "{Entity} not found" })
+    return { {entity}: item }
+  },
+
+  async create(input: any) {
+    const db = getDb()
+    const id = generateId("{prefix}")
+    const [created] = await db.insert({table}).values({ id, ...input }).returning()
+    return { {entity}: created }
+  },
+
+  async update(id: string, input: any) {
+    const db = getDb()
+    const [updated] = await db.update({table})
+      .set({ ...input, updated_at: sql`now()` })
+      .where(eq({table}.id, id))
+      .returning()
+    if (!updated) throw new HTTPException(404, { message: "{Entity} not found" })
+    return { {entity}: updated }
+  },
+
+  async delete(id: string) {
+    const db = getDb()
+    await db.update({table})
+      .set({ deleted_at: sql`now()` })
+      .where(eq({table}.id, id))
+    return { deleted: true }
+  },
+}
+```
+
+#### SDK 适配模板 (`client.ts` 中的新增条目)
+
+```typescript
+//    {module}: entityClient("{entity}"),
+//    或带子路由的模块用对应工厂函数
+```
+
+---
+
+## 2. 重构阶段
+
+### 阶段 0：基础架构对齐（已完成 ✅）
+
+| 任务 | 状态 |
+|------|:--:|
+| Hono `app.ts` 路由挂载结构 | ✅ |
+| Hono RPC `AppType` 导出 | ✅ |
+| Admin Vite 配置 & HMR | ✅ |
+| `api.ts` RPC 客户端 | ✅ |
+| `client.ts` SDK 适配层全面对齐 | ✅ |
+| 登录 / Token 刷新 / Session | ✅ |
+| 错误处理中间件 | ✅ |
+| CORS 中间件 | ✅ |
+
+---
+
+### 阶段 1：DB Schema 补全 — 按模块补齐 Drizzle 表定义
+
+**当前状态**：11 个 schema 文件，覆盖了 `auth`, `cart`, `customer`, `fulfillment`, `inventory`, `order`, `payment`, `pricing`, `product`, `region`。
+
+**待办**：每个模块的中间表（junction table）补齐。
+
+| 优先级 | 模块 | 待补表 |
+|--------|------|--------|
+| P0 | product | `product_tags`, `product_category_product`, `product_sales_channel`, `product_variant_inventory_item` |
+| P0 | product | `product_option_value` 的 option_id 关联 |
+| P1 | order | 核对 order 相关所有表是否齐全 |
+| P1 | customer | `customer_group_customer`（中间表）, `customer_address` |
+| P2 | 其他模块 | 按需补充 |
+
+**实施方式**：
+
+```typescript
+// packages/db/src/schema/product.ts 追加
+export const productTags = pgTable("product_tags", {
+  id: text("id").primaryKey(),
+  product_id: text("product_id").notNull(),
+  product_tag_id: text("product_tag_id").notNull(),
+})
+
+export const productCategoryProduct = pgTable("product_category_product", {
+  id: text("id").primaryKey(),
+  product_id: text("product_id").notNull(),
+  product_category_id: text("product_category_id").notNull(),
+})
+
+export const productSalesChannel = pgTable("product_sales_channel", {
+  id: text("id").primaryKey(),
+  product_id: text("product_id").notNull(),
+  sales_channel_id: text("sales_channel_id").notNull(),
+})
+
+export const productVariantInventoryItem = pgTable("product_variant_inventory_item", {
+  id: text("id").primaryKey(),
+  variant_id: text("variant_id").notNull(),
+  inventory_item_id: text("inventory_item_id").notNull(),
+  required_quantity: integer("required_quantity").default(1),
+  ...timestamps,
+})
+```
+
+补完后，`product.service.ts` 中的 raw SQL 全部改为 Drizzle query builder：
+
+```typescript
+// 之前: db.execute(sql`SELECT ... FROM product_tags pts JOIN product_tag pt ...`)
+// 之后:
+const tags = await db
+  .select({
+    id: productTag.id,
+    value: productTag.value,
+  })
+  .from(productTags)
+  .innerJoin(productTag, eq(productTags.product_tag_id, productTag.id))
+  .where(eq(productTags.product_id, id))
+```
+
+---
+
+### 阶段 2：Server API 路由 & Service（按模块逐个实现）
+
+**实现顺序**（按 Dashboard 页面依赖）：
+
+```
+阶段 2a ─ 产品模块（最核心，页面最多）
+  子模块:
+    2a.1  product CRUD (list/retrieve/create/update/delete)
+    2a.2  product variants (list/retrieve/create/update/delete)
+    2a.3  product options (list/retrieve/create/update/delete)
+    2a.4  product images (upload/list/delete)
+    2a.5  product ↔ sales channels 关联
+
+阶段 2b ─ 库存模块
+    2b.1  inventory-items CRUD
+    2b.2  inventory levels (location-levels)
+    2b.3  stock-locations
+
+阶段 2c ─ 订单模块
+    2c.1  orders CRUD
+    2c.2  order fulfillments
+    2c.3  order payments
+
+阶段 2d ─ 客户模块
+    2d.1  customers CRUD
+    2d.2  customer addresses
+
+阶段 2e ─ 辅助模块
+    2e.1  regions
+    2e.2  sales-channels
+    2e.3  collections / categories / tags / types
+    2e.4  price-lists
+    2e.5  promotions
+    2e.6  upload
+```
+
+每个子模块的实现步骤（以 2a.2 product variants 为例）：
+
+```
+1. 打开参考源:
+   apps/admin/demo/backend/node_modules/@medusajs/medusa/dist/api/admin/products/[id]/variants/
+   ├── route.js          → 看 GET/POST 处理流程
+   ├── query-config.js   → 看默认响应字段
+   └── validators.js     → 看请求校验规则
+
+2. 打开 Medusa Dashboard hooks:
+   apps/admin/demo/backend/node_modules/@medusajs/dashboard/src/hooks/api/products.tsx
+   └── 看 useProductVariants 的参数和返回类型
+
+3. 编写后端:
+   apps/server/src/routes/admin/product-variants.ts → 链式路由
+   apps/server/src/services/variant.service.ts → 业务逻辑
+
+4. 确认 client.ts 中 SDK 方法已对齐:
+   listVariants, retrieveVariant, createVariant, updateVariant, deleteVariant
+
+5. 手动 curl 测试 / 浏览器验证
+```
+
+---
+
+### 阶段 3：Admin 前端页面 & Hooks（按 Dashboard 页面依赖顺序）
+
+**拷贝规则**：
+
+1. `pnpm run copy:dashboard-ui` 从官方 Dashboard 拷贝 UI 到 `apps/admin/src/`
+2. 拷贝后的 hooks 文件不需要改（因为它们调的都是 `sdk.admin.xxx`）
+3. 如果 hook 调用的方法在 `client.ts` 中是 `noop`，改为真实实现
+
+**实现顺序**：
+
+```
+阶段 3a ─ Shell + 登录（已完成）
+   ✅ 登录页面
+   ✅ 受保护路由
+   ✅ 侧边栏导航
+
+阶段 3b ─ 产品管理
+  ✅ 产品列表页          /app/products
+  ✅ 产品详情页          /app/products/:id
+  ⏳ 产品新建页          /app/products/create
+  ⏳ 产品编辑页          /app/products/:id/edit
+  ⏳ 变体编辑页          /app/products/:id/variants/:vid
+  ⏳ 媒体管理页          /app/products/:id/media
+  ⏳ 分类管理页          /app/products/:id/organization
+  ⏳ 库存页面            /app/products/:id/stock
+
+阶段 3c ─ 订单管理
+  ⏳ 订单列表页          /app/orders
+  ⏳ 订单详情页          /app/orders/:id
+
+阶段 3d ─ 客户管理
+  ⏳ 客户列表页          /app/customers
+  ⏳ 客户详情页          /app/customers/:id
+
+阶段 3e ─ 库存管理
+  ⏳ 库存列表页          /app/inventory
+  ⏳ 仓库管理页          /app/locations
+
+阶段 3f ─ 设置
+  ⏳ 区域管理            /app/settings/regions
+  ⏳ 销售渠道管理        /app/settings/sales-channels
+  ⏳ 店铺设置            /app/settings/store
+  ⏳ 用户管理            /app/settings/users
+```
+
+---
+
+### 阶段 4：Storefront API（C 端）
+
+**当前状态**：`apps/server/src/routes/store/` 有骨架。
+
+| 端点 | 状态 |
+|------|:--:|
+| `GET /api/store/products` | ✅ |
+| `GET /api/store/products/:handle` | ✅ |
+| `GET /api/store/regions` | ✅ |
+| `POST /api/store/carts` | ✅ |
+| `POST /api/store/customers` | ✅ |
+| 其余 | ⏳ |
+
+---
+
+## 3. 逐模块开发 Checklist
+
+### 模板：开发模块 X 时使用
+
+```
+模块名: ________  |  优先级: P0/P1/P2  |  日期: ________
+
+📦 DB Schema
+  [ ] packages/db/src/schema/{module}.ts 表定义完整
+  [ ] 中间表已定义（如 product_tags, product_variant_inventory_item）
+  [ ] 索引字段已标注
+
+📦 Validators
+  [ ] packages/validators/src/{module}.ts
+  [ ] create{Entity}Schema, update{Entity}Schema, list{Entities}Query
+
+📦 Server Route
+  [ ] apps/server/src/routes/admin/{module}.ts
+  [ ] 路径对齐 Medusa 官方 route.js
+  [ ] 使用 zValidator 校验请求
+  [ ] 调用 service 方法
+  [ ] 响应形状对齐官方 query-config.js 的 defaultFields
+  [ ] 所有查询过滤 deleted_at IS NULL
+
+📦 Server Service
+  [ ] apps/server/src/services/{module}.service.ts
+  [ ] list / getById / create / update / delete
+  [ ] 方法签名统一: (input) → { {entity}: result }
+  [ ] 不手写跨模块 JOIN（如需要跨模块数据，用独立 middleware）
+
+📦 Server Middleware（如需要）
+  [ ] apps/server/src/middleware/{module}-inventory.ts
+  [ ] 跨模块数据聚合逻辑
+  [ ] 函数签名: (req, data) → data
+
+📦 Server App.ts 挂载
+  [ ] apps/server/src/app.ts 中 .route() 挂载新模块
+  [ ] export type AppType 自动包含新模块
+
+📦 SDK 适配
+  [ ] apps/admin/src/lib/client.ts 中 list/retrieve/create/update/delete 不是 noop
+  [ ] 方法签名对齐 @medusajs/js-sdk/dist/admin/{module}.js
+
+📦 Admin Hooks
+  [ ] apps/admin/src/hooks/api/{module}.tsx 从 Dashboard 拷贝并直接可用
+  [ ] 所有 sdk.admin.{module}.xxx() 调用已在 client.ts 实现
+
+📦 Admin UI 页面
+  [ ] apps/admin/src/routes/{module}/ 从 Dashboard 拷贝
+  [ ] 页面可正常加载（即使数据为空也不崩溃）
+  [ ] UI 文本中文
+
+📦 手动验证
+  [ ] curl GET /api/admin/{module} 返回 200
+  [ ] curl POST /api/admin/{module} 返回 201
+  [ ] Admin 页面可正常打开并显示数据
+```
+
+---
+
+## 4. 优先级矩阵
+
+| 模块 | DB | API | Admin UI | Storefront | 权重 |
+|------|:--:|:--:|:--------:|:----------:|:----:|
+| **Product** | ✅ | ✅ | ⚠️部分 | ✅ | P0 |
+| **Order** | ✅ | ✅ | ⏳ | ⏳ | P0 |
+| **Customer** | ✅ | ✅ | ⏳ | ⏳ | P0 |
+| **Auth** | ✅ | ✅ | ✅ | - | P0 |
+| **Inventory** | ✅ | ✅ | ⏳ | - | P1 |
+| **Region** | ✅ | ✅ | ⏳ | - | P1 |
+| **Sales Channel** | ✅ | ✅ | ⏳ | - | P1 |
+| **Collection** | ✅ | ⏳ | ⏳ | - | P2 |
+| **Category** | ✅ | ⏳ | ⏳ | - | P2 |
+| **Tag / Type** | ✅ | ⏳ | ⏳ | - | P2 |
+| **Price List** | ⏳ | ⏳ | ⏳ | - | P2 |
+| **Promotion** | ⏳ | ⏳ | ⏳ | - | P2 |
+| **Shipping** | ⏳ | ⏳ | ⏳ | - | P2 |
+| **Tax** | ⏳ | ⏳ | ⏳ | - | P2 |
+| **Upload** | - | ✅ | ✅ | - | P1 |
+
+图例：✅ 已实现  ⚠️ 部分实现  ⏳ 待实现  - 不适用
+
+---
+
+## 5. 下一个执行任务
+
+按优先级，当前应该从 **产品模块** 的剩余页面对齐开始：
+
+```
+阶段 3b 剩余:
+  1. 产品新建页 → 需要 product.create() + 关联操作
+  2. 产品编辑页 → 需要 product.update() + 变体创建/编辑
+  3. 库存页面 → 需要 inventoryItems 接口完整
+```
+
+然后 **订单模块**（最大未实现模块）：
+```
+阶段 2c + 3c:
+  1. 补全 order service 方法（complete, archive, cancel, createFulfillment...）
+  2. 订单列表页 / 订单详情页
+```

@@ -211,7 +211,7 @@ export const productService = {
   async create(input: CreateProductInput) {
     const db = getDb()
     const handle =
-      input.handle?.trim() || slugify(input.title) || generateId("handle")
+      input.handle?.trim() || `${slugify(input.title)}-${generateId("h").slice(0, 6)}`
 
     const id = generateId("prod")
 
@@ -269,5 +269,15 @@ export const productService = {
     }
 
     return { product: updated }
+  },
+
+  async delete(id: string) {
+    const db = getDb()
+    await this.getById(id) // 404 if not found
+    await db
+      .update(product)
+      .set({ deleted_at: sql`now()` })
+      .where(eq(product.id, id))
+    return { id, object: "product", deleted: true }
   },
 }

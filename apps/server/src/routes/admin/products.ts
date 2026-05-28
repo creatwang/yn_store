@@ -29,3 +29,7 @@ export const adminProducts = new Hono<{ Variables: AuthVariables }>()
     const result = await productService.update(c.req.param("id"), body)
     return c.json(result)
   })
+  .delete("/:id", async (c) => {
+    const result = await productService.delete(c.req.param("id"))
+    return c.json(result)
+  })

@@ -15,6 +15,8 @@
     "dev:node": "tsx watch entry.node.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "start": "tsx entry.node.ts",
     "start:bun": "bun run entry.bun.ts",
@@ -34,7 +36,9 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.5",
+    "dotenv": "^17.4.2",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.7"
   }
 }

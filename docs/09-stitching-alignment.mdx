@@ -1,0 +1,221 @@
+# 缝合对齐规则 — Dashboard ↔ SDK 适配层 ↔ Hono Server
+
+> **本文档强制约束**：所有 Admin API 后端实现必须对照 Medusa 官方实现，禁止凭感觉手写跨模块查询。
+
+---
+
+## 1. 三端参考源（写任何功能前先查）
+
+| 层级 | 参考源路径 | 作用 |
+|------|-----------|------|
+| **Dashboard UI** | `apps/admin/demo/backend/node_modules/@medusajs/dashboard/src/` | 看前端如何调 API、期望什么响应形状 |
+| **Backend API 路由** | `apps/admin/demo/backend/node_modules/@medusajs/medusa/dist/api/admin/` | 看每个端点的路径、query-config（默认字段）、route（请求处理逻辑） |
+| **Backend API 中间件** | `.../medusa/dist/api/utils/middlewares/products/` | 看跨模块数据聚合如何实现（如 variant inventory quantity） |
+
+---
+
+## 2. 架构层次
+
+```
+┌─ Dashboard UI（官方源码，拷贝进 apps/admin/）
+│   调用 sdk.admin.product.retrieve(id, { fields })
+│   期望响应形状: { product: { ..., variants: [...] } }
+│
+├─ SDK 适配层（apps/admin/src/lib/client.ts）
+│   翻译: sdk.admin.product.retrieve(id) → rpc[":id"].$get(...)
+│   规则: 不新增业务逻辑，只做路径和参数映射
+│
+├─ Hono Server（apps/server/src/）
+│   routes/       → 路由处理器，路径对齐 Medusa 官方
+│   services/     → 业务逻辑，每模块一个 service
+│   middleware/   → 跨模块聚合后处理（对齐官方 middleware）
+│
+└─ Drizzle DB（packages/db/src/）
+    schema/       → 表定义，对齐 Medusa 表结构
+    查询:          → 用 Drizzle query builder，避免 raw SQL
+```
+
+---
+
+## 3. 核心对齐规则
+
+### 规则 1：API 路径对齐
+
+```
+Medusa 官方路径                          我们的路径（必须一致）
+/admin/products                         /api/admin/products
+/admin/products/:id                     /api/admin/products/:id
+/admin/products/:id/variants            /api/admin/products/:productId/variants
+/admin/products/:id/variants/:vid       /api/admin/products/:productId/variants/:variantId
+/admin/products/:id/options             /api/admin/products/:id/options
+/admin/inventory-items                  /api/admin/inventory-items
+/admin/customers                        /api/admin/customers
+/admin/orders                           /api/admin/orders
+/store/products                         /api/store/products
+...
+```
+
+### 规则 2：响应形状对齐 → 查 query-config.js
+
+每个模块实现前，**必须先查** `@medusajs/medusa/dist/api/admin/{模块}/query-config.js`。
+
+以 products 为例：
+```js
+// 官方 defaultAdminProductFields:
+[
+  "id", "title", "subtitle", "status", ..., "metadata",
+  "*type", "*collection", "*options", "*options.values",
+  "*tags", "*images", "*variants", "*variants.prices",
+  "*variants.options", "*variants.images",
+  "*sales_channels",
+  // ⚠️ 注意：没有 *variants.inventory_items
+]
+```
+
+**规则**：后端返回字段对齐官方 `defaultAdminProductFields`，不私自追加。
+
+### 规则 3：跨模块数据 → 用 middleware 模式，不手写 JOIN
+
+Medusa 的 Module 之间是解耦的。Product Module 不直接访问 Inventory Module 的表。
+
+官方做法（以 variant 库存为例）：
+```
+1. GET /admin/products/:id/variants?fields=...inventory_quantity
+2. route.js 检测到 inventory_quantity → 去掉该字段，先拿到 variants
+3. middleware wrapVariantsWithTotalInventoryQuantity():
+   → getTotalVariantAvailability({ variant_ids })
+   → 只算出 inventory_quantity: number（一个数字）
+   → 挂到 variant.inventory_quantity
+```
+
+**禁止**在 service 里直接写 `FROM product_variant_inventory_item JOIN inventory_item JOIN inventory_level`。
+
+**允许**：
+- 在 service 里查本模块的表（如 product → productVariant）
+- 跨模块数据用独立 middleware 后处理（只聚合必要字段）
+
+### 规则 4：Drizzle 查询 → query builder 优先，raw SQL 例外
+
+| 优先级 | 方式 | 适用场景 |
+|--------|------|---------|
+| 1 | `db.select().from(t).where(eq(...))` | 单表 / 简单 JOIN |
+| 2 | `db.execute(sql\`...\`)` | 仅在 Drizzle schema 无对应表时（如中间表 `product_tags`） |
+| 3 | 手写字符串 SQL | **禁止** |
+
+**raw SQL 例外条件**：
+- 表在数据库中存在但 `packages/db/src/schema/` 中没有定义
+- 必须在注释中标注 `-- raw SQL: 表 xxx 无 Drizzle 映射`
+
+数组参数**必须**用 `sql.join` + `ARRAY[...]` 写法：
+```typescript
+// ✅ 正确
+sql`WHERE id = ANY(ARRAY[${sql.join(ids.map(id => sql`${id}`), sql`, `)}])`
+
+// ❌ 错误
+sql`WHERE id = ANY(${ids})`
+```
+
+### 规则 5：SDK 适配层 → 不新增业务逻辑
+
+`apps/admin/src/lib/client.ts` 只做路径翻译，不写数据转换逻辑。
+
+```typescript
+// ✅ 正确：只做路径和参数映射
+retrieve: async (id, query) => {
+  const res = await rpc[":id"].$get({ param: { id }, query: toRpcQuery(query ?? {}) })
+  return parseJsonResponse(res)
+}
+
+// ❌ 错误：在适配层里处理业务数据
+retrieve: async (id, query) => {
+  const product = await ...
+  product.variants = product.variants.map(enrichVariant) // 不该在这做
+  return product
+}
+```
+
+### 规则 6：实现顺序
+
+```
+1. 打开 Medusa 官方路由文件（route.js）→ 理解请求处理流程
+2. 打开 query-config.js → 确定默认响应字段
+3. 打开 middleware → 看跨模块聚合逻辑
+4. 翻译到 Hono 路由 → 路径对齐
+5. 翻译到 Drizzle service → 字段对齐
+6. 更新 client.ts → SDK 映射对齐
+```
+
+---
+
+## 4. 快速对照映射表
+
+| 官方概念 | 我们的等价物 | 对照文件 |
+|----------|-------------|---------|
+| `refetchEntity("product", id, fields)` | `productService.getById(id)` | product.service.ts |
+| `queryConfig.fields` / `defaultAdminProductFields` | 后端固定返回 shape（暂不实现 fields 筛选） | query-config.js |
+| `wrapVariantsWithTotalInventoryQuantity()` | middleware 或 service 后处理 | variant-inventory-quantity.js |
+| `remoteQuery` / `ContainerRegistrationKeys.QUERY` | `getDb().select()...` | db client |
+
+---
+
+## 5. 示例：Product Detail 的正确缝合方式
+
+### 前端调用
+```typescript
+// Dashboard 源码: useProduct(id, { fields: PRODUCT_DETAIL_FIELDS })
+// PRODUCT_DETAIL_FIELDS = "*categories,*shipping_profile,-variants"
+// → GET /api/admin/products/:id?fields=...
+
+// 我们的 hooks 拷贝自官方，保持不变
+const { product } = useProduct(id!, { fields: PRODUCT_DETAIL_FIELDS })
+```
+
+### SDK 适配层
+```typescript
+// client.ts
+product: {
+  retrieve: (id, query) => rpc[":id"].$get({
+    param: { id },
+    query: toRpcQuery(query ?? {})
+  })
+}
+```
+
+### 后端路由
+```typescript
+// routes/admin/products.ts
+.get("/:id", async (c) => {
+  const result = await productService.getById(c.req.param("id"))
+  return c.json(result) // 形状对齐官方 query-config
+})
+```
+
+### 后端 Service
+```typescript
+// services/product.service.ts
+async getById(id: string) {
+  const item = await db.select().from(product).where(...)
+  // 只查本模块关联: variants, options, images, tags, type, collection
+  const relations = await fetchRelations(db, id, item)
+  // ⚠️ 不加 inventory_items，对齐官方 defaultAdminProductFields
+  return { product: { ...item, ...relations } }
+}
+```
+
+### 库存数据（独立端点）
+```
+GET /api/admin/products/:productId/variants?fields=inventory_quantity
+→ listVariants → 后处理挂 inventory_quantity（一个数字）
+```
+
+---
+
+## 6. 自查清单（实现新模块前）
+
+- [ ] 已查看 `@medusajs/medusa/dist/api/admin/{模块}/route.js`
+- [ ] 已查看 `@medusajs/medusa/dist/api/admin/{模块}/query-config.js`
+- [ ] 响应字段对齐 `defaultAdmin{Entity}Fields`
+- [ ] 无跨模块手写 JOIN（跨模块用 middleware 后处理）
+- [ ] 路径与 Medusa 官方一致
+- [ ] SDK 适配层只做路径映射，不写业务逻辑
+- [ ] Drizzle 查询优先 query builder，raw SQL 已标注原因

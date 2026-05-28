@@ -20,6 +20,9 @@
 | [04-implementation-plan.mdx](04-implementation-plan.mdx) | 分阶段计划（部分表述偏旧栈，以 handoff 为准） |
 | [05-tech-conventions.mdx](05-tech-conventions.mdx) | 编码约定 |
 | [**09-stitching-alignment.mdx**](09-stitching-alignment.mdx) | **缝合对齐规则**：Dashboard ↔ SDK 适配层 ↔ Hono Server |
+| [**10-refactoring-plan.mdx**](10-refactoring-plan.mdx) | **完整重构计划**：阶段划分、文件模板、模块 Checklist、优先级矩阵 |
+| [**11-feature-tracker.mdx**](11-feature-tracker.mdx) | **功能点全量追踪**：154 个功能点，逐项标状态 + 统计 + 执行顺序 |
+| [**12-testing-plan.mdx**](12-testing-plan.mdx) | **自动化测试方案**：Vitest + Hono Test Client + Playwright E2E |
 | [00-architecture-overview.mdx](00-architecture-overview.mdx) | 历史总览（若与 handoff 冲突以 handoff 为准） |
 
 ## 仓库级 AI 说明

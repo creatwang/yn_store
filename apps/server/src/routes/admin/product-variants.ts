@@ -8,11 +8,25 @@ export const adminProductVariants = new Hono<{ Variables: AuthVariables }>()
     const productId = c.req.param("productId")
     const limit = Number(c.req.query("limit") || 50)
     const offset = Number(c.req.query("offset") || 0)
+    const withInventory = c.req.query("inventory_quantity") === "true"
     const result = await variantService.listVariants(productId, { limit, offset })
+    if (withInventory) {
+      result.variants = await variantService.withInventoryQuantity(result.variants)
+    }
     return c.json(result)
   })
   .get("/:productId/variants/:variantId", async (c) => {
     const result = await variantService.getVariant(c.req.param("productId"), c.req.param("variantId"))
+    const withInventory = c.req.query("inventory_quantity") === "true"
+    if (withInventory) {
+      const enriched = await variantService.withInventoryQuantity([result.variant])
+      result.variant = enriched[0]
+    }
+    return c.json(result)
+  })
+  .post("/:productId/variants/batch", async (c) => {
+    const body = await c.req.json()
+    const result = await variantService.batchVariants(c.req.param("productId"), body)
     return c.json(result)
   })
   .post("/:productId/variants", async (c) => {
