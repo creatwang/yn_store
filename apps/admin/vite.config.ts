@@ -6,6 +6,9 @@ import { devStartupLogPlugin } from "./vite-log-startup"
 export default defineConfig({
   plugins: [react(), devStartupLogPlugin()],
   base: "/app/",
+  define: {
+    __BASE__: JSON.stringify("/app/"),
+  },
   build: {
     outDir: path.resolve(__dirname, "../server/public/app"),
     emptyOutDir: true,

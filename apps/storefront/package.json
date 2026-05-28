@@ -1,5 +1,5 @@
 {
-  "name": "@my-store/store-web",
+  "name": "@my-store/storefront",
   "version": "0.0.1",
   "private": true,
   "type": "module",

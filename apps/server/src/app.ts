@@ -8,10 +8,13 @@ import { adminProducts } from "./routes/admin/products"
 import { adminOrders } from "./routes/admin/orders"
 import { adminCustomers } from "./routes/admin/customers"
 import { adminCarts } from "./routes/admin/carts"
+import { adminRegions } from "./routes/admin/regions"
+import { adminSalesChannels } from "./routes/admin/sales-channels"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
 import { storeCustomers } from "./routes/store/customers"
+import { storeRegions, storeSalesChannels } from "./routes/store/regions"
 import { mountAppSpa } from "./host/mount-app"
 
 /** /api 下所有路由，供 RPC 客户端通过 client.api.* 访问 */
@@ -26,10 +29,14 @@ const apiRoutes = new Hono()
   .route("/admin/orders", adminOrders)
   .route("/admin/customers", adminCustomers)
   .route("/admin/carts", adminCarts)
+  .route("/admin/regions", adminRegions)
+  .route("/admin/sales-channels", adminSalesChannels)
   .route("/store/products", storeProducts)
   .route("/store/orders", storeOrders)
   .route("/store/carts", storeCarts)
   .route("/store/customers", storeCustomers)
+  .route("/store/regions", storeRegions)
+  .route("/store/sales-channels", storeSalesChannels)
 
 const app = new Hono()
   .onError(errorHandler)
