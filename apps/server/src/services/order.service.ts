@@ -10,7 +10,6 @@ import {
   orderLineItem,
   orderShippingMethod,
   orderTransaction,
-  payment,
 } from "@my-store/db"
 import type {
   CreateOrderInput,
@@ -21,6 +20,8 @@ import type {
   ListOrderChangesQuery,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { enrichOrdersForAdmin } from "./order-enrichment"
+import { DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS } from "../lib/order-fields"
 
 export const orderService = {
   async list(query: ListOrdersQuery) {
@@ -63,8 +64,10 @@ export const orderService = {
       db.select({ total: count() }).from(order).where(where),
     ])
 
+    const enriched = await enrichOrdersForAdmin(db, orders, { fields: query.fields })
+
     return {
-      orders,
+      orders: enriched,
       count: Number(total),
       limit: query.limit,
       offset: query.offset,
@@ -110,7 +113,7 @@ export const orderService = {
     }
   },
 
-  async getById(id: string, storeOnly = false, customerId?: string) {
+  async getById(id: string, storeOnly = false, customerId?: string, fields?: string) {
     const db = getDb()
     const conditions = [eq(order.id, id), isNull(order.deleted_at)]
 
@@ -129,7 +132,7 @@ export const orderService = {
     }
 
     // Load nested relations (对齐 Medusa defaultAdminRetrieveOrderFields)
-    const [items, summary, shippingMethods, paymentCollections] = await Promise.all([
+    const [items, summary, shippingMethods, enriched] = await Promise.all([
       db.select().from(orderItem)
         .leftJoin(orderLineItem, eq(orderItem.item_id, orderLineItem.id))
         .where(eq(orderItem.order_id, id))
@@ -143,18 +146,17 @@ export const orderService = {
       db.select().from(orderShippingMethod)
         .where(eq(orderShippingMethod.id, id))
         .catch(() => []),
-      db.select().from(payment)
-        .where(eq(payment.id, id))
-        .catch(() => []),
+      enrichOrdersForAdmin(db, [item], {
+        fields: fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
+      }).then((rows) => rows[0]),
     ])
 
     return {
       order: {
-        ...item,
+        ...enriched,
         items,
         summary,
         shipping_methods: shippingMethods,
-        payment_collections: paymentCollections,
       },
     }
   },

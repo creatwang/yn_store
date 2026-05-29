@@ -15,7 +15,7 @@ export const getOrderPaymentStatus = (
   t: TFunction<"translation">,
   status: string
 ) => {
-  const [label, color] = {
+  const entry = {
     not_paid: [t("orders.payment.status.notPaid"), "red"],
     authorized: [t("orders.payment.status.authorized"), "orange"],
     partially_authorized: [
@@ -35,7 +35,13 @@ export const getOrderPaymentStatus = (
     ],
     canceled: [t("orders.payment.status.canceled"), "red"],
     requires_action: [t("orders.payment.status.requiresAction"), "orange"],
-  }[status] as [string, "red" | "orange" | "green"]
+  }[status] as [string, "red" | "orange" | "green"] | undefined
+
+  if (!entry) {
+    return { label: status ?? "-", color: "orange" as const }
+  }
+
+  const [label, color] = entry
 
   return { label, color }
 }

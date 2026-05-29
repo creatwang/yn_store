@@ -10,6 +10,10 @@ type PaymentStatusCellProps = {
 export const PaymentStatusCell = ({ status }: PaymentStatusCellProps) => {
   const { t } = useTranslation()
 
+  if (!status) {
+    return "-"
+  }
+
   const { label, color } = getOrderPaymentStatus(t, status)
 
   return <StatusCell color={color}>{label}</StatusCell>

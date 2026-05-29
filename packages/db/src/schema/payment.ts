@@ -17,6 +17,7 @@ export const paymentCollection = pgTable("payment_collection", {
   captured_amount: numeric("captured_amount"),
   refunded_amount: numeric("refunded_amount"),
   completed_at: timestamp("completed_at", { withTimezone: true }),
+  status: text("status"),
   metadata: jsonb("metadata"),
   ...timestamps,
 })

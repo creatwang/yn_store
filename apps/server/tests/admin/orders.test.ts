@@ -70,6 +70,25 @@ describe("Admin 订单 API — CRUD", () => {
       expect(body.count).toBeGreaterThanOrEqual(0)
       expect(body.limit).toBe(10)
       expect(body.offset).toBe(0)
+
+      if (body.orders.length > 0) {
+        const first = body.orders[0]
+        expect(typeof first.payment_status).toBe("string")
+        expect(typeof first.fulfillment_status).toBe("string")
+      }
+    })
+
+    it("fields 未请求 fulfillments 时不应返回 fulfillments 关联", async () => {
+      const fields =
+        "id,payment_status,fulfillment_status,total,*payment_collections"
+      const res = await apiGet("/admin/orders", { limit: "5", offset: "0", fields })
+      expect(res.status).toBe(200)
+
+      const body = await res.json()
+      for (const row of body.orders) {
+        expect(row.fulfillments).toBeUndefined()
+        expect(typeof row.payment_status).toBe("string")
+      }
     })
 
     it("q 参数应支持模糊搜索 email", async () => {
