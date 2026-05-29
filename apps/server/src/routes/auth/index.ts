@@ -14,6 +14,15 @@ export const authRoutes = new Hono()
       return c.json(result)
     }
   )
+  .post(
+    "/customer/emailpass",
+    zValidator("json", loginSchema),
+    async (c) => {
+      const { email, password } = c.req.valid("json")
+      const result = await authService.customerLogin(email, password)
+      return c.json(result)
+    }
+  )
   .post("/token/refresh", adminAuth, async (c) => {
     const user = c.get("user")
     const result = await authService.refresh(

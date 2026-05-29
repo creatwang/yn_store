@@ -1,12 +1,18 @@
 import { and, eq, isNull, sql } from "drizzle-orm"
-import { cart, cartLineItem, order, getDb, generateId } from "@my-store/db"
+import {
+  cart,
+  cartLineItem,
+  cartShippingMethod,
+  order,
+  orderLineItem,
+  orderItem,
+  orderShippingMethod,
+  paymentCollection,
+  getDb,
+  generateId,
+} from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import type { CreateCartInput, AddToCartInput, UpdateCartInput } from "@my-store/validators"
-
-const ZERO_UNIT_PRICE = {
-  unit_price: "0",
-  raw_unit_price: { value: "0", precision: 20 },
-} as const
 
 export const cartService = {
   async create(input: CreateCartInput) {
@@ -46,11 +52,14 @@ export const cartService = {
     const items = await db
       .select()
       .from(cartLineItem)
-      .where(
-        and(eq(cartLineItem.cart_id, id), isNull(cartLineItem.deleted_at))
-      )
+      .where(and(eq(cartLineItem.cart_id, id), isNull(cartLineItem.deleted_at)))
 
-    return { cart: cartItem, items }
+    const shippingMethods = await db
+      .select()
+      .from(cartShippingMethod)
+      .where(and(eq(cartShippingMethod.cart_id, id), isNull(cartShippingMethod.deleted_at)))
+
+    return { cart: cartItem, items, shipping_methods: shippingMethods }
   },
 
   async addItem(cartId: string, input: AddToCartInput) {
@@ -69,7 +78,8 @@ export const cartService = {
         title: input.title ?? "",
         quantity: input.quantity,
         metadata: input.metadata ?? null,
-        ...ZERO_UNIT_PRICE,
+        unit_price: "0",
+        raw_unit_price: { value: "0", precision: 20 },
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
@@ -148,14 +158,19 @@ export const cartService = {
 
   async completeCheckout(cartId: string) {
     const db = getDb()
-    const { cart: cartData, items } = await this.getById(cartId)
+    const { cart: cartData, items, shipping_methods } = await this.getById(cartId)
 
     if (items.length === 0) {
       throw new HTTPException(400, { message: "Cart is empty" })
     }
 
+    if (!cartData.email) {
+      throw new HTTPException(400, { message: "Cart email is required" })
+    }
+
     const orderId = generateId("order")
 
+    // Create order
     const [createdOrder] = await db
       .insert(order)
       .values({
@@ -165,17 +180,108 @@ export const cartService = {
         sales_channel_id: cartData.sales_channel_id,
         email: cartData.email,
         currency_code: cartData.currency_code,
-        metadata: cartData.metadata,
+        status: "pending",
+        metadata: cartData.metadata ?? null,
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
       .returning()
 
+    // Create order line items + order items from cart line items
+    for (const item of items) {
+      const lineItemId = generateId("ordli")
+      await db.insert(orderLineItem).values({
+        id: lineItemId,
+        title: item.title ?? "",
+        subtitle: item.subtitle,
+        thumbnail: item.thumbnail,
+        variant_id: item.variant_id,
+        product_id: item.product_id,
+        product_title: item.product_title,
+        product_description: item.product_description,
+        product_subtitle: item.product_subtitle,
+        product_type: item.product_type,
+        product_type_id: item.product_type_id,
+        product_collection: item.product_collection,
+        product_handle: item.product_handle,
+        variant_sku: item.variant_sku,
+        variant_barcode: item.variant_barcode,
+        variant_title: item.variant_title,
+        variant_option_values: item.variant_option_values,
+        requires_shipping: item.requires_shipping ?? true,
+        is_giftcard: item.is_giftcard ?? false,
+        is_discountable: item.is_discountable ?? true,
+        is_tax_inclusive: item.is_tax_inclusive ?? false,
+        unit_price: item.unit_price ?? "0",
+        raw_unit_price: item.raw_unit_price ?? { value: "0", precision: 20 },
+        compare_at_unit_price: item.compare_at_unit_price,
+        raw_compare_at_unit_price: item.raw_compare_at_unit_price,
+        is_custom_price: item.is_custom_price ?? false,
+        metadata: item.metadata,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+
+      const orderItemId = generateId("ordit")
+      const qty = String(item.quantity)
+      await db.insert(orderItem).values({
+        id: orderItemId,
+        version: 1,
+        order_id: orderId,
+        item_id: lineItemId,
+        quantity: qty,
+        raw_quantity: { value: qty, precision: 20 },
+        unit_price: item.unit_price ?? "0",
+        raw_unit_price: item.raw_unit_price ?? { value: "0", precision: 20 },
+        compare_at_unit_price: item.compare_at_unit_price,
+        raw_compare_at_unit_price: item.raw_compare_at_unit_price,
+        fulfilled_quantity: "0",
+        shipped_quantity: "0",
+        delivered_quantity: "0",
+        return_requested_quantity: "0",
+        return_received_quantity: "0",
+        return_dismissed_quantity: "0",
+        written_off_quantity: "0",
+        metadata: item.metadata,
+      })
+    }
+
+    // Copy shipping methods
+    for (const sm of shipping_methods) {
+      await db.insert(orderShippingMethod).values({
+        id: generateId("ordsm"),
+        name: sm.name,
+        description: sm.description,
+        amount: sm.amount,
+        raw_amount: sm.raw_amount,
+        shipping_option_id: sm.shipping_option_id,
+        data: sm.data,
+        metadata: sm.metadata,
+        is_tax_inclusive: sm.is_tax_inclusive ?? false,
+        is_custom_amount: false,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+    }
+
+    // Create payment collection
+    const pcId = generateId("paycol")
+    await db.insert(paymentCollection).values({
+      id: pcId,
+      currency_code: cartData.currency_code,
+      amount: "0",
+      raw_amount: { value: "0", precision: 20 },
+      metadata: null,
+      created_at: sql`now()`,
+      updated_at: sql`now()`,
+    })
+
+    // Mark cart as completed
     await db
       .update(cart)
       .set({ completed_at: sql`now()`, updated_at: sql`now()` })
       .where(eq(cart.id, cartId))
 
-    return { order_id: orderId, order: createdOrder }
+    return { order: createdOrder }
   },
 }

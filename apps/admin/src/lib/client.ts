@@ -94,28 +94,184 @@ function productEntity() {
 /** order 客户端（含子路由方法） */
 function ordersClient() {
   const rpc = (api as any).admin.orders
+  const paymentsRpc = (api as any).admin.payments
   return {
     list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
     retrieve: (id: string, query?: Record<string, any>) => rpcGet(rpc[":id"], { id }, query),
     create: (body?: any) => rpcPost(rpc, body),
     update: (id: string, body?: any) => rpcPost(rpc[":id"], body, { id }),
     cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
-    delete: noop, requestItemReturn: noop, createClaim: noop, createExchange: noop,
-    createFulfillment: noop, cancelFulfillment: noop, createShipment: noop,
-    archive: noop, complete: noop, listChanges: noop, listTransactions: noop,
-    transferCancel: noop, addItems: noop, updateItem: noop, removeItem: noop,
-    addShippingMethod: noop, removeShippingMethod: noop,
-    listFulfillments: noop, retrieveFulfillment: noop,
-    listShippingOptions: noop, retrieveShippingOption: noop,
-    listReturns: noop, retrieveReturn: noop, initiateReturn: noop,
-    cancelReturn: noop, receiveReturn: noop,
-    listPayments: noop, retrievePayment: noop, capturePayment: noop, refundPayment: noop,
-    listDraftOrders: noop, retrieveDraftOrder: noop,
-    createDraftOrder: noop, updateDraftOrder: noop, deleteDraftOrder: noop,
-    retrievePreview: noop, createCreditLine: noop, updateOrderChange: noop,
-    requestTransfer: noop, cancelTransfer: noop, export: noop,
+    archive: (id: string) => rpcPost(rpc[":id"].archive, undefined, { id }),
+    complete: (id: string) => rpcPost(rpc[":id"].complete, undefined, { id }),
+    // ── Fulfillments ────────────────────────────────────────
+    createFulfillment: (orderId: string, body?: any) => rpcPost(rpc[":id"].fulfillments, body, { id: orderId }),
+    cancelFulfillment: (orderId: string, fulfillmentId: string, body?: any) =>
+      rpcPost(rpc[":id"].fulfillments[":fulfillmentId"].cancel, body, { id: orderId, fulfillmentId }),
+    createShipment: (orderId: string, fulfillmentId: string, body?: any) =>
+      rpcPost(rpc[":id"].fulfillments[":fulfillmentId"].shipments, body, { id: orderId, fulfillmentId }),
+    listFulfillments: (orderId: string) => rpcGet(rpc[":id"].fulfillments, { id: orderId }),
+    markAsDelivered: (orderId: string, fulfillmentId: string, body?: any) =>
+      rpcPost(rpc[":id"].fulfillments[":fulfillmentId"]["mark-as-delivered"], body, { id: orderId, fulfillmentId }),
+    retrieveFulfillment: (orderId: string, fulfillmentId: string) =>
+      rpcGet(rpc[":id"].fulfillments[":fulfillmentId"], { id: orderId, fulfillmentId }),
+    // ── Changes / Preview / Credit Lines / Transfer ─────────
+    listChanges: (id: string, query?: Record<string, any>) => rpcGet(rpc[":id"].changes, { id }, query),
+    retrievePreview: (id: string) => rpcGet(rpc[":id"].preview, { id }),
+    createCreditLine: (orderId: string, body?: any) => rpcPost(rpc[":id"]["credit-lines"], body, { id: orderId }),
+    requestTransfer: (orderId: string, body?: any) => rpcPost(rpc[":id"].transfer, body, { id: orderId }),
+    cancelTransfer: (orderId: string) => rpcPost(rpc[":id"].transfer.cancel, undefined, { id: orderId }),
+    // ── Line Items / Shipping Options ─────────────────────
+    listLineItems: (id: string) => rpcGet(rpc[":id"]["line-items"], { id }),
+    listShippingOptions: (id: string) => rpcGet(rpc[":id"]["shipping-options"], { id }),
+    // ── Payments (delegate to payments client) ──────────────
+    capturePayment: (id: string, body?: any) => rpcPost(paymentsRpc[":id"].capture, body, { id }),
+    refundPayment: (id: string, body?: any) => rpcPost(paymentsRpc[":id"].refund, body, { id }),
+    listPayments: (query?: Record<string, any>) => rpcGet(paymentsRpc, undefined, query),
+    retrievePayment: (id: string) => rpcGet(paymentsRpc[":id"], { id }),
+    createClaim: (body?: any) => claimClient().create(body),
+    createExchange: (body?: any) => exchangeClient().create(body),
+    delete: (id: string) => rpcDelete(rpc[":id"], { id }),
+    listTransactions: (id: string) => rpcGet(rpc[":id"].transactions, { id }),
+    addItems: (id: string, body?: any) => rpcPost(rpc[":id"]["line-items"], body, { id }),
+    updateItem: (id: string, itemId: string, body?: any) => rpcPost(rpc[":id"]["line-items"][":itemId"], body, { id, itemId }),
+    removeItem: (id: string, itemId: string) => rpcDelete(rpc[":id"]["line-items"][":itemId"], { id, itemId }),
+    addShippingMethod: (id: string, body?: any) => rpcPost(rpc[":id"]["shipping-options"], body, { id }),
+    removeShippingMethod: (id: string, methodId: string) => rpcDelete(rpc[":id"]["shipping-options"][":methodId"], { id, methodId }),
+    retrieveShippingOption: noop,
+    requestItemReturn: (id: string, body?: any) => returnClient().receive(id, body),
+    listReturns: (query?: any) => returnClient().list(query),
+    retrieveReturn: (id: string) => returnClient().retrieve(id),
+    initiateReturn: (body?: any) => returnClient().initiate(body),
+    cancelReturn: (id: string) => returnClient().cancel(id),
+    receiveReturn: (id: string, body?: any) => returnClient().receive(id, body),
+    listDraftOrders: (query?: any) => draftOrderClient().list(query),
+    retrieveDraftOrder: (id: string) => draftOrderClient().retrieve(id),
+    createDraftOrder: (body?: any) => draftOrderClient().create(body),
+    updateDraftOrder: (id: string, body?: any) => draftOrderClient().update(id, body),
+    deleteDraftOrder: (id: string) => draftOrderClient().delete(id),
+    updateOrderChange: (changeId: string, body?: any) => orderEditClient().update(changeId, body),
+    export: (query?: any) => rpcPost(rpc.export, undefined, query),
     createFulfillmentSet: noop, deleteFulfillmentSet: noop,
     createShippingOption: noop, updateShippingOption: noop, deleteShippingOption: noop,
+  }
+}
+
+function paymentsClient() {
+  const rpc = (api as any).admin.payments
+  return {
+    list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
+    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    capture: (id: string, body?: any) => rpcPost(rpc[":id"].capture, body, { id }),
+    refund: (id: string, body?: any) => rpcPost(rpc[":id"].refund, body, { id }),
+  }
+}
+
+/** returns 客户端 */
+function returnClient() {
+  const rpc = (api as any).admin.returns
+  return {
+    list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
+    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    initiate: (body?: any) => rpcPost(rpc, body),
+    cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
+    receive: (id: string, body?: any) => rpcPost(rpc[":id"].receive.confirm, body, { id }),
+    // Not yet implemented
+    request: noop, dismiss: noop, initiateRequest: noop, cancelRequest: noop,
+    addReturnItem: noop, updateReturnItem: noop, removeReturnItem: noop,
+    addReturnShipping: noop, updateReturnShipping: noop, deleteReturnShipping: noop,
+    updateRequest: noop, confirmRequest: noop,
+    initiateReceive: noop, receiveItems: noop, updateReceiveItem: noop, removeReceiveItem: noop,
+    dismissItems: noop, updateDismissItem: noop, removeDismissItem: noop,
+  }
+}
+
+/** claims 客户端 */
+function claimClient() {
+  const rpc = (api as any).admin.claims
+  return {
+    list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
+    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    create: (body?: any) => rpcPost(rpc, body),
+    cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
+    // Not yet implemented
+    update: noop, delete: noop, addItems: noop, updateItem: noop, removeItem: noop,
+    addShippingMethod: noop, removeShippingMethod: noop, createShipment: noop, requestReturn: noop,
+  }
+}
+
+/** draft orders 客户端 */
+function draftOrderClient() {
+  const rpc = (api as any).admin["draft-orders"]
+  const editRpc = (id: string) => rpc[":id"].edit
+  return {
+    list: (query?: any) => rpcGet(rpc, undefined, query),
+    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    create: (body?: any) => rpcPost(rpc, body),
+    update: (id: string, body?: any) => rpcPost(rpc[":id"], body, { id }),
+    delete: (id: string) => rpcDelete(rpc[":id"], { id }),
+    // ── Convert ──
+    convertToOrder: (id: string) => rpcPost(rpc[":id"]["convert-to-order"], undefined, { id }),
+    // ── Edit workflow ──
+    beginEdit: (id: string) => rpcPost(rpc[":id"].edit, undefined, { id }),
+    cancelEdit: (id: string) => rpcDelete(rpc[":id"].edit, { id }),
+    requestEdit: (id: string) => rpcPost(rpc[":id"].edit.request, undefined, { id }),
+    confirmEdit: (id: string) => rpcPost(rpc[":id"].edit.confirm, undefined, { id }),
+    // ── Items ──
+    addItems: (id: string, body?: any) => rpcPost(rpc[":id"].edit.items, body, { id }),
+    updateItem: (id: string, actionId: string, body?: any) => rpcPost(rpc[":id"].edit.items[":actionId"], body, { id, actionId }),
+    removeItem: (id: string, actionId: string) => rpcDelete(rpc[":id"].edit.items[":actionId"], { id, actionId }),
+    // ── Shipping ──
+    addShippingMethod: (id: string, body?: any) => rpcPost(rpc[":id"].edit["shipping-methods"], body, { id }),
+    updateShippingMethod: (id: string, actionId: string, body?: any) => rpcPost(rpc[":id"].edit["shipping-methods"][":actionId"], body, { id, actionId }),
+    removeShippingMethod: (id: string, actionId: string) => rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
+    // ── Promotions ──
+    addPromotions: (id: string, body?: any) => rpcPost(rpc[":id"].edit.promotions, body, { id }),
+    removePromotions: (id: string, actionId: string) => rpcDelete(rpc[":id"].edit.promotions[":actionId"], { id, actionId }),
+    // ── Aliases for compatibility ──
+    addItemsAction: noop, updateItemAction: noop, removeItemAction: noop,
+    request: (id: string) => rpcPost(rpc[":id"].edit.request, undefined, { id }),
+    confirm: (id: string) => rpcPost(rpc[":id"].edit.confirm, undefined, { id }),
+    cancel: (id: string) => rpcDelete(rpc[":id"].edit, { id }),
+    updateActionMethod: noop, addShippingMethodAction: noop,
+    updateShippingMethodAction: noop, removeShippingMethodAction: noop,
+    addPromotionAction: noop, removePromotionAction: noop,
+  }
+}
+
+/** order edits 客户端 */
+function orderEditClient() {
+  const rpc = (api as any).admin["order-edits"]
+  return {
+    list: (orderId: string, query?: any) => rpcGet(rpc, undefined, { ...query, order_id: orderId }),
+    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    create: (body?: any) => rpcPost(rpc, body),
+    request: (id: string) => rpcPost(rpc[":id"].request, undefined, { id }),
+    confirm: (id: string) => rpcPost(rpc[":id"].confirm, undefined, { id }),
+    cancelRequest: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
+    addItems: (id: string, body?: any) => rpcPost(rpc[":id"].items, body, { id }),
+    updateOriginalItem: (id: string, itemId: string, body?: any) => rpcPost(rpc[":id"].items[":itemId"], body, { id, itemId }),
+    updateAddedItem: (id: string, itemId: string, body?: any) => rpcPost(rpc[":id"].items[":itemId"].update, body, { id, itemId }),
+    removeAddedItem: (id: string, itemId: string) => rpcDelete(rpc[":id"].items[":itemId"], { id, itemId }),
+    update: (id: string, body?: any) => rpcPost(rpc[":id"].changes, body, { id }),
+    // Not yet implemented
+    delete: noop, initiateRequest: noop,
+  }
+}
+
+/** exchanges 客户端 */
+function exchangeClient() {
+  const rpc = (api as any).admin.exchanges
+  return {
+    list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
+    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    create: (body?: any) => rpcPost(rpc, body),
+    cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
+    // Not yet implemented
+    addInboundItems: noop, updateInboundItem: noop, removeInboundItem: noop,
+    addInboundShipping: noop, updateInboundShipping: noop, deleteInboundShipping: noop,
+    addOutboundItems: noop, updateOutboundItem: noop, removeOutboundItem: noop,
+    addOutboundShipping: noop, updateOutboundShipping: noop, deleteOutboundShipping: noop,
+    request: noop, cancelRequest: noop,
   }
 }
 
@@ -221,13 +377,13 @@ export const sdk = {
     campaign: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, batchPromotions: noop },
 
     // ── Orders / Claims / Returns ─────────────────────────────
-    claim: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, cancel: noop, addItems: noop, updateItem: noop, removeItem: noop, addShippingMethod: noop, removeShippingMethod: noop, createShipment: noop, requestReturn: noop },
-    return: { list: noop, retrieve: noop, initiate: noop, cancel: noop, receive: noop, request: noop, dismiss: noop, initiateRequest: noop, cancelRequest: noop, addReturnItem: noop, updateReturnItem: noop, removeReturnItem: noop, addReturnShipping: noop, updateReturnShipping: noop, deleteReturnShipping: noop, updateRequest: noop, confirmRequest: noop, initiateReceive: noop, receiveItems: noop, updateReceiveItem: noop, removeReceiveItem: noop, dismissItems: noop, updateDismissItem: noop, removeDismissItem: noop },
+    claim: claimClient(),
+    return: returnClient(),
     returnReason: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
     refundReason: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
-    orderEdit: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, initiateRequest: noop, request: noop, confirm: noop, cancelRequest: noop, addItems: noop, updateOriginalItem: noop, updateAddedItem: noop, removeAddedItem: noop },
-    draftOrder: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, convertToOrder: noop, addItems: noop, updateActionItem: noop, removeActionItem: noop, updateItem: noop, addPromotions: noop, removePromotions: noop, addShippingMethod: noop, updateActionShippingMethod: noop, removeActionShippingMethod: noop, removeShippingMethod: noop, updateShippingMethod: noop, beginEdit: noop, cancelEdit: noop, requestEdit: noop },
-    exchange: { list: noop, retrieve: noop, create: noop, cancel: noop, addInboundItems: noop, updateInboundItem: noop, removeInboundItem: noop, addInboundShipping: noop, updateInboundShipping: noop, deleteInboundShipping: noop, addOutboundItems: noop, updateOutboundItem: noop, removeOutboundItem: noop, addOutboundShipping: noop, updateOutboundShipping: noop, deleteOutboundShipping: noop, request: noop, cancelRequest: noop },
+    orderEdit: orderEditClient(),
+    draftOrder: draftOrderClient(),
+    exchange: exchangeClient(),
 
     // ── Fulfillment ────────────────────────────────────────────
     fulfillment: { list: noop, retrieve: noop, create: noop, cancel: noop, createShipment: noop },
@@ -276,6 +432,7 @@ export const sdk = {
     invite: { list: noop, retrieve: noop, create: noop, resend: noop, delete: noop, accept: noop },
     apiKey: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, revoke: noop, batchSalesChannels: noop },
     notification: { list: noop, retrieve: noop, markAsRead: noop },
+    payment: paymentsClient(),
     taxRegion: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
     taxRate: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
     taxProvider: { list: noop },

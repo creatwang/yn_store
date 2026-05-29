@@ -61,6 +61,12 @@ const router = createBrowserRouter(
               <Route path="options/create" lazy={() => import("./routes/products/product-create-option")} />
               <Route path="options/:option_id/edit" lazy={() => import("./routes/products/product-edit-option")} />
               <Route path="variants/create" lazy={() => import("./routes/products/product-create-variant")} />
+              <Route path="variants/:variant_id" lazy={() => import("./routes/product-variants/product-variant-detail")}>
+                <Route path="edit" lazy={() => import("./routes/product-variants/product-variant-edit")} />
+                <Route path="metadata/edit" lazy={() => import("./routes/product-variants/product-variant-metadata")} />
+                <Route path="manage-items" lazy={() => import("./routes/product-variants/product-variant-manage-inventory-items")} />
+                <Route path="media" lazy={() => import("./routes/product-variants/product-variant-media")} />
+              </Route>
               <Route path="images/:image_id/variants" lazy={() => import("./routes/products/product-image-variants-edit")} />
             </Route>
           </Route>

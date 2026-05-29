@@ -8,6 +8,17 @@ export const listCustomersSchema = paginationSchema.extend({
 
 export type ListCustomersQuery = z.infer<typeof listCustomersSchema>
 
+export const registerCustomerSchema = z.object({
+  email: z.string().email("邮箱格式不正确"),
+  password: z.string().min(6, "密码至少6位"),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  company_name: z.string().optional(),
+  phone: z.string().optional(),
+})
+
+export type RegisterCustomerInput = z.infer<typeof registerCustomerSchema>
+
 export const createCustomerSchema = z.object({
   company_name: z.string().optional(),
   first_name: z.string().optional(),

@@ -4,6 +4,8 @@ import {
   getDb,
   customer,
   customerAddress,
+  authIdentity,
+  providerIdentity,
 } from "@my-store/db"
 import type {
   CreateCustomerInput,
@@ -13,6 +15,7 @@ import type {
   UpdateCustomerAddressInput,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import bcrypt from "bcryptjs"
 
 export const customerService = {
   async list(query: ListCustomersQuery) {
@@ -113,6 +116,62 @@ export const customerService = {
         updated_at: sql`now()`,
       })
       .returning()
+
+    return { customer: created }
+  },
+
+  async register(input: CreateCustomerInput & { password: string }) {
+    const db = getDb()
+    const id = generateId("cus")
+
+    // Check existing
+    const [existing] = await db
+      .select()
+      .from(customer)
+      .where(and(eq(customer.email, input.email), isNull(customer.deleted_at)))
+      .limit(1)
+
+    if (existing) {
+      throw new HTTPException(409, { message: "Customer with this email already exists" })
+    }
+
+    // Create customer
+    const [created] = await db
+      .insert(customer)
+      .values({
+        id,
+        company_name: input.company_name ?? null,
+        first_name: input.first_name ?? null,
+        last_name: input.last_name ?? null,
+        email: input.email,
+        phone: input.phone ?? null,
+        has_account: true,
+        metadata: input.metadata ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+      .returning()
+
+    // Create auth identity
+    const authId = generateId("authid")
+    await db.insert(authIdentity).values({
+      id: authId,
+      app_metadata: { user_id: id },
+      created_at: sql`now()`,
+      updated_at: sql`now()`,
+    })
+
+    // Create provider identity with password hash
+    const hash = await bcrypt.hash(input.password, 10)
+    await db.insert(providerIdentity).values({
+      id: generateId("provid"),
+      entity_id: input.email,
+      provider: "emailpass",
+      auth_identity_id: authId,
+      provider_metadata: { password: hash },
+      created_at: sql`now()`,
+      updated_at: sql`now()`,
+    })
 
     return { customer: created }
   },

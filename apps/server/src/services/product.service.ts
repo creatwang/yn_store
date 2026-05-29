@@ -1,17 +1,15 @@
 // @ts-nocheck
-import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
 import {
   generateId,
   getDb,
   product,
   productVariant,
   productOption,
+  productOptionValue,
   productImage,
   productCollection,
   productType,
-  productTag,
-  productCategory,
-  salesChannel,
 } from "@my-store/db"
 import type {
   CreateProductInput,
@@ -23,60 +21,107 @@ import { HTTPException } from "hono/http-exception"
 import { slugify } from "../lib/slug"
 import { variantService } from "./variant.service"
 
-async function fetchRelations(db: any, id: string, item: any) {
-  const [rawVariants, options, images, collection, prodType, tags, categories, salesChannels] = await Promise.all([
-    db.select().from(productVariant).where(
+/**
+ * 对齐 Medusa 官方 defaultAdminProductFields
+ * *前缀 = 加载完整关联对象，无* = 只返回外键
+ */
+const defaultAdminProductFields = [
+  "id", "title", "subtitle", "status", "external_id", "description", "handle",
+  "is_giftcard", "discountable", "thumbnail", "collection_id", "type_id",
+  "weight", "length", "height", "width", "hs_code", "origin_country",
+  "mid_code", "material", "created_at", "updated_at", "deleted_at", "metadata",
+  "*type", "*collection", "*options", "*options.values", "*tags", "*images",
+  "*variants", "*sales_channels",
+]
+
+/** 按 fields 列表加载关联数据（类似 Medusa refetchEntity 的按需加载） */
+async function fetchRelations(db: any, id: string, item: any, fields: string[] = defaultAdminProductFields) {
+  const wants = (name: string) => fields.includes(`*${name}`) || fields.includes(name)
+
+  const result: Record<string, any> = {}
+
+  if (wants("variants")) {
+    result.variants = await db.select().from(productVariant).where(
       and(eq(productVariant.product_id, id), isNull(productVariant.deleted_at))
-    ),
-    db.select().from(productOption).where(
+    )
+  }
+
+  if (wants("options")) {
+    const opts = await db.select().from(productOption).where(
       and(eq(productOption.product_id, id), isNull(productOption.deleted_at))
-    ).catch(() => []),
-    db.select().from(productImage).where(
+    ).catch(() => [])
+
+    if (wants("options.values")) {
+      result.options = await Promise.all(opts.map(async (opt: any) => {
+        const values = await db.select().from(productOptionValue)
+          .where(eq(productOptionValue.option_id, opt.id))
+          .catch(() => [])
+        return { ...opt, values }
+      }))
+    } else {
+      result.options = opts
+    }
+  }
+
+  if (wants("images")) {
+    result.images = await db.select().from(productImage).where(
       and(eq(productImage.product_id, id), isNull(productImage.deleted_at))
-    ).catch(() => []),
-    item.collection_id
-      ? db.select().from(productCollection).where(eq(productCollection.id, item.collection_id)).then((r: any) => r[0] ?? null)
-      : Promise.resolve(null),
-    item.type_id
-      ? db.select().from(productType).where(eq(productType.id, item.type_id)).then((r: any) => r[0] ?? null)
-      : Promise.resolve(null),
-    db.execute(sql`
-      SELECT pt.id, pt.value, pt.metadata, pt.created_at, pt.updated_at, pt.deleted_at
-      FROM product_tag pt JOIN product_tags pts ON pts.product_tag_id = pt.id
-      WHERE pts.product_id = ${id}
-    `).then((r: any) => r.rows ?? []),
-    db.execute(sql`
-      SELECT pc.id, pc.name, pc.handle, pc.description, pc.mpath, pc.is_active, pc.is_internal
-      FROM product_category pc JOIN product_category_product pcp ON pcp.product_category_id = pc.id
-      WHERE pcp.product_id = ${id}
-    `).then((r: any) => r.rows ?? []),
-    db.execute(sql`
-      SELECT sc.id, sc.name, sc.description, sc.is_disabled, sc.metadata
-      FROM sales_channel sc JOIN product_sales_channel psc ON psc.sales_channel_id = sc.id
-      WHERE psc.product_id = ${id}
-    `).then((r: any) => r.rows ?? []),
-  ])
+    ).catch(() => [])
+  }
 
-  // variants 不在此处 enrich inventory_quantity，对齐 Medusa 官方 defaultAdminProductFields
-  const variants = rawVariants
+  if (wants("collection") && item.collection_id) {
+    const [col] = await db.select().from(productCollection).where(eq(productCollection.id, item.collection_id))
+    result.collection = col ?? null
+  }
 
-  const optionsWithValues = await Promise.all(options.map(async (opt: any) => {
-    const values = await db.execute(sql`
-      SELECT id, value, metadata FROM product_option_value WHERE option_id = ${opt.id}
-    `).then((r: any) => r.rows ?? [])
-    return { ...opt, values }
-  }))
+  if (wants("type") && item.type_id) {
+    const [t] = await db.select().from(productType).where(eq(productType.id, item.type_id))
+    result.type = t ?? null
+  }
 
-  return { variants, options: optionsWithValues, images, collection, type: prodType, tags, categories, sales_channels: salesChannels }
+  if (wants("tags")) {
+    try {
+      const rows = await db.execute(sql`
+        SELECT pt.id, pt.value, pt.metadata, pt.created_at, pt.updated_at, pt.deleted_at
+        FROM product_tag pt JOIN product_tags pts ON pts.product_tag_id = pt.id
+        WHERE pts.product_id = ${id}
+      `)
+      result.tags = rows.rows ?? []
+    } catch { result.tags = [] }
+  }
+
+  if (wants("sales_channels")) {
+    try {
+      const rows = await db.execute(sql`
+        SELECT sc.id, sc.name, sc.description, sc.is_disabled, sc.metadata
+        FROM sales_channel sc JOIN product_sales_channel psc ON psc.sales_channel_id = sc.id
+        WHERE psc.product_id = ${id}
+      `)
+      result.sales_channels = rows.rows ?? []
+    } catch { result.sales_channels = [] }
+  }
+
+  return result
 }
 
 export const productService = {
   async list(query: ListProductsQuery) {
     const db = getDb()
-    const conditions = [isNull(product.deleted_at)]
+    const conditions: any[] = [isNull(product.deleted_at)]
 
     if (query.status) {
-      conditions.push(eq(product.status, query.status))
+      if (Array.isArray(query.status)) {
+        conditions.push(sql`${product.status} = ANY(${query.status}::text[])`)
+      } else {
+        conditions.push(eq(product.status, query.status))
+      }
+    }
+    if (query.collection_id) conditions.push(eq(product.collection_id, query.collection_id))
+    if (query.type_id) conditions.push(eq(product.type_id, query.type_id))
+
+    if (query.created_at) {
+      if (query.created_at.$gte) conditions.push(sql`${product.created_at} >= ${query.created_at.$gte}::timestamp`)
+      if (query.created_at.$lte) conditions.push(sql`${product.created_at} <= ${query.created_at.$lte}::timestamp`)
     }
 
     if (query.q) {
@@ -154,7 +199,7 @@ export const productService = {
     }
   },
 
-  async getById(id: string, storeOnly = false) {
+  async getById(id: string, storeOnly = false, fields?: string[]) {
     const db = getDb()
     const conditions = [eq(product.id, id), isNull(product.deleted_at)]
 
@@ -172,7 +217,7 @@ export const productService = {
       throw new HTTPException(404, { message: "Product not found" })
     }
 
-    const relations = await fetchRelations(db, id, item)
+    const relations = await fetchRelations(db, id, item, fields)
 
     return { product: { ...item, ...relations } }
   },

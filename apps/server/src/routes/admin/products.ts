@@ -16,7 +16,9 @@ export const adminProducts = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
   .get("/:id", async (c) => {
-    const result = await productService.getById(c.req.param("id"))
+    const raw = c.req.query("fields")
+    const fields = raw ? raw.split(",").filter(Boolean) : undefined
+    const result = await productService.getById(c.req.param("id"), false, fields)
     return c.json(result)
   })
   .post("/", zValidator("json", createProductSchema), async (c) => {

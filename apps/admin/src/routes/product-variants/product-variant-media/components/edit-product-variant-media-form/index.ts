@@ -1,2 +1,2 @@
 // @ts-nocheck
-export * from "./edit-product-variant-media-form"
+export { EditProductVariantMediaForm } from "./edit-product-variant-media-form"

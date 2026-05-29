@@ -1,2 +1,2 @@
 // @ts-nocheck
-export { ProductVariantMetadata as Component } from "./product-variant-metadata"
+export { Component } from "./product-variant-metadata"

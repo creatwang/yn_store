@@ -10,7 +10,19 @@ export const productStatusEnum = z.enum([
 
 export const listProductsSchema = paginationSchema.extend({
   q: z.string().optional(),
-  status: productStatusEnum.optional(),
+  status: z.union([productStatusEnum, z.array(productStatusEnum)]).optional(),
+  price_list_id: z.union([z.string(), z.array(z.string())]).optional(),
+  collection_id: z.string().optional(),
+  type_id: z.string().optional(),
+  tags: z.array(z.object({ id: z.string() })).optional(),
+  categories: z.array(z.object({ id: z.string() })).optional(),
+  sales_channel_id: z.union([z.string(), z.array(z.string())]).optional(),
+  created_at: z.object({
+    $gte: z.string().optional(), $lte: z.string().optional(),
+  }).optional(),
+  updated_at: z.object({
+    $gte: z.string().optional(), $lte: z.string().optional(),
+  }).optional(),
 })
 
 export type ListProductsQuery = z.infer<typeof listProductsSchema>
@@ -18,6 +30,7 @@ export type ListProductsQuery = z.infer<typeof listProductsSchema>
 export const listStoreProductsSchema = paginationSchema.extend({
   q: z.string().optional(),
   category_id: z.string().optional(),
+  collection_id: z.string().optional(),
 })
 
 export type ListStoreProductsQuery = z.infer<typeof listStoreProductsSchema>
