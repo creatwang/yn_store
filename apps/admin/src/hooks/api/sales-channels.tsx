@@ -34,13 +34,7 @@ export const useSalesChannel = (
 ) => {
   const { data, ...rest } = useQuery({
     queryKey: salesChannelsQueryKeys.detail(id),
-    queryFn: async () => {
-      try {
-        return await sdk.admin.salesChannel.retrieve(id)
-      } catch {
-        return { sales_channel: { id, name: "", description: "", is_disabled: false } }
-      }
-    },
+    queryFn: async () => sdk.admin.salesChannel.retrieve(id),
     ...options,
   })
 

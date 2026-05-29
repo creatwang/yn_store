@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 export const listPaymentsSchema = z.object({
-  limit: z.coerce.number().min(1).max(100).default(50),
+  limit: z.coerce.number().min(1).default(50),
   offset: z.coerce.number().min(0).default(0),
   status: z.string().optional(),
 })

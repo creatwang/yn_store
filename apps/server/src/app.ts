@@ -16,6 +16,7 @@ import { adminProductImages } from "./routes/admin/product-images"
 import { adminStockLocations } from "./routes/admin/stock-locations"
 import { adminInventoryItems } from "./routes/admin/inventory-items"
 import { adminUploads } from "./routes/admin/uploads"
+import { adminStore } from "./routes/admin/store"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
@@ -43,6 +44,7 @@ const apiRoutes = new Hono()
   .route("/admin/stock-locations", adminStockLocations)
   .route("/admin/inventory-items", adminInventoryItems)
   .route("/admin/uploads", adminUploads)
+  .route("/admin/store", adminStore)
   .route("/store/products", storeProducts)
   .route("/store/orders", storeOrders)
   .route("/store/carts", storeCarts)

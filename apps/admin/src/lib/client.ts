@@ -247,14 +247,7 @@ export const sdk = {
 
     // ── Store ──────────────────────────────────────────────────
     store: {
-      list: async () => ({
-        stores: [{ id: "store_01", name: "My Store", default_sales_channel_id: "sc_01", default_region_id: "reg_01", default_location_id: "loc_01", metadata: {} }],
-        count: 1
-      }),
-      retrieve: async (_id?: string) => ({
-        store: { id: _id || "store_01", name: "My Store", default_sales_channel_id: "sc_01", default_region_id: "reg_01", default_location_id: "loc_01", metadata: {} }
-      }),
-      update: noop,
+      ...entityClient("store"),
       listCurrencies: async () => ({ currencies: [], count: 0 }),
       addCurrencies: noop,
       removeCurrencies: noop,
