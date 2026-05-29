@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   applyOrderFieldMask,
   resolveOrderFieldsConfig,
-} from "../../src/lib/order-fields"
+} from "../../src/services/order/fields"
 
 describe("order fields", () => {
   it("识别 payment_collections / fulfillments 关联请求", () => {

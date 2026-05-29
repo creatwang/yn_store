@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   getLastFulfillmentStatus,
   getLastPaymentStatus,
-} from "../../src/lib/order-aggregate-status"
+} from "../../src/services/order/status"
 
 describe("order aggregate status", () => {
   it("未关联支付集合时返回 not_paid", () => {

@@ -1,6 +1,7 @@
 import { InitOptions } from "i18next"
 
 export const defaultI18nOptions: InitOptions = {
+  compatibilityJSON: "v4",
   debug: process.env.NODE_ENV === "development",
   detection: {
     caches: ["cookie", "localStorage", "header"],

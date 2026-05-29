@@ -20,8 +20,11 @@ import type {
   ListOrderChangesQuery,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
-import { enrichOrdersForAdmin } from "./order-enrichment"
-import { DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS } from "../lib/order-fields"
+import {
+  DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
+  presentAdminOrderDetail,
+  presentAdminOrders,
+} from "./order"
 
 export const orderService = {
   async list(query: ListOrdersQuery) {
@@ -64,7 +67,7 @@ export const orderService = {
       db.select({ total: count() }).from(order).where(where),
     ])
 
-    const enriched = await enrichOrdersForAdmin(db, orders, { fields: query.fields })
+    const enriched = await presentAdminOrders(db, orders, { fields: query.fields })
 
     return {
       orders: enriched,
@@ -131,33 +134,12 @@ export const orderService = {
       throw new HTTPException(404, { message: "Order not found" })
     }
 
-    // Load nested relations (对齐 Medusa defaultAdminRetrieveOrderFields)
-    const [items, summary, shippingMethods, enriched] = await Promise.all([
-      db.select().from(orderItem)
-        .leftJoin(orderLineItem, eq(orderItem.item_id, orderLineItem.id))
-        .where(eq(orderItem.order_id, id))
-        .orderBy(desc(orderItem.version))
-        .catch(() => []),
-      db.select().from(orderSummary)
-        .where(eq(orderSummary.order_id, id))
-        .orderBy(desc(orderSummary.version))
-        .limit(1).then((r) => r[0] ?? null)
-        .catch(() => null),
-      db.select().from(orderShippingMethod)
-        .where(eq(orderShippingMethod.id, id))
-        .catch(() => []),
-      enrichOrdersForAdmin(db, [item], {
-        fields: fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
-      }).then((rows) => rows[0]),
-    ])
-
     return {
-      order: {
-        ...enriched,
-        items,
-        summary,
-        shipping_methods: shippingMethods,
-      },
+      order: await presentAdminOrderDetail(
+        db,
+        item,
+        fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
+      ),
     }
   },
 

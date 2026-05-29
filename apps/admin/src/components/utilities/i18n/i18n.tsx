@@ -3,6 +3,7 @@ import LanguageDetector from "i18next-browser-languagedetector"
 import { initReactI18next } from "react-i18next"
 
 import { defaultI18nOptions } from "../../../i18n/config"
+import { bindMedusaPluralLocales } from "../../../i18n/medusa-plural-locales"
 import { useExtension } from "../../../providers/extension-provider"
 
 const normalizeLanguageCode = (detected: string = "") => {
@@ -38,11 +39,16 @@ export const I18n = () => {
       })
     )
     .use(initReactI18next)
-    .init({
-      ...defaultI18nOptions,
-      resources,
-      supportedLngs: Object.keys(resources),
-    })
+    .init(
+      {
+        ...defaultI18nOptions,
+        resources,
+        supportedLngs: Object.keys(resources),
+      },
+      () => {
+        bindMedusaPluralLocales(i18n)
+      }
+    )
 
   return null
 }

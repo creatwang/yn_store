@@ -1,7 +1,13 @@
 /**
  * 对齐 Medusa v2.15.3 core-flows/order/utils/aggregate-status.ts
  */
-import { bn, getCurrencyEpsilon, toAmount } from "./big-number"
+import { bn, getCurrencyEpsilon, toAmount } from "../../lib/big-number"
+import type {
+  FulfillmentForStatus,
+  OrderItemForStatus,
+  OrderStatusInput,
+  PaymentCollectionForStatus,
+} from "./types"
 
 const PaymentStatus = {
   NOT_PAID: "not_paid",
@@ -27,41 +33,11 @@ const FulfillmentStatus = {
   CANCELED: "canceled",
 } as const
 
-export type PaymentCollectionForStatus = {
-  amount?: unknown
-  captured_amount?: unknown
-  refunded_amount?: unknown
-  status?: string | null
-}
-
-export type FulfillmentForStatus = {
-  canceled_at?: Date | string | null
-  delivered_at?: Date | string | null
-  shipped_at?: Date | string | null
-  packed_at?: Date | string | null
-}
-
-export type OrderItemForStatus = {
-  raw_quantity?: unknown
-  detail?: {
-    raw_fulfilled_quantity?: unknown
-    fulfilled_quantity?: unknown
-    quantity?: unknown
-  }
-}
-
-export type OrderForAggregateStatus = {
-  currency_code: string
-  payment_collections?: PaymentCollectionForStatus[]
-  fulfillments?: FulfillmentForStatus[]
-  items?: OrderItemForStatus[]
-}
-
 function isDefined<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined
 }
 
-export function getLastPaymentStatus(order: OrderForAggregateStatus): string {
+export function getLastPaymentStatus(order: OrderStatusInput): string {
   const currencyEpsilon = getCurrencyEpsilon(order.currency_code)
   const paymentStatus: Record<string, number> = {}
 
@@ -135,7 +111,7 @@ export function getLastPaymentStatus(order: OrderForAggregateStatus): string {
   return PaymentStatus.NOT_PAID
 }
 
-export function getLastFulfillmentStatus(order: OrderForAggregateStatus): string {
+export function getLastFulfillmentStatus(order: OrderStatusInput): string {
   const fulfillmentStatus: Record<string, number> = {}
 
   for (const status of Object.values(FulfillmentStatus)) {
@@ -215,10 +191,23 @@ export function extractOrderTotal(summary: { totals: unknown } | null | undefine
   }
 
   const totals = summary.totals as Record<string, unknown>
-  // 对齐 transform-order：summary 展平为 totals；total 可能为 BigNumber / raw_amount
   return toAmount(
-    totals.total ??
-      totals.original_total ??
-      totals.original_order_total,
+    totals.total ?? totals.original_total ?? totals.original_order_total,
   )
+}
+
+export function toOrderStatusInput(
+  orderRow: { currency_code: string },
+  relations: {
+    payment_collections: PaymentCollectionForStatus[]
+    fulfillments: FulfillmentForStatus[]
+    items: OrderItemForStatus[]
+  },
+): OrderStatusInput {
+  return {
+    currency_code: orderRow.currency_code,
+    payment_collections: relations.payment_collections,
+    fulfillments: relations.fulfillments,
+    items: relations.items,
+  }
 }

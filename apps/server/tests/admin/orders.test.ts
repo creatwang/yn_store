@@ -135,6 +135,13 @@ describe("Admin 订单 API — CRUD", () => {
       const body = await res.json()
       expect(body.order.id).toBe(orderId)
       expect(body.order.email).toMatch(/^detail_test_/)
+      expect(body.order.summary).toBeDefined()
+      expect(typeof body.order.summary.pending_difference).toBe("number")
+      expect(typeof body.order.item_subtotal).toBe("number")
+      expect(Array.isArray(body.order.items)).toBe(true)
+      if (body.order.items.length > 0) {
+        expect(body.order.items[0].detail).toBeDefined()
+      }
     })
 
     it("不存在的订单返回 404", async () => {
