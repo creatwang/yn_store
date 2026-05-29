@@ -247,7 +247,7 @@ export const sdk = {
 
     // ── Store ──────────────────────────────────────────────────
     store: {
-      ...entityClient("store"),
+      ...entityClient("stores"),
       listCurrencies: async () => ({ currencies: [], count: 0 }),
       addCurrencies: noop,
       removeCurrencies: noop,

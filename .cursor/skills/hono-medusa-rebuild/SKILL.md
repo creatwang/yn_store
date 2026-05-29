@@ -46,7 +46,10 @@ description: 在 my-medusa-store 中用 Hono+Drizzle 重写 Medusa 能力、Vite
 
 ## 金科玉律
 
-- **永远不要凭感觉写 SQL** → 先查 Medusa 官方怎么做
+- **永远不要凭感觉写代码** → 先查 Medusa 官方 v2.15.3 源码怎么实现
+- **完全复制官方逻辑，不做自己"改良"** → 一字不差对齐，不发挥
+- **不加任何补丁代码** → 不要 try-catch 兜底、fallback 数据、safeXXX 变量等
+- **分层架构：Route → Service → ORM** → Route 里不能有数据库逻辑，全部放到 Service 层
 - **链式路由** → `new Hono().get().post().delete().route()`
 - **deleted_at IS NULL** → 所有查询必须
 - **跨模块不 JOIN** → middleware 后处理模式
