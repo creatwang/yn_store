@@ -85,7 +85,7 @@ const InnerForm = <TRes,>({
     defaultValues: {
       metadata: getDefaultValues(metadata),
     },
-    resolver: zodResolver(MetadataSchema),
+    resolver: zodResolver(MetadataSchema) as any,
   })
 
   const handleSubmit = form.handleSubmit(async (data) => {

@@ -22,6 +22,7 @@ export const useExtendableForm = <
   data,
   ...props
 }: UseExtendableFormProps<TSchema, TContext>) => {
+  // Zod v4 + @hookform/resolvers v5 原生兼容
   return useForm<z.infer<TSchema>, TContext, TTransformedValues>({
     resolver: zodResolver(schema),
     ...props,

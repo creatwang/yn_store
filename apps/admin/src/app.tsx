@@ -3,6 +3,7 @@ import { Toaster, TooltipProvider } from "@medusajs/ui"
 import { Spinner } from "@medusajs/icons"
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from "react-router-dom"
 import { HelmetProvider } from "react-helmet-async"
+import { ErrorBoundary } from "./components/utilities/error-boundary/error-boundary"
 import { I18n } from "./components/utilities/i18n"
 import { queryClient } from "./lib/query-client"
 import { ProtectedRoute } from "./components/authentication/protected-route"
@@ -29,7 +30,7 @@ function Loading() {
  */
 const router = createBrowserRouter(
   createRoutesFromElements(
-    <Route>
+    <Route errorElement={<ErrorBoundary />}>
       {/* Public routes */}
       <Route element={<PublicLayout />}>
         <Route path="/login" lazy={() => import("./routes/login")} />

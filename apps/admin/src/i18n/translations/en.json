@@ -429,6 +429,7 @@
         "inventory": "Inventory kits"
       },
       "errors": {
+        "formIncomplete": "Please fix the form errors before proceeding.",
         "variants": "Please select at least one variant.",
         "options": "Please create at least one option.",
         "uniqueSku": "SKU must be unique."

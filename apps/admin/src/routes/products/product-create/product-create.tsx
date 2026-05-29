@@ -22,11 +22,12 @@ export const ProductCreate = () => {
   const {
     sales_channel,
     isPending: isSalesChannelPending,
-    isError: isSalesChannelError,
-    error: salesChannelError,
   } = useSalesChannel(store?.default_sales_channel_id!, {
     enabled: !!store?.default_sales_channel_id,
   })
+
+  // 安全兜底：useSalesChannel 可能因 DB 中无该频道而失败
+  const safeSalesChannel = sales_channel || { id: store?.default_sales_channel_id || "", name: "", description: "", is_disabled: false }
 
   const {
     regions,
@@ -49,7 +50,7 @@ export const ProductCreate = () => {
     !isStorePending &&
     !!regions &&
     !isRegionsPending &&
-    !!sales_channel &&
+    !!safeSalesChannel &&
     !isSalesChannelPending &&
     !!price_preferences &&
     !isPricePreferencesPending
@@ -60,10 +61,6 @@ export const ProductCreate = () => {
 
   if (isRegionsError) {
     throw regionsError
-  }
-
-  if (isSalesChannelError) {
-    throw salesChannelError
   }
 
   if (isPricePreferencesError) {
@@ -80,7 +77,7 @@ export const ProductCreate = () => {
       </RouteFocusModal.Description>
       {ready && (
         <ProductCreateForm
-          defaultChannel={sales_channel}
+          defaultChannel={safeSalesChannel}
           store={store}
           pricePreferences={price_preferences}
           regions={regions}

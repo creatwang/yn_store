@@ -1,6 +1,6 @@
 import { Hono } from "hono"
-import { isNull, sql } from "drizzle-orm"
-import { getDb, generateId } from "@my-store/db"
+import { sql } from "drizzle-orm"
+import { getDb } from "@my-store/db"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminStockLocations = new Hono<{ Variables: AuthVariables }>()

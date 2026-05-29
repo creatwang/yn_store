@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { isNull, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import { getDb } from "@my-store/db"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 

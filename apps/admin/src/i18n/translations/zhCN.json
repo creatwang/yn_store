@@ -429,6 +429,7 @@
         "inventory": "库存套件"
       },
       "errors": {
+        "formIncomplete": "请先修正表单错误再继续。",
         "variants": "请至少选择一个变体。",
         "options": "请至少创建一个选项。",
         "uniqueSku": "SKU 必须唯一。"

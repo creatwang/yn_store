@@ -213,7 +213,7 @@ export const sdk = {
 
     // ── Pricing ────────────────────────────────────────────────
     priceList: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, listPrices: noop, addPrices: noop, removePrices: noop, linkProducts: noop, batchPrices: noop },
-    pricePreference: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
+    pricePreference: { list: async () => ({ price_preferences: [], count: 0 }), retrieve: noop, create: noop, update: noop, delete: noop },
     currency: { list: noop, retrieve: noop },
 
     // ── Promotions ─────────────────────────────────────────────
@@ -235,7 +235,11 @@ export const sdk = {
     fulfillmentProvider: { list: noop, listFulfillmentOptions: noop },
     shippingOption: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, updateRules: noop },
     shippingOptionType: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
-    shippingProfile: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
+    shippingProfile: {
+      list: async () => ({ shipping_profiles: [], count: 0 }),
+      retrieve: async (id: string) => ({ shipping_profile: { id, name: "" } }),
+      create: noop, update: noop, delete: noop,
+    },
 
     // ── Payment ────────────────────────────────────────────────
     payment: { list: noop, retrieve: noop, capture: noop, refund: noop },

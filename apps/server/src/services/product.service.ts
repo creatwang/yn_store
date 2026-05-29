@@ -226,6 +226,17 @@ export const productService = {
         status: input.status ?? "draft",
         thumbnail: input.thumbnail || null,
         discountable: input.discountable ?? true,
+        is_giftcard: input.is_giftcard ?? false,
+        collection_id: input.collection_id ?? null,
+        type_id: input.type_id ?? null,
+        weight: input.weight ?? null,
+        length: input.length ?? null,
+        height: input.height ?? null,
+        width: input.width ?? null,
+        origin_country: input.origin_country ?? null,
+        hs_code: input.hs_code ?? null,
+        mid_code: input.mid_code ?? null,
+        material: input.material ?? null,
         metadata: input.metadata ?? null,
         created_at: sql`now()`,
         updated_at: sql`now()`,
@@ -246,7 +257,38 @@ export const productService = {
       )
     }
 
-    // 保存 options + option values
+    // 保存 categories → product_category_product 关联表
+    if (input.categories?.length) {
+      for (const cat of input.categories) {
+        await db.execute(sql`
+          INSERT INTO product_category_product (product_id, product_category_id)
+          VALUES (${id}, ${cat.id})
+        `)
+      }
+    }
+
+    // 保存 sales_channels → product_sales_channel 关联表
+    if (input.sales_channels?.length) {
+      for (const sc of input.sales_channels) {
+        await db.execute(sql`
+          INSERT INTO product_sales_channel (id, product_id, sales_channel_id)
+          VALUES (${generateId("psc")}, ${id}, ${sc.id})
+        `)
+      }
+    }
+
+    // 保存 tags → product_tags 关联表
+    if (input.tags?.length) {
+      for (const tag of input.tags) {
+        await db.execute(sql`
+          INSERT INTO product_tags (product_id, product_tag_id)
+          VALUES (${id}, ${tag.id})
+        `)
+      }
+    }
+
+    // 保存 options + option values，记录映射 { optionTitle → { optionId, values: { valueStr → valueId } } }
+    const optionValueMap = new Map<string, { optionId: string; values: Map<string, string> }>()
     if (input.options?.length) {
       for (const opt of input.options) {
         const optId = generateId("opt")
@@ -257,18 +299,23 @@ export const productService = {
           created_at: sql`now()`,
           updated_at: sql`now()`,
         })
+        const valMap = new Map<string, string>()
         if (opt.values?.length) {
           for (const val of opt.values) {
+            const valId = generateId("optval")
+            const valStr = typeof val === "string" ? val : (val as any).value || ""
             await db.execute(sql`
               INSERT INTO product_option_value (id, value, option_id, created_at, updated_at)
-              VALUES (${generateId("optval")}, ${val.value || val}, ${optId}, now(), now())
+              VALUES (${valId}, ${valStr}, ${optId}, now(), now())
             `)
+            valMap.set(valStr, valId)
           }
         }
+        optionValueMap.set(opt.title, { optionId: optId, values: valMap })
       }
     }
 
-    // 保存 variants
+    // 保存 variants + variant options + prices + inventory_items
     if (input.variants?.length) {
       for (const v of input.variants) {
         const vid = generateId("variant")
@@ -277,20 +324,59 @@ export const productService = {
           product_id: id,
           title: v.title,
           sku: v.sku ?? null,
+          barcode: v.barcode ?? null,
+          ean: v.ean ?? null,
+          upc: v.upc ?? null,
           manage_inventory: v.manage_inventory ?? true,
           allow_backorder: v.allow_backorder ?? false,
           variant_rank: v.variant_rank ?? 0,
+          weight: v.weight ?? null,
+          length: v.length ?? null,
+          height: v.height ?? null,
+          width: v.width ?? null,
+          origin_country: v.origin_country ?? null,
+          hs_code: v.hs_code ?? null,
+          mid_code: v.mid_code ?? null,
+          material: v.material ?? null,
           thumbnail: v.thumbnail ?? null,
           created_at: sql`now()`,
           updated_at: sql`now()`,
         })
-        // raw SQL: product_variant_option 表无 Drizzle schema 映射
-        for (const [_, optVal] of Object.entries(v.options || {})) {
-          if (optVal) {
+        // product_variant_option: 根据 option title → value 查找正确的 option_value_id
+        if (v.options && typeof v.options === "object") {
+          for (const [optTitle, optVal] of Object.entries(v.options)) {
+            if (optVal) {
+              const optEntry = optionValueMap.get(optTitle)
+              const valId = optEntry?.values.get(optVal as string)
+              if (valId) {
+                await db.execute(sql`
+                  INSERT INTO product_variant_option (id, variant_id, option_value_id, created_at, updated_at)
+                  VALUES (${generateId("pvo")}, ${vid}, ${valId}, now(), now())
+                `)
+              }
+            }
+          }
+        }
+        // 保存 variant prices（price 表中的 money_amount 行）
+        if ((v as any).prices?.length) {
+          for (const p of (v as any).prices) {
+            const priceId = generateId("price")
+            const rules = p.rules ? JSON.stringify(p.rules) : null
             await db.execute(sql`
-              INSERT INTO product_variant_option (id, variant_id, option_value_id, created_at, updated_at)
-              VALUES (${generateId("pvo")}, ${vid}, ${optVal}, now(), now())
+              INSERT INTO price (id, currency_code, amount, variant_id, created_at, updated_at, rules)
+              VALUES (${priceId}, ${p.currency_code}, ${p.amount}, ${vid}, now(), now(), ${rules}::jsonb)
             `)
+          }
+        }
+        // 保存 inventory_items 关联
+        if ((v as any).inventory_items?.length) {
+          for (const inv of (v as any).inventory_items) {
+            if (inv.inventory_item_id) {
+              await db.execute(sql`
+                INSERT INTO product_variant_inventory_item (id, variant_id, inventory_item_id, required_quantity, created_at, updated_at)
+                VALUES (${generateId("pvii")}, ${vid}, ${inv.inventory_item_id}, ${inv.required_quantity ?? 1}, now(), now())
+              `)
+            }
           }
         }
       }
@@ -312,16 +398,21 @@ export const productService = {
         ...(input.title !== undefined && { title: input.title }),
         ...(input.handle !== undefined && { handle }),
         ...(input.subtitle !== undefined && { subtitle: input.subtitle }),
-        ...(input.description !== undefined && {
-          description: input.description,
-        }),
+        ...(input.description !== undefined && { description: input.description }),
         ...(input.status !== undefined && { status: input.status }),
-        ...(input.thumbnail !== undefined && {
-          thumbnail: input.thumbnail || null,
-        }),
-        ...(input.discountable !== undefined && {
-          discountable: input.discountable,
-        }),
+        ...(input.thumbnail !== undefined && { thumbnail: input.thumbnail || null }),
+        ...(input.discountable !== undefined && { discountable: input.discountable }),
+        ...(input.is_giftcard !== undefined && { is_giftcard: input.is_giftcard }),
+        ...(input.collection_id !== undefined && { collection_id: input.collection_id }),
+        ...(input.type_id !== undefined && { type_id: input.type_id }),
+        ...(input.weight !== undefined && { weight: input.weight }),
+        ...(input.length !== undefined && { length: input.length }),
+        ...(input.height !== undefined && { height: input.height }),
+        ...(input.width !== undefined && { width: input.width }),
+        ...(input.origin_country !== undefined && { origin_country: input.origin_country }),
+        ...(input.hs_code !== undefined && { hs_code: input.hs_code }),
+        ...(input.mid_code !== undefined && { mid_code: input.mid_code }),
+        ...(input.material !== undefined && { material: input.material }),
         ...(input.metadata !== undefined && { metadata: input.metadata }),
         updated_at: sql`now()`,
       })

@@ -48,8 +48,18 @@ export function toRpcQuery<T extends Record<string, unknown>>(params: T) {
   return query
 }
 
-/** 校验 HTTP 状态并解析 JSON；失败时抛出带服务端 message 的 Error */
+/** 校验 HTTP 状态并解析 JSON；对 404 不抛异常，返回空对象 */
 export async function parseJsonResponse<T>(res: Response): Promise<T> {
+  if (res.status === 401) {
+    authStorage.clear()
+    // 硬跳转到登录页，让 ProtectedRoute 接管后续流程
+    // 排除 /auth/ 路径的请求（登录、注册、重置密码等），避免死循环
+    if (!res.url?.includes("/auth/")) {
+      window.location.href = "/app/login"
+    }
+    throw new Error("Unauthorized")
+  }
+
   if (res.ok) {
     return res.json() as Promise<T>
   }
