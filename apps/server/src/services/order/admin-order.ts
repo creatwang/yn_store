@@ -12,13 +12,20 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   customer,
   order,
+  orderAddress,
+  orderCreditLine,
   orderItem,
   orderLineItem,
   orderLineItemAdjustment,
   orderLineItemTaxLine,
+  orderPromotion,
   orderShippingMethodAdjustment,
   orderShippingMethodTaxLine,
   orderSummary,
+  product,
+  productVariant,
+  productVariantInventoryItem,
+  region,
   salesChannel,
 } from "@my-store/db"
 import { getCurrencyEpsilon, toAmount } from "../../lib/big-number"
@@ -58,9 +65,31 @@ const SUMMARY_DEFAULTS: AdminOrderSummaryDto = {
   subtotal: 0,
   tax_total: 0,
   discount_total: 0,
+  discount_subtotal: 0,
+  discount_tax_total: 0,
   shipping_total: 0,
+  shipping_subtotal: 0,
+  shipping_tax_total: 0,
   transaction_total: 0,
   pending_difference: 0,
+  item_subtotal: 0,
+  item_total: 0,
+  item_tax_total: 0,
+  item_discount_total: 0,
+  credit_line_total: 0,
+  credit_line_subtotal: 0,
+  credit_line_tax_total: 0,
+  original_item_subtotal: 0,
+  original_item_total: 0,
+  original_item_tax_total: 0,
+  original_shipping_subtotal: 0,
+  original_shipping_total: 0,
+  original_shipping_tax_total: 0,
+  original_total: 0,
+  original_tax_total: 0,
+  original_subtotal: 0,
+  refundable_total: 0,
+  shipping_discount_total: 0,
 }
 
 const ORDER_ROOT_TOTAL_KEYS = [
@@ -343,8 +372,9 @@ function formatLineItem(
   row: OrderLineItemJoinRow,
   taxLines: OrderLineItemTaxLineRow[] = [],
   adjustments: (typeof orderLineItemAdjustment.$inferSelect)[] = [],
+  inventoryItemsByVariant?: Map<string, any[]>,
 ) {
-  const { orderItem: detailRow, lineItem } = row
+  const { orderItem: detailRow, lineItem, variant, product: productRow } = row
   const detail = formatLineItemDetail(detailRow)
   const unitPrice = toAmount(
     detailRow.unit_price ??
@@ -366,6 +396,57 @@ function formatLineItem(
     raw_quantity: detailRow.raw_quantity,
     metadata: detailRow.metadata ?? lineItem.metadata,
     detail,
+    variant: variant
+      ? {
+          id: variant.id,
+          title: variant.title,
+          sku: variant.sku,
+          barcode: variant.barcode,
+          ean: variant.ean,
+          upc: variant.upc,
+          inventory_quantity: null,
+          allow_backorder: variant.allow_backorder,
+          manage_inventory: variant.manage_inventory,
+          weight: variant.weight,
+          length: variant.length,
+          height: variant.height,
+          width: variant.width,
+          origin_country: variant.origin_country,
+          hs_code: variant.hs_code,
+          material: variant.material,
+          mid_code: variant.mid_code,
+          metadata: variant.metadata,
+          created_at: variant.created_at,
+          updated_at: variant.updated_at,
+          deleted_at: variant.deleted_at,
+          product: productRow
+            ? {
+                id: productRow.id,
+                title: productRow.title,
+                handle: productRow.handle,
+                subtitle: productRow.subtitle,
+                description: productRow.description,
+                thumbnail: productRow.thumbnail,
+                status: productRow.status,
+                weight: productRow.weight,
+                length: productRow.length,
+                height: productRow.height,
+                width: productRow.width,
+                origin_country: productRow.origin_country,
+                hs_code: productRow.hs_code,
+                mid_code: productRow.mid_code,
+                material: productRow.material,
+                collection_id: productRow.collection_id,
+                type_id: productRow.type_id,
+                metadata: productRow.metadata,
+                created_at: productRow.created_at,
+                updated_at: productRow.updated_at,
+                deleted_at: productRow.deleted_at,
+              }
+            : null,
+        inventory_items: variant && inventoryItemsByVariant ? (inventoryItemsByVariant.get(variant.id) ?? []) : [],
+        }
+      : null,
     tax_lines: taxLines.map((line) =>
       formatTaxLine(line, unitPrice * detail.quantity),
     ),
@@ -426,6 +507,7 @@ function formatAdminOrder(input: {
               row,
               input.taxLinesByLineItemId?.get(row.lineItem.id) ?? [],
               input.adjustmentsByLineItemId?.get(row.lineItem.id) ?? [],
+              (input as any).inventoryItemsByVariant,
             ),
           ),
         }
@@ -465,31 +547,152 @@ async function loadPaymentCollections(db: Db, orderIds: string[]) {
   if (orderIds.length === 0) return new Map<string, PaymentCollectionForStatus[]>()
 
   const result = await db.execute(sql`
-    SELECT opc.order_id, pc.amount, pc.captured_amount, pc.refunded_amount, pc.status
+    SELECT opc.order_id,
+      pc.id AS pc_id, pc.amount, pc.captured_amount, pc.refunded_amount, pc.status, pc.currency_code, pc.created_at,
+      p.id AS p_id, p.amount AS p_amount, p.raw_amount AS p_raw_amount, p.currency_code AS p_currency_code,
+      p.provider_id, p.data AS p_data, p.captured_at, p.created_at AS p_created_at,
+      r.id AS r_id, r.amount AS r_amount, r.raw_amount AS r_raw_amount, r.note, r.created_by, r.created_at AS r_created_at, r.refund_reason_id,
+      rr.id AS rr_id, rr.label AS rr_label, rr.code AS rr_code, rr.description AS rr_description
     FROM order_payment_collection opc
     INNER JOIN payment_collection pc ON pc.id = opc.payment_collection_id
+    LEFT JOIN payment p ON p.payment_collection_id = pc.id AND p.deleted_at IS NULL
+    LEFT JOIN refund r ON r.payment_id = p.id AND r.deleted_at IS NULL
+    LEFT JOIN refund_reason rr ON rr.id = r.refund_reason_id AND rr.deleted_at IS NULL
     WHERE opc.order_id IN (${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)})
       AND opc.deleted_at IS NULL AND pc.deleted_at IS NULL
+    ORDER BY opc.order_id, pc.created_at
   `)
 
-  return groupBy(
-    (result.rows ?? result) as Array<PaymentCollectionForStatus & { order_id: string }>,
-    "order_id",
-  )
+  const rows = (result.rows ?? result) as any[]
+  const byOrder = new Map<string, Map<string, PaymentCollectionForStatus>>()
+
+  for (const row of rows) {
+    if (!byOrder.has(row.order_id)) byOrder.set(row.order_id, new Map())
+    const orderPcs = byOrder.get(row.order_id)!
+
+    if (!orderPcs.has(row.pc_id)) {
+      orderPcs.set(row.pc_id, {
+        id: row.pc_id,
+        amount: row.amount,
+        captured_amount: row.captured_amount,
+        refunded_amount: row.refunded_amount,
+        status: row.status,
+        currency_code: row.currency_code,
+        created_at: row.created_at,
+        payments: [],
+      })
+    }
+
+    const pc = orderPcs.get(row.pc_id)!
+    if (row.p_id && !pc.payments!.find((p: any) => p.id === row.p_id)) {
+      pc.payments!.push({
+        id: row.p_id,
+        amount: row.p_amount,
+        currency_code: row.p_currency_code,
+        provider_id: row.provider_id,
+        captured_at: row.captured_at,
+        created_at: row.p_created_at,
+        refunds: [],
+      })
+    }
+
+    if (row.p_id && row.r_id) {
+      const payment = pc.payments!.find((p: any) => p.id === row.p_id)
+      if (payment && !payment.refunds!.find((r: any) => r.id === row.r_id)) {
+        payment.refunds!.push({
+          id: row.r_id,
+          amount: row.r_amount,
+          note: row.note,
+          created_by: row.created_by,
+          created_at: row.r_created_at,
+          refund_reason_id: row.refund_reason_id,
+          refund_reason: row.rr_id ? {
+            id: row.rr_id,
+            label: row.rr_label,
+            code: row.rr_code,
+            description: row.rr_description,
+          } : null,
+        })
+      }
+    }
+  }
+
+  const resultMap = new Map<string, PaymentCollectionForStatus[]>()
+  for (const [oid, pcs] of byOrder) {
+    resultMap.set(oid, [...pcs.values()])
+  }
+  return resultMap
 }
 
 async function loadFulfillments(db: Db, orderIds: string[]) {
   if (orderIds.length === 0) return new Map()
 
   const result = await db.execute(sql`
-    SELECT of.order_id, f.id, f.packed_at, f.shipped_at, f.delivered_at, f.canceled_at
+    SELECT of.order_id, f.id, f.packed_at, f.shipped_at, f.delivered_at, f.canceled_at,
+      f.location_id, f.shipping_option_id, f.provider_id, f.metadata,
+      fi.id AS fi_id, fi.title AS fi_title, fi.sku AS fi_sku, fi.quantity AS fi_quantity, fi.line_item_id,
+      fl.id AS fl_id, fl.tracking_number, fl.tracking_url, fl.label_url,
+      so.id AS so_id, so.name AS so_name
     FROM order_fulfillment of
     INNER JOIN fulfillment f ON f.id = of.fulfillment_id
+    LEFT JOIN fulfillment_item fi ON fi.fulfillment_id = f.id
+    LEFT JOIN fulfillment_label fl ON fl.fulfillment_id = f.id
+    LEFT JOIN shipping_option so ON so.id = f.shipping_option_id
     WHERE of.order_id IN (${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)})
       AND of.deleted_at IS NULL AND f.deleted_at IS NULL
   `)
 
-  return groupBy((result.rows ?? result) as Array<Record<string, unknown> & { order_id: string }>, "order_id")
+  const byOrder = new Map<string, Map<string, Record<string, unknown>>>()
+
+  for (const row of (result.rows ?? result) as Array<Record<string, unknown>>) {
+    const orderId = String(row.order_id)
+    const fid = String(row.id)
+    if (!byOrder.has(orderId)) byOrder.set(orderId, new Map())
+    const orderMap = byOrder.get(orderId)!
+    if (!orderMap.has(fid)) {
+      orderMap.set(fid, {
+        id: fid,
+        packed_at: row.packed_at,
+        shipped_at: row.shipped_at,
+        delivered_at: row.delivered_at,
+        canceled_at: row.canceled_at,
+        location_id: row.location_id,
+        provider_id: row.provider_id,
+        metadata: row.metadata,
+        shipping_option: row.so_id
+          ? { id: row.so_id, name: row.so_name }
+          : null,
+        items: [],
+        labels: [],
+      })
+    }
+    const fulfillment = orderMap.get(fid)!
+    const items = fulfillment.items as Array<Record<string, unknown>>
+    const labels = fulfillment.labels as Array<Record<string, unknown>>
+    if (row.fi_id && !items.find((i) => i.id === row.fi_id)) {
+      items.push({
+        id: row.fi_id,
+        title: row.fi_title,
+        sku: row.fi_sku,
+        quantity: row.fi_quantity,
+        line_item_id: row.line_item_id,
+      })
+    }
+    if (row.fl_id && !labels.find((l) => l.id === row.fl_id)) {
+      labels.push({
+        id: row.fl_id,
+        tracking_number: row.tracking_number,
+        tracking_url: row.tracking_url,
+        label_url: row.label_url,
+      })
+    }
+  }
+
+  const resultMap = new Map<string, Array<Record<string, unknown>>>()
+  for (const [oid, fmap] of byOrder) {
+    resultMap.set(oid, [...fmap.values()])
+  }
+  return resultMap
 }
 
 async function loadSummaries(db: Db, orderIds: string[]) {
@@ -573,12 +776,14 @@ async function loadRelations(
   }
 }
 
-async function loadDetailLineItems(db: Db, orderId: string) {
+async function loadDetailLineItems(db: Db, orderId: string): Promise<OrderLineItemJoinRow[]> {
   return db
-    .select({ orderItem, lineItem: orderLineItem })
+    .select({ orderItem, lineItem: orderLineItem, variant: productVariant, product })
     .from(orderItem)
     .innerJoin(orderLineItem, eq(orderItem.item_id, orderLineItem.id))
     .innerJoin(order, and(eq(orderItem.order_id, order.id), eq(orderItem.version, order.version)))
+    .leftJoin(productVariant, eq(orderLineItem.variant_id, productVariant.id))
+    .leftJoin(product, eq(orderLineItem.product_id, product.id))
     .where(eq(orderItem.order_id, orderId))
 }
 
@@ -746,10 +951,24 @@ export async function presentAdminOrderDetail(
 ) {
   const fieldConfig = resolveOrderFieldsConfig(fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS)
 
-  const [bundle, lineItemRows, shippingRows] = await Promise.all([
+  const [bundle, lineItemRows, shippingRows, shippingAddress, billingAddress, creditLines, promotions, orderRegion] = await Promise.all([
     loadRelations(db, [orderRow], fieldConfig),
     loadDetailLineItems(db, orderRow.id),
     loadDetailShipping(db, orderRow.id),
+    orderRow.shipping_address_id
+      ? db.select().from(orderAddress).where(eq(orderAddress.id, orderRow.shipping_address_id)).limit(1).then(r => r[0] ?? null)
+      : Promise.resolve(null),
+    orderRow.billing_address_id
+      ? db.select().from(orderAddress).where(eq(orderAddress.id, orderRow.billing_address_id)).limit(1).then(r => r[0] ?? null)
+      : Promise.resolve(null),
+    db.select().from(orderCreditLine).where(eq(orderCreditLine.order_id, orderRow.id)),
+    db.execute(sql`
+      SELECT p.id, p.code, p.type, p.status, p.is_automatic, p.is_tax_inclusive, p.limit, p.used, p.campaign_id, p.metadata
+      FROM order_promotion op
+      INNER JOIN promotion p ON p.id = op.promotion_id
+      WHERE op.order_id = ${orderRow.id} AND op.deleted_at IS NULL AND p.deleted_at IS NULL
+    `).then(r => (r.rows ?? r) as any[]),
+    orderRow.region_id ? db.select().from(region).where(eq(region.id, orderRow.region_id)).limit(1).then(r => r[0] ?? null) : Promise.resolve(null),
   ])
 
   const lineItemIds = lineItemRows.map((r) => r.lineItem.id)
@@ -767,6 +986,23 @@ export async function presentAdminOrderDetail(
     loadShippingAdjustments(db, shippingIds),
   ])
 
+  // 加载行项库存（inventory_items）
+  const variantIds = [...new Set(lineItemRows.map(r => r.variant?.id).filter(Boolean) as string[])]
+  const inventoryItemsByVariant = new Map<string, any[]>()
+  if (variantIds.length > 0) {
+    const iiRows = await db.execute(sql`
+      SELECT id, variant_id, inventory_item_id, required_quantity, created_at, updated_at, deleted_at
+      FROM product_variant_inventory_item
+      WHERE variant_id IN (${sql.join(variantIds.map(id => sql`${id}`), sql`,`)})
+        AND deleted_at IS NULL
+    `)
+    for (const row of (iiRows.rows ?? iiRows) as any[]) {
+      const existing = inventoryItemsByVariant.get(row.variant_id) ?? []
+      existing.push({ id: row.id, inventory_item_id: row.inventory_item_id, required_quantity: row.required_quantity })
+      inventoryItemsByVariant.set(row.variant_id, existing)
+    }
+  }
+
   const summaryRow = bundle.summariesByOrder.get(orderRow.id) ?? null
   const dto = formatAdminOrder({
     order: withOptionalRelations(
@@ -782,9 +1018,19 @@ export async function presentAdminOrderDetail(
     adjustmentsByLineItemId,
     shippingTaxByMethodId,
     shippingAdjByMethodId,
-  })
+    inventoryItemsByVariant,
+  } as any)
 
-  return applyOrderFieldMask(dto, fieldConfig)
+  const dtoWithRelations = {
+    ...dto,
+    shipping_address: shippingAddress,
+    billing_address: billingAddress,
+    credit_lines: creditLines,
+    promotions: promotions,
+    region: orderRegion,
+  }
+
+  return applyOrderFieldMask(dtoWithRelations, fieldConfig)
 }
 
 // 单测用导出

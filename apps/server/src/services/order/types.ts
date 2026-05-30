@@ -1,4 +1,4 @@
-import type { orderItem, orderLineItem, orderLineItemTaxLine, orderShippingMethod } from "@my-store/db"
+import type { orderItem, orderLineItem, orderLineItemTaxLine, orderShippingMethod, product, productVariant } from "@my-store/db"
 
 export type OrderRow = typeof import("@my-store/db").order.$inferSelect
 export type OrderSummaryRow = typeof import("@my-store/db").orderSummary.$inferSelect
@@ -8,6 +8,8 @@ export type SalesChannelRow = typeof import("@my-store/db").salesChannel.$inferS
 export type OrderLineItemJoinRow = {
   orderItem: typeof orderItem.$inferSelect
   lineItem: typeof orderLineItem.$inferSelect
+  variant: (typeof productVariant.$inferSelect) | null
+  product: (typeof product.$inferSelect) | null
 }
 
 export type OrderShippingJoinRow = {
@@ -35,10 +37,35 @@ export type AdminOrderSummaryDto = {
 }
 
 export type PaymentCollectionForStatus = {
+  id?: string
   amount?: unknown
   captured_amount?: unknown
   refunded_amount?: unknown
   status?: string | null
+  currency_code?: string
+  created_at?: unknown
+  payments?: Array<{
+    id: string
+    amount?: unknown
+    currency_code?: string
+    provider_id?: string
+    captured_at?: unknown
+    created_at?: unknown
+    refunds?: Array<{
+      id: string
+      amount?: unknown
+      note?: string | null
+      created_by?: string | null
+      created_at?: unknown
+      refund_reason_id?: string | null
+      refund_reason?: {
+        id: string
+        label?: string
+        code?: string
+        description?: string | null
+      } | null
+    }>
+  }>
 }
 
 export type FulfillmentForStatus = {

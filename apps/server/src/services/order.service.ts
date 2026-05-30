@@ -25,6 +25,7 @@ import {
   presentAdminOrderDetail,
   presentAdminOrders,
 } from "./order"
+import { buildAdminOrderPreview } from "./order/admin-order-preview"
 
 export const orderService = {
   async list(query: ListOrdersQuery) {
@@ -271,50 +272,7 @@ export const orderService = {
   },
 
   async getPreview(id: string) {
-    const db = getDb()
-
-    const [ord] = await db
-      .select()
-      .from(order)
-      .where(and(eq(order.id, id), isNull(order.deleted_at)))
-      .limit(1)
-
-    if (!ord) {
-      throw new HTTPException(404, { message: "Order not found" })
-    }
-
-    // Get items with line items
-    const items = await db
-      .select()
-      .from(orderItem)
-      .leftJoin(orderLineItem, eq(orderItem.item_id, orderLineItem.id))
-      .where(eq(orderItem.order_id, id))
-      .orderBy(desc(orderItem.version))
-
-    // Get latest summary
-    const [summary] = await db
-      .select()
-      .from(orderSummary)
-      .where(eq(orderSummary.order_id, id))
-      .orderBy(desc(orderSummary.version))
-      .limit(1)
-
-    // Get active changes
-    const activeChanges = await db
-      .select()
-      .from(orderChange)
-      .where(and(
-        eq(orderChange.order_id, id),
-        isNull(orderChange.confirmed_at),
-        isNull(orderChange.canceled_at),
-      ))
-
-    return {
-      order: ord,
-      items,
-      summary: summary ?? null,
-      pending_changes: activeChanges,
-    }
+    return buildAdminOrderPreview(id)
   },
 
   // ── Credit Lines ──────────────────────────────────────

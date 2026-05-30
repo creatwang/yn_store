@@ -16,7 +16,8 @@ import { adminProductOptions } from "./routes/admin/product-options"
 import { adminProductImages } from "./routes/admin/product-images"
 import { adminStockLocationsFull } from "./routes/admin/batch"
 import { adminInventoryItemsFull } from "./routes/admin/batch"
-import { adminCategories, adminCollections, adminCustomerGroups, adminPriceLists, adminTaxRates, adminReservations, adminShippingProfiles, adminShippingOptionTypes, adminCurrencies, adminPromotions, adminCampaigns, adminApiKeys, adminNotifications, adminWorkflowExecutions, adminShippingOptions, adminPricePreferences, adminPropertyLabels, adminPaymentCollections } from "./routes/admin/batch"
+import { adminCategories, adminCollections, adminCustomerGroups, adminPriceLists, adminTaxRates, adminReservations, adminShippingProfiles, adminShippingOptionTypes, adminCurrencies, adminPromotions, adminCampaigns, adminApiKeys, adminNotifications, adminWorkflowExecutions, adminShippingOptions, adminPricePreferences, adminPropertyLabels, adminPaymentCollections, adminInventoryLevels, adminPriceListPrices, adminFulfillmentSets, adminCategoryLinkProducts, adminSalesChannelLinkProducts, adminCollectionLinkProducts, adminPriceListLinkProducts, adminPriceListBatchPrices, adminInventoryBatchLevels, adminFulfillmentProviders } from "./routes/admin/batch"
+import { adminFulfillments } from "./routes/admin/fulfillments"
 import { adminUploads } from "./routes/admin/uploads"
 import { adminStore } from "./routes/admin/store"
 import { adminPayments } from "./routes/admin/payments"
@@ -27,11 +28,14 @@ import { adminOrderEdits } from "./routes/admin/order-edits"
 import { adminDraftOrders } from "./routes/admin/draft-orders"
 import { adminUsers, adminInvites } from "./routes/admin/users"
 import { adminProductTags, adminProductTypes, adminTaxRegions, adminReturnReasons, adminRefundReasons } from "./routes/admin/settings"
+import { adminViews, adminLocales, adminTaxProviders } from "./routes/admin/views-locales-tax"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
 import { storeCustomers } from "./routes/store/customers"
 import { storeRegions, storeSalesChannels } from "./routes/store/regions"
+import { storeShippingOptions } from "./routes/store/shipping-options"
+import { storePaymentCollections, storePaymentProviders } from "./routes/store/payment-collections"
 import { mountAppSpa } from "./host/mount-app"
 
 /** /api 下所有路由，供 RPC 客户端通过 client.api.* 访问 */
@@ -70,6 +74,17 @@ const apiRoutes = new Hono()
   .route("/admin/shipping-options", adminShippingOptions)
   .route("/admin/price-preferences", adminPricePreferences)
   .route("/admin/property-labels", adminPropertyLabels)
+  .route("/admin/inventory-items/:iid/location-levels", adminInventoryLevels)
+  .route("/admin/price-lists/:plid/prices", adminPriceListPrices)
+  .route("/admin/fulfillment-sets", adminFulfillmentSets)
+  .route("/admin/product-categories/:id/products", adminCategoryLinkProducts)
+  .route("/admin/sales-channels/:id/products", adminSalesChannelLinkProducts)
+  .route("/admin/collections/:id/products", adminCollectionLinkProducts)
+  .route("/admin/price-lists/:id/products", adminPriceListLinkProducts)
+  .route("/admin/price-lists/:id/prices/batch", adminPriceListBatchPrices)
+  .route("/admin/inventory-items/location-levels/batch", adminInventoryBatchLevels)
+  .route("/admin/fulfillment-providers", adminFulfillmentProviders)
+  .route("/admin/fulfillments", adminFulfillments)
   .route("/admin/payment-collections", adminPaymentCollections)
   .route("/admin/uploads", adminUploads)
   .route("/admin/stores", adminStore)
@@ -86,12 +101,18 @@ const apiRoutes = new Hono()
   .route("/admin/tax-regions", adminTaxRegions)
   .route("/admin/return-reasons", adminReturnReasons)
   .route("/admin/refund-reasons", adminRefundReasons)
+  .route("/admin/views", adminViews)
+  .route("/admin/locales", adminLocales)
+  .route("/admin/tax-providers", adminTaxProviders)
   .route("/store/products", storeProducts)
   .route("/store/orders", storeOrders)
   .route("/store/carts", storeCarts)
   .route("/store/customers", storeCustomers)
   .route("/store/regions", storeRegions)
   .route("/store/sales-channels", storeSalesChannels)
+  .route("/store/shipping-options", storeShippingOptions)
+  .route("/store/payment-collections", storePaymentCollections)
+  .route("/store/payment-providers", storePaymentProviders)
 
 const app = new Hono()
   .onError(errorHandler)
@@ -101,6 +122,7 @@ const app = new Hono()
 
 // 为上传的文件提供静态文件服务
 app.get("/uploads/*", serveStatic({ root: "public" }))
+app.get("/exports/*", serveStatic({ root: "public" }))
 
 const appMount = mountAppSpa(app)
 

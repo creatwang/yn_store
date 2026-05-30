@@ -1,0 +1,76 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+---
+
+<BaseLayout title="购物车">
+  <h1 class="mb-6 text-2xl font-bold">购物车</h1>
+  <div id="cart-root" class="space-y-4">
+    <p class="text-gray-500">加载中…</p>
+  </div>
+  <div class="mt-8 flex gap-4">
+    <a href="/" class="text-sm text-gray-600 underline hover:text-gray-900">继续购物</a>
+    <a
+      id="checkout-link"
+      href="/checkout"
+      class="hidden rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800"
+    >
+      去结算
+    </a>
+  </div>
+</BaseLayout>
+
+<script>
+  import { apiFetch, getCartId } from "../lib/cart"
+
+  const root = document.getElementById("cart-root")!
+  const checkoutLink = document.getElementById("checkout-link")!
+
+  async function loadCart() {
+    const cartId = getCartId()
+    if (!cartId) {
+      root.innerHTML = `<p class="text-gray-500">购物车为空，<a href="/" class="underline">去逛逛</a></p>`
+      return
+    }
+
+    const res = await apiFetch(`/store/carts/${cartId}`)
+    if (!res.ok) {
+      root.innerHTML = `<p class="text-red-600">购物车已失效，请重新添加商品</p>`
+      return
+    }
+
+    const data = await res.json()
+    const items = data.items ?? []
+
+    if (items.length === 0) {
+      root.innerHTML = `<p class="text-gray-500">购物车为空</p>`
+      return
+    }
+
+    checkoutLink.classList.remove("hidden")
+    root.innerHTML = items
+      .map(
+        (item: Record<string, unknown>) => `
+      <div class="flex items-center justify-between rounded border bg-white p-4" data-line-id="${item.id}">
+        <div>
+          <p class="font-medium">${item.title || "商品"}</p>
+          <p class="text-sm text-gray-500">数量: ${item.quantity}</p>
+        </div>
+        <button type="button" class="text-sm text-red-600 hover:underline remove-btn" data-line-id="${item.id}">
+          移除
+        </button>
+      </div>
+    `,
+      )
+      .join("")
+
+    root.querySelectorAll(".remove-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const lineId = (e.currentTarget as HTMLElement).dataset.lineId!
+        await apiFetch(`/store/carts/${cartId}/line-items/${lineId}`, { method: "DELETE" })
+        loadCart()
+      })
+    })
+  }
+
+  loadCart()
+</script>

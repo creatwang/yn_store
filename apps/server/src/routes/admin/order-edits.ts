@@ -57,3 +57,7 @@ export const adminOrderEdits = new Hono<{ Variables: AuthVariables }>()
     const result = await db.updateOrderChange(c.req.param("id"), body)
     return c.json(result)
   })
+  .delete("/:id", async (c) => {
+    const result = await orderEditService.cancel(c.req.param("id"))
+    return c.json(result)
+  })

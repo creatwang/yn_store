@@ -110,3 +110,8 @@ export const taxRate = pgTable("tax_rate", {
   tax_region_id: text("tax_region_id"),
   ...timestamps,
 })
+
+export const taxProvider = pgTable("tax_provider", {
+  id: text("id").primaryKey(),
+  is_enabled: boolean("is_enabled").default(true).notNull(),
+})

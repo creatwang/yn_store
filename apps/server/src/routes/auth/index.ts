@@ -37,3 +37,10 @@ export const authRoutes = new Hono()
     const session = await authService.getSession(user.actor_id)
     return c.json(session)
   })
+  .delete("/session", adminAuth, async (c) => {
+    return c.json({ success: true })
+  })
+  .post("/password/confirmReset", async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    return c.json({ success: true, ...body })
+  })

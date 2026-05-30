@@ -21,8 +21,11 @@
 | [05-tech-conventions.mdx](05-tech-conventions.mdx) | 编码约定 |
 | [**09-stitching-alignment.mdx**](09-stitching-alignment.mdx) | **缝合对齐规则**：Dashboard ↔ SDK 适配层 ↔ Hono Server |
 | [**10-refactoring-plan.mdx**](10-refactoring-plan.mdx) | **完整重构计划**：阶段划分、文件模板、模块 Checklist、优先级矩阵 |
-| [**11-feature-tracker.mdx**](11-feature-tracker.mdx) | **功能点全量追踪**：154 个功能点，逐项标状态 + 统计 + 执行顺序 |
+| [**11-feature-tracker.mdx**](11-feature-tracker.mdx) | **功能 ID 索引（已归档）**：逐行表格为历史快照；模块统计见文内，**缺口以 14 为准** |
 | [**12-testing-plan.mdx**](12-testing-plan.mdx) | **自动化测试方案**：Vitest + Hono Test Client + Playwright E2E |
+| [**14-admin-api-gap-matrix.md**](14-admin-api-gap-matrix.md) | **权威缺口表**：Admin ↔ API / client / hooks 对照 + P0 优先项（2026-05-30） |
+| [**15-ai-improvement-tasks.md**](15-ai-improvement-tasks.md) | **AI 任务 backlog**：TASK-ID、验收命令、Wave 排期；文档项 TASK-DOC-001 已完成 |
+| [**16-full-completion-playbook.md**](16-full-completion-playbook.md) | **全量收尾手册**：Phase 0–6 🟢 + DoD；下一步见 §1.4 / TASK-CLIENT-001 |
 | [00-architecture-overview.mdx](00-architecture-overview.mdx) | 历史总览（若与 handoff 冲突以 handoff 为准） |
 
 ## 仓库级 AI 说明

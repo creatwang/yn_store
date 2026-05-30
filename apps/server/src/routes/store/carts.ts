@@ -7,6 +7,7 @@ import {
   updateCartLineItemSchema,
 } from "@my-store/validators"
 import { cartService } from "../../services/cart.service"
+import { cartCheckoutService } from "../../services/store-checkout.service"
 
 export const storeCarts = new Hono()
   .post("/", zValidator("json", createCartSchema), async (c) => {
@@ -49,6 +50,18 @@ export const storeCarts = new Hono()
       c.req.param("line_id")
     )
     return c.json(result)
+  })
+  .post("/:id/shipping-methods", async (c) => {
+    const body = await c.req.json()
+    const optionId = body.option_id ?? body.shipping_option_id ?? body.option?.id
+    if (!optionId) {
+      return c.json({ message: "缺少 option_id" }, 400)
+    }
+    const result = await cartCheckoutService.addShippingMethod(c.req.param("id"), {
+      option_id: optionId,
+      data: body.data,
+    })
+    return c.json(result, 201)
   })
   .post("/:id/complete", async (c) => {
     const result = await cartService.completeCheckout(c.req.param("id"))

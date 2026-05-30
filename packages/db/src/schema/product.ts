@@ -127,3 +127,41 @@ export const productCategory = pgTable("product_category", {
   parent_category_id: text("parent_category_id"),
   ...timestamps,
 })
+
+export const productCategoryProduct = pgTable("product_category_product", {
+  id: text("id").primaryKey(),
+  product_id: text("product_id").notNull(),
+  product_category_id: text("product_category_id").notNull(),
+})
+
+export const productSalesChannel = pgTable("product_sales_channel", {
+  id: text("id").primaryKey(),
+  product_id: text("product_id").notNull(),
+  sales_channel_id: text("sales_channel_id").notNull(),
+})
+
+export const productTags = pgTable("product_tags", {
+  id: text("id").primaryKey(),
+  product_id: text("product_id").notNull(),
+  product_tag_id: text("product_tag_id").notNull(),
+})
+
+export const productVariantOption = pgTable("product_variant_option", {
+  id: text("id").primaryKey(),
+  variant_id: text("variant_id").notNull(),
+  option_value_id: text("option_value_id").notNull(),
+})
+
+export const productVariantPriceSet = pgTable("product_variant_price_set", {
+  id: text("id").primaryKey(),
+  variant_id: text("variant_id").notNull(),
+  price_set_id: text("price_set_id").notNull(),
+})
+
+export const productVariantInventoryItem = pgTable("product_variant_inventory_item", {
+  id: text("id").primaryKey(),
+  variant_id: text("variant_id").notNull(),
+  inventory_item_id: text("inventory_item_id").notNull(),
+  required_quantity: integer("required_quantity").default(1),
+  ...timestamps,
+})

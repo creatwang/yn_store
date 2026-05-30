@@ -9,6 +9,8 @@ import {
 } from "@my-store/validators"
 import { customerService } from "../../services/customer.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
+import { sql, eq, and } from "drizzle-orm"
+import { customerGroupCustomer, generateId, getDb } from "@my-store/db"
 
 export const adminCustomers = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
@@ -57,4 +59,34 @@ export const adminCustomers = new Hono<{ Variables: AuthVariables }>()
   .delete("/:id/addresses/:addressId", async (c) => {
     const result = await customerService.deleteAddress(c.req.param("id"), c.req.param("addressId"))
     return c.json(result)
+  })
+  .post("/:id/customer-groups", async (c) => {
+    const db = getDb()
+    const customerId = c.req.param("id")
+    const body = await c.req.json()
+    const add: string[] = body.add ?? body.customer_group_ids ?? body.customerGroupIds ?? []
+    const remove: string[] = body.remove ?? []
+
+    for (const gid of add) {
+      await db.execute(sql`
+        INSERT INTO customer_group_customer (id, customer_id, customer_group_id)
+        VALUES (${generateId("cgc")}, ${customerId}, ${gid})
+        ON CONFLICT DO NOTHING
+      `)
+    }
+
+    if (remove.length) {
+      for (const gid of remove) {
+        await db
+          .delete(customerGroupCustomer)
+          .where(
+            and(
+              eq(customerGroupCustomer.customer_id, customerId),
+              eq(customerGroupCustomer.customer_group_id, gid),
+            ),
+          )
+      }
+    }
+
+    return c.json({ customer: { id: customerId }, added: add, removed: remove })
   })

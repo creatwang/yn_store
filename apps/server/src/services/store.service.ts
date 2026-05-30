@@ -1,4 +1,4 @@
-import { eq, isNull, sql } from "drizzle-orm"
+import { and, eq, isNull, sql } from "drizzle-orm"
 import { getDb, store, storeCurrency, generateId } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 
@@ -103,5 +103,30 @@ export const storeService = {
       .where(eq(storeCurrency.store_id, id))
 
     return { store: { ...updated, supported_currencies: currencies } }
+  },
+
+  async listCurrencies(storeId: string) {
+    const db = getDb()
+    const currencies = await db.select().from(storeCurrency).where(eq(storeCurrency.store_id, storeId))
+    return { currencies, count: currencies.length }
+  },
+
+  async addCurrencies(storeId: string, input: { currency_code: string }[]) {
+    const db = getDb()
+    const values = input.map((c) => ({
+      id: generateId("scur"),
+      currency_code: c.currency_code,
+      store_id: storeId,
+    }))
+    if (values.length) await db.insert(storeCurrency).values(values)
+    return this.listCurrencies(storeId)
+  },
+
+  async removeCurrencies(storeId: string, input: { currency_code: string }[]) {
+    const db = getDb()
+    for (const c of input) {
+      await db.delete(storeCurrency).where(and(eq(storeCurrency.store_id, storeId), eq(storeCurrency.currency_code, c.currency_code)))
+    }
+    return this.listCurrencies(storeId)
   },
 }

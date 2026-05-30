@@ -2,6 +2,7 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, orderClaim, orderClaimItem, orderChange, orderItem } from "@my-store/db"
 import type { CreateClaimInput, ListClaimsQuery } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { createCompanionReturn } from "./order/admin-order-preview"
 
 export const claimService = {
   async list(query: ListClaimsQuery) {
@@ -24,7 +25,12 @@ export const claimService = {
     if (!item) throw new HTTPException(404, { message: "Claim not found" })
 
     const items = await db.select().from(orderClaimItem).where(eq(orderClaimItem.claim_id, id))
-    return { claim: { ...item, items } }
+    const [change] = await db
+      .select({ return_id: orderChange.return_id })
+      .from(orderChange)
+      .where(and(eq(orderChange.claim_id, id), isNull(orderChange.canceled_at)))
+      .limit(1)
+    return { claim: { ...item, items, return_id: change?.return_id ?? null } }
   },
 
   async create(input: CreateClaimInput) {
@@ -54,8 +60,10 @@ export const claimService = {
       }
     }
 
+    const returnId = await createCompanionReturn(input.order_id, input.order_version ?? 1)
+
     await db.insert(orderChange).values({
-      id: generateId("ordch"), order_id: input.order_id, claim_id: id,
+      id: generateId("ordch"), order_id: input.order_id, claim_id: id, return_id: returnId,
       version: input.order_version ?? 1, change_type: "claim", created_by: "admin",
     })
 
@@ -164,6 +172,38 @@ export const claimService = {
     return this.getById(claimId)
   },
 
+  async addOutboundItems(claimId: string, payload: { items: { variant_id: string; quantity: number }[] }) {
+    const claim = await this.getById(claimId)
+    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
+    meta.outbound_items = [
+      ...(meta.outbound_items ?? []),
+      ...payload.items.map((i) => ({ ...i, id: generateId("act") })),
+    ]
+    const db = getDb()
+    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    return this.getById(claimId)
+  },
+
+  async updateOutboundItem(claimId: string, actionId: string, payload: { quantity?: number }) {
+    const claim = await this.getById(claimId)
+    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
+    meta.outbound_items = (meta.outbound_items ?? []).map((i: any) =>
+      i.id === actionId ? { ...i, ...payload } : i,
+    )
+    const db = getDb()
+    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    return this.getById(claimId)
+  },
+
+  async removeOutboundItem(claimId: string, actionId: string) {
+    const claim = await this.getById(claimId)
+    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
+    meta.outbound_items = (meta.outbound_items ?? []).filter((i: any) => i.id !== actionId)
+    const db = getDb()
+    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    return this.getById(claimId)
+  },
+
   // ── Claim Request / Shipment ─────────────────────────
 
   async request(claimId: string) {
@@ -173,6 +213,15 @@ export const claimService = {
     }).where(and(eq(orderClaim.id, claimId), isNull(orderClaim.deleted_at))).returning()
     if (!updated) throw new HTTPException(404, { message: "Claim not found" })
     return { claim: updated }
+  },
+
+  async cancelRequest(claimId: string) {
+    const db = getDb()
+    const [updated] = await db.update(orderClaim).set({
+      metadata: sql`COALESCE(metadata, '{}'::jsonb) - 'requested_at'`,
+    }).where(and(eq(orderClaim.id, claimId), isNull(orderClaim.deleted_at))).returning()
+    if (!updated) throw new HTTPException(404, { message: "Claim not found" })
+    return { claim: updated, deleted: true }
   },
 
   async cancel(id: string) {

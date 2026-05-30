@@ -88,6 +88,10 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     const result = await exchangeService.request(c.req.param("id"))
     return c.json(result)
   })
+  .post("/:id/request/cancel", async (c) => {
+    const result = await exchangeService.cancelRequest(c.req.param("id"))
+    return c.json(result)
+  })
   .post("/:id/cancel", async (c) => {
     const result = await exchangeService.cancel(c.req.param("id"))
     return c.json(result)

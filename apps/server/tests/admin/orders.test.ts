@@ -141,6 +141,11 @@ describe("Admin 订单 API — CRUD", () => {
       expect(Array.isArray(body.order.items)).toBe(true)
       if (body.order.items.length > 0) {
         expect(body.order.items[0].detail).toBeDefined()
+        // 如关联了 variant，应含 product 嵌套
+        if (body.order.items[0].variant) {
+          expect(body.order.items[0].variant.product).toBeDefined()
+          expect(body.order.items[0].variant.product.title).toBeDefined()
+        }
       }
     })
 

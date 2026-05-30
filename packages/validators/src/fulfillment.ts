@@ -38,6 +38,7 @@ const labelSchema = z.object({
 })
 
 export const createShipmentSchema = z.object({
+  order_id: z.string().optional(),
   items: z.array(z.object({
     item_id: z.string().min(1),
     quantity: z.number().min(1),

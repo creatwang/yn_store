@@ -9,6 +9,13 @@ const claimItemsSchema = zValidator("json", z.object({
   items: z.array(z.object({ item_id: z.string(), quantity: z.number().min(1), reason: z.string().optional(), note: z.string().optional() })),
 }))
 
+const outboundItemsSchema = zValidator("json", z.object({
+  items: z.array(z.object({
+    variant_id: z.string(),
+    quantity: z.number().min(1),
+  })),
+}))
+
 const actionSchema = zValidator("json", z.object({ shipping_option_id: z.string().optional() }).passthrough())
 
 export const adminClaims = new Hono<{ Variables: AuthVariables }>()
@@ -65,9 +72,31 @@ export const adminClaims = new Hono<{ Variables: AuthVariables }>()
     const result = await claimService.removeOutboundShipping(c.req.param("id"), c.req.param("actionId"))
     return c.json(result)
   })
+  // ── Outbound Items ────────────────────────────────────
+  .post("/:id/outbound/items", outboundItemsSchema, async (c) => {
+    const body = c.req.valid("json")
+    const result = await claimService.addOutboundItems(c.req.param("id"), body)
+    return c.json(result)
+  })
+  .post("/:id/outbound/items/:actionId", outboundItemsSchema, async (c) => {
+    const body = c.req.valid("json")
+    const item = body.items[0]
+    const result = await claimService.updateOutboundItem(c.req.param("id"), c.req.param("actionId"), {
+      quantity: item?.quantity,
+    })
+    return c.json(result)
+  })
+  .delete("/:id/outbound/items/:actionId", async (c) => {
+    const result = await claimService.removeOutboundItem(c.req.param("id"), c.req.param("actionId"))
+    return c.json(result)
+  })
   // ── Actions ───────────────────────────────────────────
   .post("/:id/request", async (c) => {
     const result = await claimService.request(c.req.param("id"))
+    return c.json(result)
+  })
+  .post("/:id/request/cancel", async (c) => {
+    const result = await claimService.cancelRequest(c.req.param("id"))
     return c.json(result)
   })
   .post("/:id/cancel", async (c) => {

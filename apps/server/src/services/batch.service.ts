@@ -1,5 +1,34 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, productCategory, productCollection, customerGroup, priceList, taxRate, inventoryItem, inventoryLevel, reservationItem, stockLocation, shippingProfile, shippingOptionType, currency, promotion, promotionCampaign, apiKey, notification, workflowExecution, shippingOption, pricePreference, propertyLabel, paymentCollection } from "@my-store/db"
+import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import {
+  generateId,
+  getDb,
+  productCategory,
+  productCollection,
+  customerGroup,
+  priceList,
+  price,
+  priceListRule,
+  productVariant,
+  taxRate,
+  inventoryItem,
+  inventoryLevel,
+  reservationItem,
+  stockLocation,
+  shippingProfile,
+  shippingOptionType,
+  currency,
+  promotion,
+  promotionCampaign,
+  apiKey,
+  notification,
+  workflowExecution,
+  shippingOption,
+  pricePreference,
+  propertyLabel,
+  paymentCollection,
+  fulfillmentSet,
+  fulfillmentProvider,
+} from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 
 function mkl(table: any, entityKey: string) {
@@ -180,3 +209,163 @@ export const pricePreferenceService = { list: mkl(pricePreference, "price_prefer
 export const propertyLabelService = { list: mkl(propertyLabel, "property_labels"), getById: mkg(propertyLabel, "property_labels"), create: mkc(propertyLabel, "pl", "property_labels"), update: mku(propertyLabel, "property_labels"), delete: mkdel(propertyLabel) }
 
 export const paymentCollectionService = { list: mkl(paymentCollection, "payment_collections"), getById: mkg(paymentCollection, "payment_collections") }
+
+export const inventoryLevelService = {
+  async list(iid: string) {
+    const db = getDb()
+    const rows = await db.select().from(inventoryLevel).where(eq(inventoryLevel.inventory_item_id, iid))
+    return { inventory_levels: rows, count: rows.length }
+  },
+  async update(iid: string, lid: string, input: any) {
+    const db = getDb()
+    const qty = input.stocked_quantity ?? input.quantity ?? 0
+    const [u] = await db
+      .update(inventoryLevel)
+      .set({
+        stocked_quantity: String(qty),
+        raw_stocked_quantity: { amount: qty, precision: 0 },
+      })
+      .where(and(eq(inventoryLevel.inventory_item_id, iid), eq(inventoryLevel.location_id, lid)))
+      .returning()
+    if (!u) throw new HTTPException(404, { message: "未找到" })
+    return { inventory_level: u }
+  },
+  async delete(iid: string, lid: string) {
+    const db = getDb()
+    await db.delete(inventoryLevel).where(
+      and(eq(inventoryLevel.inventory_item_id, iid), eq(inventoryLevel.location_id, lid)),
+    )
+    return { deleted: true }
+  },
+  async batch(input: {
+    create?: Array<{ inventory_item_id: string; location_id: string; stocked_quantity?: number }>
+    update?: Array<{ inventory_item_id: string; location_id: string; stocked_quantity?: number }>
+    delete?: Array<{ inventory_item_id: string; location_id: string }>
+  }) {
+    const db = getDb()
+    const created: typeof inventoryLevel.$inferSelect[] = []
+    const updated: typeof inventoryLevel.$inferSelect[] = []
+
+    for (const row of input.create ?? []) {
+      const id = generateId("ilev")
+      const qty = row.stocked_quantity ?? 0
+      const [c] = await db
+        .insert(inventoryLevel)
+        .values({
+          id,
+          inventory_item_id: row.inventory_item_id,
+          location_id: row.location_id,
+          stocked_quantity: String(qty),
+          raw_stocked_quantity: { amount: qty, precision: 0 },
+        })
+        .returning()
+      created.push(c)
+    }
+
+    for (const row of input.update ?? []) {
+      const res = await this.update(row.inventory_item_id, row.location_id, row)
+      updated.push(res.inventory_level)
+    }
+
+    for (const row of input.delete ?? []) {
+      await this.delete(row.inventory_item_id, row.location_id)
+    }
+
+    return {
+      created,
+      updated,
+      deleted: (input.delete ?? []).length,
+    }
+  },
+}
+
+export const priceListPriceService = {
+  async list(plid: string) {
+    const db = getDb()
+    const rows = await db
+      .select()
+      .from(price)
+      .where(and(eq(price.price_list_id, plid), isNull(price.deleted_at)))
+    return { prices: rows, count: rows.length }
+  },
+  async add(plid: string, input: any) {
+    const db = getDb()
+    const id = generateId("pr")
+    const amount = input.amount ?? 0
+    const [c] = await db
+      .insert(price)
+      .values({
+        id,
+        price_list_id: plid,
+        currency_code: input.currency_code ?? "USD",
+        amount: String(amount),
+        raw_amount: { amount, precision: 2 },
+        price_set_id: input.price_set_id ?? generateId("pset"),
+        ...input,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+      .returning()
+    return { price: c }
+  },
+  async remove(plid: string, pid: string) {
+    const db = getDb()
+    await db
+      .update(price)
+      .set({ deleted_at: sql`now()` })
+      .where(and(eq(price.id, pid), eq(price.price_list_id, plid)))
+    return { deleted: true }
+  },
+  async linkProducts(plid: string, input: { product_ids?: string[]; productIds?: string[] }) {
+    const db = getDb()
+    const productIds = input.product_ids ?? input.productIds ?? []
+    const linked: string[] = []
+
+    for (const productId of productIds) {
+      const ruleId = generateId("plr")
+      await db.insert(priceListRule).values({
+        id: ruleId,
+        attribute: "product_id",
+        value: productId,
+        price_list_id: plid,
+      })
+      linked.push(productId)
+    }
+
+    const variants = productIds.length
+      ? await db
+          .select()
+          .from(productVariant)
+          .where(
+            and(inArray(productVariant.product_id, productIds), isNull(productVariant.deleted_at)),
+          )
+      : []
+
+    return { products: linked, variant_count: variants.length }
+  },
+  async batchPrices(
+    plid: string,
+    input: { prices?: Array<Record<string, unknown>>; create?: Array<Record<string, unknown>> },
+  ) {
+    const rows = input.prices ?? input.create ?? []
+    const prices = []
+    for (const row of rows) {
+      const res = await this.add(plid, row)
+      prices.push(res.price)
+    }
+    return { prices }
+  },
+}
+
+export const fulfillmentProviderService = {
+  async list() {
+    const db = getDb()
+    const rows = await db.select().from(fulfillmentProvider)
+    return { fulfillment_providers: rows, count: rows.length }
+  },
+  async listOptions(_id: string) {
+    return { fulfillment_options: [] }
+  },
+}
+
+export const fulfillmentSetService = { list: mkl(fulfillmentSet, "fulfillment_sets"), getById: mkg(fulfillmentSet, "fulfillment_sets"), create: mkc(fulfillmentSet, "fs", "fulfillment_sets"), update: mku(fulfillmentSet, "fulfillment_sets"), delete: mkdel(fulfillmentSet) }

@@ -2,6 +2,7 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, orderExchange, orderChange } from "@my-store/db"
 import type { CreateExchangeInput, ListExchangesQuery } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { createCompanionReturn } from "./order/admin-order-preview"
 
 export const exchangeService = {
   async list(query: ListExchangesQuery) {
@@ -19,7 +20,12 @@ export const exchangeService = {
     const db = getDb()
     const [item] = await db.select().from(orderExchange).where(and(eq(orderExchange.id, id), isNull(orderExchange.deleted_at))).limit(1)
     if (!item) throw new HTTPException(404, { message: "Exchange not found" })
-    return { exchange: item }
+    const [change] = await db
+      .select({ return_id: orderChange.return_id })
+      .from(orderChange)
+      .where(and(eq(orderChange.exchange_id, id), isNull(orderChange.canceled_at)))
+      .limit(1)
+    return { exchange: { ...item, return_id: change?.return_id ?? null } }
   },
 
   async create(input: CreateExchangeInput) {
@@ -32,11 +38,13 @@ export const exchangeService = {
       allow_backorder: input.allow_backorder ?? false, created_by: "admin",
     }).returning()
 
+    const returnId = await createCompanionReturn(input.order_id, input.order_version ?? 1)
+
     await db.insert(orderChange).values({
-      id: generateId("ordch"), order_id: input.order_id, exchange_id: id,
+      id: generateId("ordch"), order_id: input.order_id, exchange_id: id, return_id: returnId,
       version: input.order_version ?? 1, change_type: "exchange", created_by: "admin",
     })
-    return { exchange: created }
+    return { exchange: { ...created, return_id: returnId } }
   },
 
   // ── Inbound Items ────────────────────────────────────
@@ -160,6 +168,15 @@ export const exchangeService = {
     }).where(and(eq(orderExchange.id, exchangeId), isNull(orderExchange.deleted_at))).returning()
     if (!updated) throw new HTTPException(404, { message: "Exchange not found" })
     return { exchange: updated }
+  },
+
+  async cancelRequest(id: string) {
+    const db = getDb()
+    await db
+      .update(orderChange)
+      .set({ canceled_at: sql`now()`, canceled_by: "admin" })
+      .where(and(eq(orderChange.exchange_id, id), isNull(orderChange.confirmed_at), isNull(orderChange.canceled_at)))
+    return this.getById(id)
   },
 
   async cancel(id: string) {

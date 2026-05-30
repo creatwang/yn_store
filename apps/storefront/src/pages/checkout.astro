@@ -1,0 +1,225 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+---
+
+<BaseLayout title="结算">
+  <h1 class="mb-6 text-2xl font-bold">结算</h1>
+  <div id="checkout-root" class="max-w-lg space-y-6">
+    <p class="text-gray-500">加载中…</p>
+  </div>
+</BaseLayout>
+
+<script>
+  import { apiFetch, clearCartId, getCartId } from "../lib/cart"
+
+  const root = document.getElementById("checkout-root")!
+
+  type Step = "info" | "shipping" | "payment" | "done"
+
+  let step: Step = "info"
+  let cartId = getCartId()
+  let shippingOptions: Array<{ id: string; name: string; amount?: number }> = []
+  let paymentProviders: Array<{ id: string }> = []
+  let paymentCollectionId = ""
+  let paymentSessionId = ""
+  let selectedOptionId = ""
+
+  function render() {
+    if (!cartId) {
+      root.innerHTML = `<p class="text-gray-500">购物车为空，<a href="/" class="underline">返回首页</a></p>`
+      return
+    }
+
+    if (step === "done") return
+
+    if (step === "info") {
+      root.innerHTML = `
+        <section class="rounded border bg-white p-4 space-y-3">
+          <h2 class="font-medium">1. 联系信息</h2>
+          <label class="block text-sm">邮箱<input id="email" type="email" class="mt-1 w-full rounded border px-3 py-2" placeholder="you@example.com" /></label>
+          <label class="block text-sm">姓名<input id="name" type="text" class="mt-1 w-full rounded border px-3 py-2" placeholder="张三" /></label>
+          <label class="block text-sm">地址<input id="address" type="text" class="mt-1 w-full rounded border px-3 py-2" placeholder="街道地址" /></label>
+          <label class="block text-sm">城市<input id="city" type="text" class="mt-1 w-full rounded border px-3 py-2" /></label>
+          <button id="next-shipping" type="button" class="w-full rounded bg-gray-900 py-2 text-white">下一步：配送</button>
+        </section>
+      `
+      document.getElementById("next-shipping")!.addEventListener("click", goShipping)
+      return
+    }
+
+    if (step === "shipping") {
+      const opts =
+        shippingOptions.length > 0
+          ? shippingOptions
+              .map(
+                (o) =>
+                  `<label class="flex items-center gap-2 rounded border p-3 cursor-pointer">
+              <input type="radio" name="ship" value="${o.id}" ${selectedOptionId === o.id ? "checked" : ""} />
+              <span>${o.name}</span>
+              <span class="ml-auto text-sm text-gray-500">$${o.amount ?? 10}</span>
+            </label>`,
+              )
+              .join("")
+          : `<p class="text-sm text-gray-500">暂无配送选项，将使用默认运费</p>
+             <input type="hidden" id="fallback-ship" value="default" />`
+
+      root.innerHTML = `
+        <section class="rounded border bg-white p-4 space-y-3">
+          <h2 class="font-medium">2. 配送方式</h2>
+          <div class="space-y-2">${opts}</div>
+          <div class="flex gap-2">
+            <button id="back-info" type="button" class="flex-1 rounded border py-2">上一步</button>
+            <button id="next-payment" type="button" class="flex-1 rounded bg-gray-900 py-2 text-white">下一步：支付</button>
+          </div>
+        </section>
+      `
+      document.getElementById("back-info")!.addEventListener("click", () => {
+        step = "info"
+        render()
+      })
+      document.getElementById("next-payment")!.addEventListener("click", goPayment)
+      return
+    }
+
+    if (step === "payment") {
+      const providers = paymentProviders
+        .map(
+          (p) =>
+            `<label class="flex items-center gap-2 rounded border p-3">
+          <input type="radio" name="pay" value="${p.id}" checked />
+          <span>${p.id === "pp_system_default" ? "线下/手动支付" : p.id}</span>
+        </label>`,
+        )
+        .join("")
+
+      root.innerHTML = `
+        <section class="rounded border bg-white p-4 space-y-3">
+          <h2 class="font-medium">3. 支付方式</h2>
+          <div class="space-y-2">${providers || '<p class="text-sm text-gray-500">默认手动支付</p>'}</div>
+          <div class="flex gap-2">
+            <button id="back-shipping" type="button" class="flex-1 rounded border py-2">上一步</button>
+            <button id="submit-order" type="button" class="flex-1 rounded bg-gray-900 py-2 text-white">提交订单</button>
+          </div>
+        </section>
+      `
+      document.getElementById("back-shipping")!.addEventListener("click", () => {
+        step = "shipping"
+        render()
+      })
+      document.getElementById("submit-order")!.addEventListener("click", submitOrder)
+    }
+  }
+
+  async function goShipping() {
+    const email = (document.getElementById("email") as HTMLInputElement).value.trim()
+    const name = (document.getElementById("name") as HTMLInputElement).value.trim()
+    const address = (document.getElementById("address") as HTMLInputElement).value.trim()
+    const city = (document.getElementById("city") as HTMLInputElement).value.trim()
+
+    if (!email) {
+      alert("请填写邮箱")
+      return
+    }
+
+    await apiFetch(`/store/carts/${cartId}`, {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        metadata: { shipping_address: { first_name: name, address_1: address, city } },
+      }),
+    })
+
+    const shipRes = await apiFetch(`/store/shipping-options?cart_id=${cartId}`)
+    if (shipRes.ok) {
+      const data = await shipRes.json()
+      shippingOptions = data.shipping_options ?? []
+      if (shippingOptions[0]) selectedOptionId = shippingOptions[0].id
+    }
+
+    step = "shipping"
+    render()
+  }
+
+  async function goPayment() {
+    const selected = document.querySelector<HTMLInputElement>('input[name="ship"]:checked')
+    const optionId = selected?.value
+
+    if (optionId && optionId !== "default") {
+      await apiFetch(`/store/carts/${cartId}/shipping-methods`, {
+        method: "POST",
+        body: JSON.stringify({ option_id: optionId }),
+      })
+      selectedOptionId = optionId
+    }
+
+    const payRes = await apiFetch("/store/payment-providers")
+    if (payRes.ok) {
+      const data = await payRes.json()
+      paymentProviders = data.payment_providers ?? [{ id: "pp_system_default" }]
+    } else {
+      paymentProviders = [{ id: "pp_system_default" }]
+    }
+
+    step = "payment"
+    render()
+  }
+
+  async function submitOrder() {
+    const totals = await apiFetch(`/store/carts/${cartId}`)
+    const cartData = totals.ok ? await totals.json() : { items: [] }
+    const total =
+      (cartData.items ?? []).reduce(
+        (s: number, i: { unit_price?: string; quantity: number }) =>
+          s + Number(i.unit_price ?? 0) * i.quantity,
+        0,
+      ) + 10
+
+    const pcRes = await apiFetch("/store/payment-collections", {
+      method: "POST",
+      body: JSON.stringify({ cart_id: cartId, currency_code: "USD", amount: total }),
+    })
+    if (!pcRes.ok) {
+      alert("创建支付失败")
+      return
+    }
+    const pc = await pcRes.json()
+    paymentCollectionId = pc.payment_collection?.id
+
+    const sesRes = await apiFetch(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
+      method: "POST",
+      body: JSON.stringify({ provider_id: "pp_system_default", amount: total }),
+    })
+    if (!sesRes.ok) {
+      alert("创建支付会话失败")
+      return
+    }
+    const ses = await sesRes.json()
+    paymentSessionId = ses.payment_session?.id
+
+    await apiFetch(
+      `/store/payment-collections/${paymentCollectionId}/payment-sessions/${paymentSessionId}/authorize`,
+      { method: "POST" },
+    )
+
+    const res = await apiFetch(`/store/carts/${cartId}/complete`, { method: "POST" })
+    const data = await res.json()
+
+    if (!res.ok) {
+      root.innerHTML = `<p class="text-red-600">下单失败：${data.message || res.status}</p>`
+      return
+    }
+
+    clearCartId()
+    step = "done"
+    const order = data.order ?? data
+    root.innerHTML = `
+      <div class="rounded border border-green-200 bg-green-50 p-6 text-green-800">
+        <p class="text-lg font-semibold">下单成功</p>
+        <p class="mt-2 text-sm">订单号：${order.id ?? "—"}</p>
+        <a href="/" class="mt-4 inline-block text-sm underline">返回首页</a>
+      </div>
+    `
+  }
+
+  render()
+</script>

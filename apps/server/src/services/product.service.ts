@@ -31,7 +31,7 @@ const defaultAdminProductFields = [
   "weight", "length", "height", "width", "hs_code", "origin_country",
   "mid_code", "material", "created_at", "updated_at", "deleted_at", "metadata",
   "*type", "*collection", "*options", "*options.values", "*tags", "*images",
-  "*variants", "*sales_channels",
+  "*variants", "*sales_channels", "*categories",
 ]
 
 /** 按 fields 列表加载关联数据（对齐 Medusa refetchEntity 语义）
@@ -113,6 +113,17 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
       `)
       result.sales_channels = rows.rows ?? []
     } catch { result.sales_channels = [] }
+  }
+
+  if (wants("categories")) {
+    try {
+      const rows = await db.execute(sql`
+        SELECT pc.id, pc.name, pc.handle, pc.description, pc.mpath, pc.is_active, pc.is_internal, pc.rank, pc.parent_category_id
+        FROM product_category pc JOIN product_category_product pcp ON pcp.product_category_id = pc.id
+        WHERE pcp.product_id = ${id}
+      `)
+      result.categories = rows.rows ?? []
+    } catch { result.categories = [] }
   }
 
   return result
@@ -500,6 +511,24 @@ export const productService = {
     }
 
     return { product: updated }
+  },
+
+  async batchLinkCategories(productId: string, input: { category_ids: string[] }) {
+    const db = getDb()
+    await db.execute(sql`DELETE FROM product_category_product WHERE product_id = ${productId}`)
+    for (const catId of input.category_ids) {
+      await db.execute(sql`INSERT INTO product_category_product (id, product_id, product_category_id) VALUES (${generateId("pcp")}, ${productId}, ${catId})`)
+    }
+    return { success: true }
+  },
+
+  async batchLinkSalesChannels(productId: string, input: { channel_ids: string[] }) {
+    const db = getDb()
+    await db.execute(sql`DELETE FROM product_sales_channel WHERE product_id = ${productId}`)
+    for (const chId of input.channel_ids) {
+      await db.execute(sql`INSERT INTO product_sales_channel (id, product_id, sales_channel_id) VALUES (${generateId("psc")}, ${productId}, ${chId})`)
+    }
+    return { success: true }
   },
 
   async delete(id: string) {

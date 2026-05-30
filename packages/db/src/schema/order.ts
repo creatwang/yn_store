@@ -22,6 +22,8 @@ export const order = pgTable("order", {
   is_draft_order: boolean("is_draft_order").default(false).notNull(),
   email: text("email"),
   currency_code: text("currency_code").notNull(),
+  shipping_address_id: text("shipping_address_id"),
+  billing_address_id: text("billing_address_id"),
   locale: text("locale"),
   no_notification: boolean("no_notification"),
   metadata: jsonb("metadata"),
@@ -289,11 +291,19 @@ export const orderExchange = pgTable("order_exchange", {
 
 export const orderCreditLine = pgTable("order_credit_line", {
   id: text("id").primaryKey(),
+  order_id: text("order_id").notNull(),
   version: integer("version").default(1).notNull(),
   reference: text("reference"),
   reference_id: text("reference_id"),
   amount: numeric("amount").notNull(),
   raw_amount: jsonb("raw_amount").notNull(),
   metadata: jsonb("metadata"),
+  ...timestamps,
+})
+
+export const orderPromotion = pgTable("order_promotion", {
+  id: text("id").primaryKey(),
   order_id: text("order_id").notNull(),
+  promotion_id: text("promotion_id").notNull(),
+  ...timestamps,
 })

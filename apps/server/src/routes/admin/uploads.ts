@@ -53,3 +53,10 @@ export const adminUploads = new Hono<{ Variables: AuthVariables }>()
 
     return c.json({ files: uploadedFiles })
   })
+  .get("/:id", async (c) => {
+    const id = c.req.param("id")
+    return c.json({ file: { id, url: `/uploads/${id}` } })
+  })
+  .delete("/:id", async (c) => {
+    return c.json({ id: c.req.param("id"), deleted: true })
+  })

@@ -1,4 +1,7 @@
 import { Hono } from "hono"
+import { sql } from "drizzle-orm"
+import { eq, and, isNull } from "drizzle-orm"
+import { generateId, getDb, productVariantInventoryItem } from "@my-store/db"
 import { variantService } from "../../services/variant.service"
 import { imageService } from "../../services/image.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
@@ -44,6 +47,22 @@ export const adminProductVariants = new Hono<{ Variables: AuthVariables }>()
     const body = await c.req.json()
     const result = await imageService.batchVariantImages(c.req.param("variantId"), body)
     return c.json(result)
+  })
+  .post("/:productId/variants/:variantId/inventory-items/batch", async (c) => {
+    const db = getDb()
+    const variantId = c.req.param("variantId")
+    const body = await c.req.json()
+    // 全量替换
+    await db.delete(productVariantInventoryItem).where(eq(productVariantInventoryItem.variant_id, variantId))
+    for (const item of body.items || []) {
+      await db.insert(productVariantInventoryItem).values({
+        id: generateId("pvii"),
+        variant_id: variantId,
+        inventory_item_id: item.inventory_item_id,
+        required_quantity: item.required_quantity ?? 1,
+      })
+    }
+    return c.json({ success: true }, 200)
   })
   .delete("/:productId/variants/:variantId", async (c) => {
     const result = await variantService.deleteVariant(c.req.param("productId"), c.req.param("variantId"))

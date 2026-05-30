@@ -64,7 +64,11 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 | 7 | `docs/04-implementation-plan.mdx` | 分阶段（部分内容仍写 Next，以本 handoff 技术栈为准） |
 | 8 | `docs/05-tech-conventions.mdx` | 代码风格 |
 | **9** | **`docs/09-stitching-alignment.mdx`** | **缝合对齐规则（必读！Dashboard ↔ API 后端对照）** |
-| 10 | `docs/00-architecture-overview.mdx` | 历史总览；若与本文冲突以 **本文 + 07** 为准 |
+| **10** | **`docs/15-ai-improvement-tasks.md`** | **AI 改善任务 backlog**：按 TASK-ID 执行、验收、更新状态 |
+| **10b** | **`docs/16-full-completion-playbook.md`** | **全量收尾**：Phase 0–6 顺序做完 + 完成度 + DoD |
+| 11 | `docs/14-admin-api-gap-matrix.md` | **权威** Admin ↔ API / client 缺口（模块级 + P0） |
+| 11b | `docs/11-feature-tracker.mdx` | 功能 ID 索引（**已归档**，逐行勿信） |
+| 12 | `docs/00-architecture-overview.mdx` | 历史总览；若与本文冲突以 **本文 + 07** 为准 |
 
 ---
 

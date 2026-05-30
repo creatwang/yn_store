@@ -4,8 +4,8 @@ import {
   getDb,
   orderReturn,
   returnItem,
-  returnReason,
   orderItem,
+  orderChange,
 } from "@my-store/db"
 import type {
   CreateReturnInput,
@@ -13,6 +13,18 @@ import type {
   ListReturnsQuery,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+
+type ReturnItemInput = {
+  item_id: string
+  quantity: number
+  note?: string | null
+  reason_id?: string | null
+}
+
+function shippingFromMetadata(metadata: unknown) {
+  const meta = (metadata ?? {}) as Record<string, unknown>
+  return Array.isArray(meta.shipping_methods) ? meta.shipping_methods : []
+}
 
 export const returnService = {
   async list(query: ListReturnsQuery) {
@@ -53,10 +65,7 @@ export const returnService = {
       throw new HTTPException(404, { message: "Return not found" })
     }
 
-    const items = await db
-      .select()
-      .from(returnItem)
-      .where(eq(returnItem.return_id, id))
+    const items = await db.select().from(returnItem).where(eq(returnItem.return_id, id))
 
     return { return: { ...ret, items } }
   },
@@ -73,55 +82,205 @@ export const returnService = {
         order_version: input.order_version ?? 1,
         location_id: input.location_id ?? null,
         refund_amount: input.refund_amount ? String(input.refund_amount) : null,
-        raw_refund_amount: input.refund_amount ? { amount: input.refund_amount, precision: 2 } : null,
+        raw_refund_amount: input.refund_amount
+          ? { amount: input.refund_amount, precision: 2 }
+          : null,
         created_by: "admin",
         status: "open",
       })
       .returning()
 
-    // Create return items
     if (input.items?.length) {
-      for (const item of input.items) {
-        const riId = generateId("retitm")
-        await db.insert(returnItem).values({
-          id: riId,
-          return_id: id,
-          item_id: item.item_id,
-          quantity: String(item.quantity),
-          raw_quantity: { amount: item.quantity, precision: 0 },
-          note: item.note ?? null,
-        })
+      await this.addReturnItems(id, input.order_id, input.items)
+    }
 
-        // Update order_item return_requested_quantity
-        await db
-          .update(orderItem)
-          .set({
-            return_requested_quantity: sql`COALESCE(return_requested_quantity::numeric, 0) + ${item.quantity}`,
-          })
-          .where(and(
-            eq(orderItem.item_id, item.item_id),
-            eq(orderItem.order_id, input.order_id),
-          ))
-      }
+    await db.insert(orderChange).values({
+      id: generateId("ordch"),
+      order_id: input.order_id,
+      return_id: id,
+      version: input.order_version ?? 1,
+      change_type: "return_request",
+      created_by: "admin",
+    })
+
+    return this.getById(created.id)
+  },
+
+  async addReturnItems(returnId: string, orderId: string, items: ReturnItemInput[]) {
+    const db = getDb()
+
+    for (const item of items) {
+      const riId = generateId("retitm")
+      await db.insert(returnItem).values({
+        id: riId,
+        return_id: returnId,
+        item_id: item.item_id,
+        quantity: String(item.quantity),
+        raw_quantity: { amount: item.quantity, precision: 0 },
+        note: item.note ?? null,
+      })
+
+      await db
+        .update(orderItem)
+        .set({
+          return_requested_quantity: sql`COALESCE(return_requested_quantity::numeric, 0) + ${item.quantity}`,
+        })
+        .where(and(eq(orderItem.item_id, item.item_id), eq(orderItem.order_id, orderId)))
+    }
+
+    return this.getById(returnId)
+  },
+
+  async updateReturnItem(returnId: string, actionId: string, input: Partial<ReturnItemInput>) {
+    const db = getDb()
+    const [updated] = await db
+      .update(returnItem)
+      .set({
+        ...(input.quantity !== undefined
+          ? {
+              quantity: String(input.quantity),
+              raw_quantity: { amount: input.quantity, precision: 0 },
+            }
+          : {}),
+        note: input.note ?? undefined,
+      })
+      .where(and(eq(returnItem.id, actionId), eq(returnItem.return_id, returnId)))
+      .returning()
+
+    if (!updated) {
+      throw new HTTPException(404, { message: "Return item not found" })
+    }
+
+    return this.getById(returnId)
+  },
+
+  async removeReturnItem(returnId: string, actionId: string) {
+    const db = getDb()
+    await db
+      .delete(returnItem)
+      .where(and(eq(returnItem.id, actionId), eq(returnItem.return_id, returnId)))
+    return this.getById(returnId)
+  },
+
+  async updateRequest(id: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const [updated] = await db
+      .update(orderReturn)
+      .set({
+        location_id: (input.location_id as string) ?? undefined,
+        metadata: input.metadata as Record<string, unknown> | undefined,
+        updated_at: sql`now()`,
+      })
+      .where(and(eq(orderReturn.id, id), isNull(orderReturn.deleted_at)))
+      .returning()
+
+    if (!updated) {
+      throw new HTTPException(404, { message: "Return not found" })
     }
 
     return this.getById(id)
   },
 
-  async receive(id: string, input: ReceiveReturnInput) {
+  async confirmRequest(id: string, _input?: Record<string, unknown>) {
     const db = getDb()
-
-    const [ret] = await db
-      .select()
-      .from(orderReturn)
+    const [updated] = await db
+      .update(orderReturn)
+      .set({
+        status: "requested",
+        requested_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
       .where(and(eq(orderReturn.id, id), isNull(orderReturn.deleted_at)))
-      .limit(1)
+      .returning()
 
-    if (!ret) {
+    if (!updated) {
       throw new HTTPException(404, { message: "Return not found" })
     }
 
-    // Update received quantities for each item
+    return this.getById(id)
+  },
+
+  async cancelRequest(id: string) {
+    const db = getDb()
+    const [updated] = await db
+      .update(orderReturn)
+      .set({
+        status: "open",
+        requested_at: null,
+        updated_at: sql`now()`,
+      })
+      .where(and(eq(orderReturn.id, id), isNull(orderReturn.deleted_at)))
+      .returning()
+
+    if (!updated) {
+      throw new HTTPException(404, { message: "Return not found" })
+    }
+
+    return this.getById(id)
+  },
+
+  async addReturnShipping(id: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const current = await this.getById(id)
+    const ret = current.return
+    const actionId = generateId("retshp")
+    const methods = [
+      ...shippingFromMetadata(ret.metadata),
+      { id: actionId, ...input },
+    ]
+
+    await db
+      .update(orderReturn)
+      .set({
+        metadata: { ...((ret.metadata as Record<string, unknown>) ?? {}), shipping_methods: methods },
+        updated_at: sql`now()`,
+      })
+      .where(eq(orderReturn.id, id))
+
+    return this.getById(id)
+  },
+
+  async updateReturnShipping(id: string, actionId: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const current = await this.getById(id)
+    const ret = current.return
+    const methods = shippingFromMetadata(ret.metadata).map((m: any) =>
+      m.id === actionId ? { ...m, ...input } : m,
+    )
+
+    await db
+      .update(orderReturn)
+      .set({
+        metadata: { ...((ret.metadata as Record<string, unknown>) ?? {}), shipping_methods: methods },
+        updated_at: sql`now()`,
+      })
+      .where(eq(orderReturn.id, id))
+
+    return this.getById(id)
+  },
+
+  async deleteReturnShipping(id: string, actionId: string) {
+    const db = getDb()
+    const current = await this.getById(id)
+    const ret = current.return
+    const methods = shippingFromMetadata(ret.metadata).filter((m: any) => m.id !== actionId)
+
+    await db
+      .update(orderReturn)
+      .set({
+        metadata: { ...((ret.metadata as Record<string, unknown>) ?? {}), shipping_methods: methods },
+        updated_at: sql`now()`,
+      })
+      .where(eq(orderReturn.id, id))
+
+    return this.getById(id)
+  },
+
+  async receiveItems(id: string, input: ReceiveReturnInput) {
+    const db = getDb()
+    const current = await this.getById(id)
+    const ret = current.return
+
     if (input.items?.length) {
       for (const item of input.items) {
         await db
@@ -130,30 +289,89 @@ export const returnService = {
             received_quantity: String(item.received_quantity ?? item.quantity),
             damaged_quantity: item.damaged_quantity ? String(item.damaged_quantity) : "0",
           })
-          .where(and(
-            eq(returnItem.return_id, id),
-            eq(returnItem.item_id, item.item_id),
-          ))
+          .where(and(eq(returnItem.return_id, id), eq(returnItem.item_id, item.item_id)))
 
-        // Update order_item return_received_quantity
         await db
           .update(orderItem)
           .set({
             return_received_quantity: sql`COALESCE(return_received_quantity::numeric, 0) + ${item.received_quantity ?? item.quantity}`,
           })
-          .where(and(
-            eq(orderItem.item_id, item.item_id),
-            eq(orderItem.order_id, ret.order_id),
-          ))
+          .where(and(eq(orderItem.item_id, item.item_id), eq(orderItem.order_id, ret.order_id)))
       }
     }
 
-    // Mark return as received
+    await db
+      .update(orderReturn)
+      .set({ status: "partially_received", updated_at: sql`now()` })
+      .where(eq(orderReturn.id, id))
+
+    return this.getById(id)
+  },
+
+  async initiateReceive(id: string, _input?: ReceiveReturnInput) {
+    const db = getDb()
+    await db
+      .update(orderChange)
+      .set({ change_type: "return_receive", updated_at: sql`now()` })
+      .where(
+        and(
+          eq(orderChange.return_id, id),
+          isNull(orderChange.confirmed_at),
+          isNull(orderChange.canceled_at),
+        ),
+      )
+    return this.getById(id)
+  },
+
+  async confirmReceive(id: string, input: ReceiveReturnInput) {
+    return this.receive(id, input)
+  },
+
+  async cancelReceive(id: string) {
+    const db = getDb()
+    const [updated] = await db
+      .update(orderReturn)
+      .set({ status: "requested", updated_at: sql`now()` })
+      .where(and(eq(orderReturn.id, id), isNull(orderReturn.deleted_at)))
+      .returning()
+
+    if (!updated) {
+      throw new HTTPException(404, { message: "Return not found" })
+    }
+
+    return this.getById(id)
+  },
+
+  async receive(id: string, input: ReceiveReturnInput) {
+    const db = getDb()
+    const current = await this.getById(id)
+    const ret = current.return
+
+    if (input.items?.length) {
+      for (const item of input.items) {
+        await db
+          .update(returnItem)
+          .set({
+            received_quantity: String(item.received_quantity ?? item.quantity),
+            damaged_quantity: item.damaged_quantity ? String(item.damaged_quantity) : "0",
+          })
+          .where(and(eq(returnItem.return_id, id), eq(returnItem.item_id, item.item_id)))
+
+        await db
+          .update(orderItem)
+          .set({
+            return_received_quantity: sql`COALESCE(return_received_quantity::numeric, 0) + ${item.received_quantity ?? item.quantity}`,
+          })
+          .where(and(eq(orderItem.item_id, item.item_id), eq(orderItem.order_id, ret.order_id)))
+      }
+    }
+
     const [updated] = await db
       .update(orderReturn)
       .set({
         status: "received",
         received_at: sql`now()`,
+        updated_at: sql`now()`,
       })
       .where(eq(orderReturn.id, id))
       .returning()

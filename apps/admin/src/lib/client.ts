@@ -6,11 +6,6 @@
  */
 import { api, toRpcQuery, parseJsonResponse, getAuthHeaders } from "./api"
 
-// ---------------------------------------------------------------------------
-// 工具
-// ---------------------------------------------------------------------------
-const noop = (..._args: any[]) => Promise.resolve({} as any)
-
 async function rpcGet(rpc: any, params?: Record<string, any>, query?: Record<string, any>) {
   const res = await rpc.$get({ param: params, query: toRpcQuery(query ?? {}) })
   return parseJsonResponse(res)
@@ -86,13 +81,38 @@ function productEntity() {
     // 对齐官方 batchVariantImagesWorkflow: POST /admin/products/:id/variants/:variantId/images/batch
     batchVariantImages: (productId: string, variantId: string, body?: any) =>
       rpcPost(rpc[":productId"].variants[":variantId"].images.batch, body, { productId, variantId }),
-    batchVariantInventoryItems: noop,
+    batchVariantInventoryItems: async (productId: string, variantId: string, body?: any) => {
+      const res = await (api as any).admin.products[":productId"].variants[":variantId"]["inventory-items"].batch.$post({ param: { productId, variantId }, json: body })
+      return parseJsonResponse(res)
+    },
 
     // ── Import / Export ──────────────────────────────────────
-    export: noop,
-    createImport: noop,
-    confirmImport: noop,
-    import: noop,
+    export: async (query?: any) => {
+      const res = await (api as any).admin.products.export.$post({ json: query ?? {} })
+      return parseJsonResponse(res)
+    },
+    createImport: async (body?: { file?: File }) => {
+      const baseUrl = import.meta.env.VITE_API_URL || ""
+      const form = new FormData()
+      if (body?.file) form.append("file", body.file)
+      const res = await fetch(`${baseUrl}/api/admin/products/import`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: form,
+      })
+      return parseJsonResponse(res)
+    },
+    confirmImport: async (transactionId: string, body?: any) => {
+      const res = await (api as any).admin.products.import[":transactionId"].confirm.$post({
+        param: { transactionId },
+        json: body,
+      })
+      return parseJsonResponse(res)
+    },
+    import: async (body?: any) => {
+      const res = await (api as any).admin.products.import.$post({ json: body })
+      return parseJsonResponse(res)
+    },
   }
 }
 
@@ -142,7 +162,12 @@ function ordersClient() {
     removeItem: (id: string, itemId: string) => rpcDelete(rpc[":id"]["line-items"][":itemId"], { id, itemId }),
     addShippingMethod: (id: string, body?: any) => rpcPost(rpc[":id"]["shipping-options"], body, { id }),
     removeShippingMethod: (id: string, methodId: string) => rpcDelete(rpc[":id"]["shipping-options"][":methodId"], { id, methodId }),
-    retrieveShippingOption: noop,
+    retrieveShippingOption: async (orderId: string, optionId: string) => {
+      const res = await (api as any).admin.orders[":id"]["shipping-options"].$get({ param: { id: orderId } })
+      const data = await parseJsonResponse<any>(res)
+      const option = (data.shipping_options ?? []).find((o: any) => o.id === optionId)
+      return { shipping_option: option ?? null }
+    },
     requestItemReturn: (id: string, body?: any) => returnClient().receive(id, body),
     listReturns: (query?: any) => returnClient().list(query),
     retrieveReturn: (id: string) => returnClient().retrieve(id),
@@ -156,8 +181,22 @@ function ordersClient() {
     deleteDraftOrder: (id: string) => draftOrderClient().delete(id),
     updateOrderChange: (changeId: string, body?: any) => orderEditClient().update(changeId, body),
     export: (query?: any) => rpcPost(rpc.export, undefined, query),
-    createFulfillmentSet: noop, deleteFulfillmentSet: noop,
-    createShippingOption: noop, updateShippingOption: noop, deleteShippingOption: noop,
+    createFulfillmentSet: async (locationId: string, body?: any) => {
+      const res = await (api as any).admin["stock-locations"][":id"]["fulfillment-sets"].$post({
+        param: { id: locationId },
+        json: body,
+      })
+      return parseJsonResponse(res)
+    },
+    deleteFulfillmentSet: async (_locationId: string, setId: string) => {
+      const res = await (api as any).admin["fulfillment-sets"][":id"].$delete({ param: { id: setId } })
+      return parseJsonResponse(res)
+    },
+    createShippingOption: (body?: any) => rpcPost((api as any).admin["shipping-options"], body),
+    updateShippingOption: (id: string, body?: any) =>
+      rpcPost((api as any).admin["shipping-options"][":id"], body, { id }),
+    deleteShippingOption: (id: string) =>
+      rpcDelete((api as any).admin["shipping-options"][":id"], { id }),
   }
 }
 
@@ -176,31 +215,120 @@ function returnClient() {
   const rpc = (api as any).admin.returns
   return {
     list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
-    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    retrieve: (id: string, query?: Record<string, any>) => rpcGet(rpc[":id"], { id }, query),
     initiate: (body?: any) => rpcPost(rpc, body),
+    initiateRequest: (body?: any) => rpcPost(rpc, body),
     cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
-    receive: (id: string, body?: any) => rpcPost(rpc[":id"].receive.confirm, body, { id }),
-    // Not yet implemented
-    request: noop, dismiss: noop, initiateRequest: noop, cancelRequest: noop,
-    addReturnItem: noop, updateReturnItem: noop, removeReturnItem: noop,
-    addReturnShipping: noop, updateReturnShipping: noop, deleteReturnShipping: noop,
-    updateRequest: noop, confirmRequest: noop,
-    initiateReceive: noop, receiveItems: noop, updateReceiveItem: noop, removeReceiveItem: noop,
-    dismissItems: noop, updateDismissItem: noop, removeDismissItem: noop,
+    receive: (id: string, body?: any) => rpcPost(rpc[":id"]["receive/confirm"], body, { id }),
+    request: (id: string, body?: any) => rpcPost(rpc[":id"].request, body, { id }),
+    dismiss: (id: string, body?: any) => rpcPost(rpc[":id"]["receive-items"], body, { id }),
+    cancelRequest: (id: string) => rpcPost(rpc[":id"].request.cancel, undefined, { id }),
+    addReturnItem: (id: string, body?: any) => rpcPost(rpc[":id"]["request-items"], body, { id }),
+    updateReturnItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"]["request-items"][":actionId"], body, { id, actionId }),
+    removeReturnItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"]["request-items"][":actionId"], { id, actionId }),
+    addReturnShipping: (id: string, body?: any) =>
+      rpcPost(rpc[":id"]["shipping-method"], body, { id }),
+    updateReturnShipping: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"]["shipping-method"][":actionId"], body, { id, actionId }),
+    deleteReturnShipping: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"]["shipping-method"][":actionId"], { id, actionId }),
+    updateRequest: (id: string, body?: any) => rpcPost(rpc[":id"], body, { id }),
+    confirmRequest: (id: string, body?: any) => rpcPost(rpc[":id"].request, body, { id }),
+    initiateReceive: (id: string, body?: any) => rpcPost(rpc[":id"].receive, body, { id }),
+    receiveItems: (id: string, body?: any) => rpcPost(rpc[":id"]["receive-items"], body, { id }),
+    updateReceiveItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"]["receive-items"][":actionId"], body, { id, actionId }),
+    removeReceiveItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"]["receive-items"][":actionId"], { id, actionId }),
+    dismissItems: (id: string, body?: any) => rpcPost(rpc[":id"]["receive-items"], body, { id }),
+    updateDismissItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"]["receive-items"][":actionId"], body, { id, actionId }),
+    removeDismissItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"]["receive-items"][":actionId"], { id, actionId }),
+    confirmReceive: (id: string, body?: any) => rpcPost(rpc[":id"]["receive/confirm"], body, { id }),
+    cancelReceive: (id: string) => rpcPost(rpc[":id"].receive.cancel, undefined, { id }),
   }
 }
 
-/** claims 客户端 */
+/** claims 客户端 — 对齐 exchange inbound/outbound 命名 */
 function claimClient() {
   const rpc = (api as any).admin.claims
   return {
     list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
-    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    retrieve: (id: string, query?: Record<string, any>) => rpcGet(rpc[":id"], { id }, query),
     create: (body?: any) => rpcPost(rpc, body),
     cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
-    // Not yet implemented
-    update: noop, delete: noop, addItems: noop, updateItem: noop, removeItem: noop,
-    addShippingMethod: noop, removeShippingMethod: noop, createShipment: noop, requestReturn: noop,
+    update: (id: string, body?: any) => rpcPost(rpc[":id"], body, { id }),
+    delete: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
+    // inbound
+    addInboundItems: (id: string, body?: any) => rpcPost(rpc[":id"].inbound.items, body, { id }),
+    updateInboundItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound.items[":actionId"], body, { id, actionId }),
+    removeInboundItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].inbound.items[":actionId"], { id, actionId }),
+    addInboundShipping: (id: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound["shipping-method"], body, { id }),
+    updateInboundShipping: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound["shipping-method"][":actionId"], body, { id, actionId }),
+    deleteInboundShipping: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].inbound["shipping-method"][":actionId"], { id, actionId }),
+    // outbound
+    addOutboundItems: (id: string, body?: any) => rpcPost(rpc[":id"].outbound.items, body, { id }),
+    updateOutboundItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].outbound.items[":actionId"], body, { id, actionId }),
+    removeOutboundItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].outbound.items[":actionId"], { id, actionId }),
+    addOutboundShipping: (id: string, body?: any) =>
+      rpcPost(rpc[":id"].outbound["shipping-method"], body, { id }),
+    updateOutboundShipping: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].outbound["shipping-method"][":actionId"], body, { id, actionId }),
+    deleteOutboundShipping: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].outbound["shipping-method"][":actionId"], { id, actionId }),
+    request: (id: string, body?: any) => rpcPost(rpc[":id"].request, body, { id }),
+    cancelRequest: (id: string) => rpcPost(rpc[":id"].request.cancel, undefined, { id }),
+    // 兼容旧别名
+    addItems: (id: string, body?: any) => rpcPost(rpc[":id"].inbound.items, body, { id }),
+    updateItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound.items[":actionId"], body, { id, actionId }),
+    removeItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].inbound.items[":actionId"], { id, actionId }),
+    addShippingMethod: (id: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound["shipping-method"], body, { id }),
+    removeShippingMethod: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].inbound["shipping-method"][":actionId"], { id, actionId }),
+    createShipment: (id: string, body?: any) => rpcPost(rpc[":id"].request, body, { id }),
+    requestReturn: (id: string) => rpcPost(rpc[":id"].request, undefined, { id }),
+  }
+}
+
+/** fulfillment sets + service zones */
+function fulfillmentSetClient() {
+  const rpc = (api as any).admin["fulfillment-sets"]
+  const base = entityClient("fulfillment-sets")
+  return {
+    ...base,
+    createServiceZone: (fulfillmentSetId: string, body?: any) =>
+      rpcPost(rpc[":id"]["service-zones"], body, { id: fulfillmentSetId }),
+    retrieveServiceZone: (fulfillmentSetId: string, zoneId: string, query?: Record<string, any>) =>
+      rpcGet(rpc[":id"]["service-zones"][":zoneId"], { id: fulfillmentSetId, zoneId }, query),
+    updateServiceZone: (fulfillmentSetId: string, zoneId: string, body?: any) =>
+      rpcPost(rpc[":id"]["service-zones"][":zoneId"], body, { id: fulfillmentSetId, zoneId }),
+    deleteServiceZone: (fulfillmentSetId: string, zoneId: string) =>
+      rpcDelete(rpc[":id"]["service-zones"][":zoneId"], { id: fulfillmentSetId, zoneId }),
+  }
+}
+
+/** 分类/合集关联产品 */
+function linkProductsClient(entity: "product-categories" | "collections") {
+  const base = entityClient(entity)
+  return {
+    ...base,
+    updateProducts: async (id: string, body?: any) => {
+      const res = await (api as any).admin[entity][":id"].products.$post({ param: { id }, json: body })
+      return parseJsonResponse(res)
+    },
   }
 }
 
@@ -233,13 +361,26 @@ function draftOrderClient() {
     addPromotions: (id: string, body?: any) => rpcPost(rpc[":id"].edit.promotions, body, { id }),
     removePromotions: (id: string, actionId: string) => rpcDelete(rpc[":id"].edit.promotions[":actionId"], { id, actionId }),
     // ── Aliases for compatibility ──
-    addItemsAction: noop, updateItemAction: noop, removeItemAction: noop,
+    addItemsAction: (id: string, body?: any) => rpcPost(rpc[":id"].edit.items, body, { id }),
+    updateItemAction: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit.items[":actionId"], body, { id, actionId }),
+    removeItemAction: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit.items[":actionId"], { id, actionId }),
     request: (id: string) => rpcPost(rpc[":id"].edit.request, undefined, { id }),
     confirm: (id: string) => rpcPost(rpc[":id"].edit.confirm, undefined, { id }),
     cancel: (id: string) => rpcDelete(rpc[":id"].edit, { id }),
-    updateActionMethod: noop, addShippingMethodAction: noop,
-    updateShippingMethodAction: noop, removeShippingMethodAction: noop,
-    addPromotionAction: noop, removePromotionAction: noop,
+    updateActionMethod: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit["shipping-methods"][":actionId"], body, { id, actionId }),
+    addShippingMethodAction: (id: string, body?: any) =>
+      rpcPost(rpc[":id"].edit["shipping-methods"], body, { id }),
+    updateShippingMethodAction: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit["shipping-methods"][":actionId"], body, { id, actionId }),
+    removeShippingMethodAction: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
+    addPromotionAction: (id: string, body?: any) =>
+      rpcPost(rpc[":id"].edit.promotions, body, { id }),
+    removePromotionAction: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit.promotions[":actionId"], { id, actionId }),
   }
 }
 
@@ -258,8 +399,8 @@ function orderEditClient() {
     updateAddedItem: (id: string, itemId: string, body?: any) => rpcPost(rpc[":id"].items[":itemId"].update, body, { id, itemId }),
     removeAddedItem: (id: string, itemId: string) => rpcDelete(rpc[":id"].items[":itemId"], { id, itemId }),
     update: (id: string, body?: any) => rpcPost(rpc[":id"].changes, body, { id }),
-    // Not yet implemented
-    delete: noop, initiateRequest: noop,
+    delete: (id: string) => rpcDelete(rpc[":id"], { id }),
+    initiateRequest: (payload?: any) => rpcPost(rpc, payload),
   }
 }
 
@@ -271,12 +412,30 @@ function exchangeClient() {
     retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
     create: (body?: any) => rpcPost(rpc, body),
     cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
-    // Not yet implemented
-    addInboundItems: noop, updateInboundItem: noop, removeInboundItem: noop,
-    addInboundShipping: noop, updateInboundShipping: noop, deleteInboundShipping: noop,
-    addOutboundItems: noop, updateOutboundItem: noop, removeOutboundItem: noop,
-    addOutboundShipping: noop, updateOutboundShipping: noop, deleteOutboundShipping: noop,
-    request: noop, cancelRequest: noop,
+    addInboundItems: (id: string, body?: any) => rpcPost(rpc[":id"].inbound.items, body, { id }),
+    updateInboundItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound.items[":actionId"], body, { id, actionId }),
+    removeInboundItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].inbound.items[":actionId"], { id, actionId }),
+    addInboundShipping: (id: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound["shipping-method"], body, { id }),
+    updateInboundShipping: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].inbound["shipping-method"][":actionId"], body, { id, actionId }),
+    deleteInboundShipping: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].inbound["shipping-method"][":actionId"], { id, actionId }),
+    addOutboundItems: (id: string, body?: any) => rpcPost(rpc[":id"].outbound.items, body, { id }),
+    updateOutboundItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].outbound.items[":actionId"], body, { id, actionId }),
+    removeOutboundItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].outbound.items[":actionId"], { id, actionId }),
+    addOutboundShipping: (id: string, body?: any) =>
+      rpcPost(rpc[":id"].outbound["shipping-method"], body, { id }),
+    updateOutboundShipping: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].outbound["shipping-method"][":actionId"], body, { id, actionId }),
+    deleteOutboundShipping: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].outbound["shipping-method"][":actionId"], { id, actionId }),
+    request: (id: string) => rpcPost(rpc[":id"].request, undefined, { id }),
+    cancelRequest: (id: string) => rpcPost(rpc[":id"].request.cancel, undefined, { id }),
   }
 }
 
@@ -291,7 +450,7 @@ export const sdk = {
     region: entityClient("regions"),
     customer: {
       ...entityClient("customers"),
-      batchCustomerGroups: noop,
+      batchCustomerGroups: async (id: string, body?: any) => { const res = await (api as any).admin.customers[":id"]["customer-groups"].$post({ param: { id }, json: body }); return parseJsonResponse(res) },
       listAddresses: async (customerId: string, query?: any) => {
         const res = await (api as any).admin.customers[":id"].addresses.$get({ param: { id: customerId }, query: toRpcQuery(query ?? {}) })
         return parseJsonResponse(res)
@@ -337,16 +496,16 @@ export const sdk = {
           return { sales_channel: { id, name: "", description: "", is_disabled: false } }
         }
       },
-      batchProducts: noop,
-      updateProducts: noop,
+      batchProducts: async (id: string, body?: any) => { const res = await (api as any).admin["sales-channels"][":id"].products.$post({ param: { id }, json: body }); return parseJsonResponse(res) },
+      updateProducts: async (id: string, body?: any) => { const res = await (api as any).admin["sales-channels"][":id"].products.$post({ param: { id }, json: body }); return parseJsonResponse(res) },
     },
 
     // ── Collections / Categories / Tags / Types ──────────────
-    productCollection: entityClient("collections"),
-    collection: entityClient("collections"),
+    productCollection: linkProductsClient("collections"),
+    collection: linkProductsClient("collections"),
 
-    productCategory: entityClient("product-categories"),
-    category: entityClient("product-categories"),
+    productCategory: linkProductsClient("product-categories"),
+    category: linkProductsClient("product-categories"),
 
     productTag: entityClient("product-tags"),
     productType: entityClient("product-types"),
@@ -354,29 +513,47 @@ export const sdk = {
     // ── Inventory ──────────────────────────────────────────────
     inventoryItem: {
       ...entityClient("inventory-items"),
-      listLevels: async (id: string) => {
-        const res = await (api as any).admin["inventory-items"][":id"]["location-levels"].$get({ param: { id } })
-        return parseJsonResponse(res)
-      },
-      retrieveLevel: noop,
-      updateLevel: noop,
-      deleteLevel: noop,
-      batchUpdateLevels: noop,
-      batchInventoryItemLocationLevels: noop,
-      batchInventoryItemsLocationLevels: noop,
+      listLevels: async (id: string) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"].$get({ param: { iid: id } }); return parseJsonResponse(res) },
+      retrieveLevel: async (iid: string, lid: string) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"][":lid"].$get({ param: { iid, lid } }); return parseJsonResponse(res) },
+      updateLevel: async (iid: string, lid: string, body?: any) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"].$post({ param: { iid }, json: { location_id: lid, ...body } }); return parseJsonResponse(res) },
+      deleteLevel: async (iid: string, lid: string) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"][":lid"].$delete({ param: { iid, lid } }); return parseJsonResponse(res) },
+      batchUpdateLevels: async (body?: any) => { const res = await (api as any).admin["inventory-items"]["location-levels"].batch.$post({ json: body }); return parseJsonResponse(res) },
+      batchInventoryItemLocationLevels: async (id: string, body?: any) => { const res = await (api as any).admin["inventory-items"][":id"]["location-levels"].batch.$post({ param: { id }, json: body }); return parseJsonResponse(res) },
+      batchInventoryItemsLocationLevels: async (body?: any) => { const res = await (api as any).admin["inventory-items"]["location-levels"].batch.$post({ json: body }); return parseJsonResponse(res) },
     },
     stockLocation: {
       ...entityClient("stock-locations"),
-      createFulfillmentSet: noop,
-      updateFulfillmentProviders: noop,
-      updateSalesChannels: noop,
+      createFulfillmentSet: async (id: string, body?: any) => {
+        const res = await (api as any).admin["stock-locations"][":id"]["fulfillment-sets"].$post({
+          param: { id },
+          json: body,
+        })
+        return parseJsonResponse(res)
+      },
+      updateFulfillmentProviders: async (id: string, body?: any) => {
+        const res = await (api as any).admin["stock-locations"][":id"]["fulfillment-providers"].$post({
+          param: { id },
+          json: body,
+        })
+        return parseJsonResponse(res)
+      },
+      updateSalesChannels: async (id: string, body?: any) => {
+        const res = await (api as any).admin["stock-locations"][":id"]["sales-channels"].$post({
+          param: { id },
+          json: body,
+        })
+        return parseJsonResponse(res)
+      },
     },
     reservation: entityClient("reservations"),
 
     // ── Pricing ────────────────────────────────────────────────
     priceList: {
       ...entityClient("price-lists"),
-      listPrices: noop, addPrices: noop, removePrices: noop, linkProducts: noop, batchPrices: noop,
+      listPrices: async (plid: string) => { const res = await (api as any).admin["price-lists"][":plid"].prices.$get({ param: { plid } }); return parseJsonResponse(res) },
+      addPrices: async (plid: string, body?: any) => { const res = await (api as any).admin["price-lists"][":plid"].prices.$post({ param: { plid }, json: body }); return parseJsonResponse(res) },
+      removePrices: async (plid: string, pid: string) => { const res = await (api as any).admin["price-lists"][":plid"].prices[":pid"].$delete({ param: { plid, pid } }); return parseJsonResponse(res) },
+      linkProducts: async (id: string, body?: any) => { const res = await (api as any).admin["price-lists"][":id"].products.$post({ param: { id }, json: body }); return parseJsonResponse(res) }, batchPrices: async (id: string, body?: any) => { const res = await (api as any).admin["price-lists"][":id"].prices.batch.$post({ param: { id }, json: body }); return parseJsonResponse(res) },
     },
     pricePreference: entityClient("price-preferences"),
     currency: entityClient("currencies"),
@@ -395,9 +572,21 @@ export const sdk = {
     exchange: exchangeClient(),
 
     // ── Fulfillment ────────────────────────────────────────────
-    fulfillment: { list: noop, retrieve: noop, create: noop, cancel: noop, createShipment: noop },
-    fulfillmentSet: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
-    fulfillmentProvider: { list: noop, listFulfillmentOptions: noop },
+    fulfillment: {
+      list: (query?: Record<string, any>) => rpcGet((api as any).admin.fulfillments, undefined, query),
+      retrieve: (id: string) => rpcGet((api as any).admin.fulfillments[":id"], { id }),
+      create: (body?: any) => rpcPost((api as any).admin.fulfillments, body),
+      cancel: (id: string) => rpcPost((api as any).admin.fulfillments[":id"].cancel, undefined, { id }),
+      createShipment: (fulfillmentId: string, body?: any) =>
+        rpcPost((api as any).admin.fulfillments[":id"].shipment, body, { id: fulfillmentId }),
+    },
+    fulfillmentSet: fulfillmentSetClient(),
+    fulfillmentProvider: {
+      list: (query?: Record<string, any>) =>
+        rpcGet((api as any).admin["fulfillment-providers"], undefined, query),
+      listFulfillmentOptions: (id: string) =>
+        rpcGet((api as any).admin["fulfillment-providers"][":id"].options, { id }),
+    },
     shippingOption: entityClient("shipping-options"),
     shippingOptionType: entityClient("shipping-option-types"),
     shippingProfile: entityClient("shipping-profiles"),
@@ -408,9 +597,18 @@ export const sdk = {
     // ── Store ──────────────────────────────────────────────────
     store: {
       ...entityClient("stores"),
-      listCurrencies: async () => ({ currencies: [], count: 0 }),
-      addCurrencies: noop,
-      removeCurrencies: noop,
+      listCurrencies: async (id: string) => {
+        const res = await (api as any).admin.stores[":id"].currencies.$get({ param: { id } })
+        return parseJsonResponse(res)
+      },
+      addCurrencies: async (id: string, body?: any) => {
+        const res = await (api as any).admin.stores[":id"].currencies.$post({ param: { id }, json: body })
+        return parseJsonResponse(res)
+      },
+      removeCurrencies: async (id: string, body?: any) => {
+        const res = await (api as any).admin.stores[":id"].currencies.$delete({ param: { id }, json: body })
+        return parseJsonResponse(res)
+      },
     },
 
     // ── Upload ────────────────────────────────────────────────
@@ -438,8 +636,14 @@ export const sdk = {
         })
         return parseJsonResponse(res)
       },
-      retrieve: noop,
-      delete: noop,
+      retrieve: async (id: string) => {
+        const res = await (api as any).admin.uploads[":id"].$get({ param: { id } })
+        return parseJsonResponse(res)
+      },
+      delete: async (id: string) => {
+        const res = await (api as any).admin.uploads[":id"].$delete({ param: { id } })
+        return parseJsonResponse(res)
+      },
     },
 
     // ── Others ────────────────────────────────────────────────
@@ -461,12 +665,37 @@ export const sdk = {
     notification: entityClient("notifications"),
     payment: paymentsClient(),
     taxRegion: entityClient("tax-regions"),
-    taxRate: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
-    taxProvider: { list: noop },
+    taxRate: entityClient("tax-rates"),
+    taxProvider: {
+      list: (query?: Record<string, any>) =>
+        rpcGet((api as any).admin["tax-providers"], undefined, query),
+    },
+    views: {
+      columns: (entity: string) =>
+        rpcGet((api as any).admin.views[":entity"].columns, { entity }),
+      listConfigurations: (entity: string, query?: Record<string, any>) =>
+        rpcGet((api as any).admin.views[":entity"].configurations, { entity }, query),
+      retrieveActiveConfiguration: (entity: string) =>
+        rpcGet((api as any).admin.views[":entity"].configurations.active, { entity }),
+      retrieveConfiguration: (entity: string, id: string, query?: Record<string, any>) =>
+        rpcGet((api as any).admin.views[":entity"].configurations[":id"], { entity, id }, query),
+      createConfiguration: (entity: string, body?: any) =>
+        rpcPost((api as any).admin.views[":entity"].configurations, body, { entity }),
+      updateConfiguration: (entity: string, id: string, body?: any) =>
+        rpcPost((api as any).admin.views[":entity"].configurations[":id"], body, { entity, id }),
+      deleteConfiguration: (entity: string, id: string) =>
+        rpcDelete((api as any).admin.views[":entity"].configurations[":id"], { entity, id }),
+      setActiveConfiguration: (entity: string, body?: any) =>
+        rpcPost((api as any).admin.views[":entity"].configurations.active, body, { entity }),
+    },
     workflowExecution: entityClient("workflows-executions"),
     customerGroup: entityClient("customer-groups"),
     propertyLabel: entityClient("property-labels"),
-    locale: { list: noop, retrieve: noop },
+    locale: {
+      list: (query?: Record<string, any>) => rpcGet((api as any).admin.locales, undefined, query),
+      retrieve: (code: string, query?: Record<string, any>) =>
+        rpcGet((api as any).admin.locales[":code"], { code }, query),
+    },
   },
 
   // ── Auth ──────────────────────────────────────────────────
@@ -513,10 +742,10 @@ export const sdk = {
       const res = await (api as any).auth.session.$get()
       return parseJsonResponse(res)
     },
-    logout: noop,
-    createInvite: noop,
-    acceptInvite: noop,
-    confirmResetPassword: noop,
+    logout: async () => { const res = await (api as any).auth.session.$delete(); return parseJsonResponse(res) },
+    createInvite: async (body?: any) => { const res = await (api as any).admin.invites.$post({ json: body }); return parseJsonResponse(res) },
+    acceptInvite: async (body?: any) => { const res = await (api as any).admin.invites.accept.$post({ json: body }); return parseJsonResponse(res) },
+    confirmResetPassword: async (body?: any) => { const res = await (api as any).auth.password.confirmReset.$post({ json: body }); return parseJsonResponse(res) },
   },
 
   // ── Client（底层 fetch，方便调试） ──────────────────────────
