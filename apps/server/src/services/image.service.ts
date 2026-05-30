@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, productImage, productVariantProductImage } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 
@@ -31,17 +31,62 @@ export const imageService = {
     return { image: created }
   },
 
-  async assignImageToVariants(imageId: string, variantIds: string[]) {
+  /**
+   * 对齐官方 batchImageVariantsWorkflow
+   * POST /admin/products/:id/images/:imageId/variants/batch
+   * body: { add: string[], remove: string[] }
+   */
+  async batchImageVariants(imageId: string, input: { add?: string[]; remove?: string[] }) {
     const db = getDb()
-    if (!variantIds?.length) return { success: true }
 
-    const rows = variantIds.map((vid: string) => ({
-      id: generateId("pvpi"),
-      variant_id: vid,
-      image_id: imageId,
-    }))
-    await db.insert(productVariantProductImage).values(rows)
-    return { success: true }
+    if (input.add?.length) {
+      const rows = input.add.map((variantId: string) => ({
+        id: generateId("pvpi"),
+        variant_id: variantId,
+        image_id: imageId,
+      }))
+      await db.insert(productVariantProductImage).values(rows).onConflictDoNothing()
+    }
+
+    if (input.remove?.length) {
+      await db.delete(productVariantProductImage).where(
+        and(
+          eq(productVariantProductImage.image_id, imageId),
+          inArray(productVariantProductImage.variant_id, input.remove),
+        )
+      )
+    }
+
+    return { added: input.add ?? [], removed: input.remove ?? [] }
+  },
+
+  /**
+   * 对齐官方 batchVariantImagesWorkflow
+   * POST /admin/products/:id/variants/:variantId/images/batch
+   * body: { add: string[], remove: string[] }
+   */
+  async batchVariantImages(variantId: string, input: { add?: string[]; remove?: string[] }) {
+    const db = getDb()
+
+    if (input.add?.length) {
+      const rows = input.add.map((imageId: string) => ({
+        id: generateId("pvpi"),
+        variant_id: variantId,
+        image_id: imageId,
+      }))
+      await db.insert(productVariantProductImage).values(rows).onConflictDoNothing()
+    }
+
+    if (input.remove?.length) {
+      await db.delete(productVariantProductImage).where(
+        and(
+          eq(productVariantProductImage.variant_id, variantId),
+          inArray(productVariantProductImage.image_id, input.remove),
+        )
+      )
+    }
+
+    return { added: input.add ?? [], removed: input.remove ?? [] }
   },
 
   async deleteImage(productId: string, imageId: string) {

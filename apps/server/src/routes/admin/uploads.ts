@@ -1,17 +1,55 @@
 import { Hono } from "hono"
+import { existsSync } from "node:fs"
+import { mkdir, writeFile } from "node:fs/promises"
+import path from "node:path"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
+import { generateId } from "@my-store/db"
 
+const UPLOADS_DIR = path.resolve(process.cwd(), "public/uploads")
+
+async function ensureUploadsDir() {
+  if (!existsSync(UPLOADS_DIR)) {
+    await mkdir(UPLOADS_DIR, { recursive: true })
+  }
+}
+
+/**
+ * 对齐 Medusa 官方 POST /admin/uploads
+ * - 官方: multer upload.array("files") → req.files → uploadFilesWorkflow → { files: result }
+ * - 此处: Hono parseBody → 本地文件存储 → { files: [{ id, url }] }
+ * - defaultAdminUploadFields: ["id", "url"]
+ */
 export const adminUploads = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
   .post("/", async (c) => {
-    const formData = await c.req.parseBody()
-    const file = formData["file"]
-    if (!file || !(file instanceof File)) {
-      return c.json({ message: "No file provided" }, 400)
+    // c.req.parseBody() 对同名多文件不可靠，改用 formData().getAll()
+    const form = await c.req.formData()
+    const raw: (File | string)[] = form.getAll("files") as (File | string)[]
+    const files: File[] = raw.filter((f): f is File => f instanceof File)
+
+    if (!files.length) {
+      return c.json({ message: "No files were uploaded" }, 400)
     }
-    // For now return the file as a placeholder URL
-    // In production, upload to S3/supabase-storage
-    return c.json({
-      files: [{ url: `blob:${file.name}` }],
-    })
+
+    await ensureUploadsDir()
+
+    const uploadedFiles = await Promise.all(
+      files.map(async (file) => {
+        const id = generateId("file")
+        const ext = path.extname(file.name)
+        const safeBase = path
+          .basename(file.name, ext)
+          .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, "_")
+        const filename = `${safeBase}-${id}${ext}`
+        const filepath = path.join(UPLOADS_DIR, filename)
+
+        const buffer = Buffer.from(await file.arrayBuffer())
+        await writeFile(filepath, buffer)
+
+        // 对齐 defaultAdminUploadFields: ["id", "url"]
+        return { id, url: `/uploads/${filename}` }
+      })
+    )
+
+    return c.json({ files: uploadedFiles })
   })

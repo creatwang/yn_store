@@ -37,7 +37,6 @@ export const Login = () => {
   const { mutateAsync, isPending } = useSignInWithEmailPass()
 
   const handleSubmit = form.handleSubmit(async ({ email, password }) => {
-    debugger;
     await mutateAsync(
       {
         email,

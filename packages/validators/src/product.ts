@@ -41,7 +41,7 @@ export const createProductSchema = z.object({
   subtitle: z.string().optional(),
   description: z.string().optional(),
   status: productStatusEnum.default("draft"),
-  thumbnail: z.string().optional().or(z.literal("")),
+  thumbnail: z.string().optional().nullable().or(z.literal("")),
   discountable: z.boolean().default(true),
   metadata: z.record(z.string(), z.unknown()).optional(),
   // 以下字段由前端 CreateProductForm 提交，透传到 backend 处理

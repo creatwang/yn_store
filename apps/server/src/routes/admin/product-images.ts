@@ -15,9 +15,15 @@ export const adminProductImages = new Hono<{ Variables: AuthVariables }>()
     const result = await imageService.createImage(c.req.param("productId"), { url, rank, metadata })
     return c.json(result, 201)
   })
-  .post("/:productId/images/assign", async (c) => {
+  /*
+   * 对齐官方 batchImageVariantsWorkflow
+   * POST /admin/products/:id/images/:imageId/variants/batch
+   * body: { add: string[], remove: string[] }
+   * returns: { added: string[], removed: string[] }
+   */
+  .post("/:productId/images/:imageId/variants/batch", async (c) => {
     const body = await c.req.json()
-    const result = await imageService.assignImageToVariants(body.image_id, body.variant_ids)
+    const result = await imageService.batchImageVariants(c.req.param("imageId"), body)
     return c.json(result)
   })
   .delete("/:productId/images/:imageId", async (c) => {

@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 import { logger } from "hono/logger"
+import { serveStatic } from "@hono/node-server/serve-static"
 import { getHealthStatus, logHealthToConsole } from "./lib/check-db"
 import { corsMiddleware } from "./middleware/cors"
 import { errorHandler } from "./middleware/error-handler"
@@ -69,6 +70,9 @@ const app = new Hono()
   .use("*", logger())
   .use("*", corsMiddleware)
   .route("/api", apiRoutes)
+
+// 为上传的文件提供静态文件服务
+app.get("/uploads/*", serveStatic({ root: "public" }))
 
 const appMount = mountAppSpa(app)
 

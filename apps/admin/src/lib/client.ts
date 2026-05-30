@@ -4,7 +4,7 @@
  * 方法签名对齐 @medusajs/js-sdk v2.15.3（见 demo/dashboard/node_modules/@medusajs/js-sdk/dist/）
  * 所有方法均忽略 headers 参数（由 api.ts 的 getAuthHeaders 自动注入）
  */
-import { api, toRpcQuery, parseJsonResponse } from "./api"
+import { api, toRpcQuery, parseJsonResponse, getAuthHeaders } from "./api"
 
 // ---------------------------------------------------------------------------
 // 工具
@@ -79,8 +79,13 @@ function productEntity() {
     deleteImage: (productId: string, imageId: string) =>
       rpcDelete(rpc[":productId"].images[":imageId"], { productId, imageId }),
 
-    batchImageVariants: noop,
-    batchVariantImages: noop,
+    // 对齐官方 batchImageVariantsWorkflow: POST /admin/products/:id/images/:imageId/variants/batch
+    batchImageVariants: (productId: string, imageId: string, body?: any) =>
+      rpcPost(rpc[":productId"].images[":imageId"].variants.batch, body, { productId, imageId }),
+
+    // 对齐官方 batchVariantImagesWorkflow: POST /admin/products/:id/variants/:variantId/images/batch
+    batchVariantImages: (productId: string, variantId: string, body?: any) =>
+      rpcPost(rpc[":productId"].variants[":variantId"].images.batch, body, { productId, variantId }),
     batchVariantInventoryItems: noop,
 
     // ── Import / Export ──────────────────────────────────────
@@ -398,7 +403,6 @@ export const sdk = {
     },
 
     // ── Payment ────────────────────────────────────────────────
-    payment: { list: noop, retrieve: noop, capture: noop, refund: noop },
     paymentCollection: { list: noop, retrieve: noop, markAsPaid: noop, createPaymentSession: noop },
 
     // ── Store ──────────────────────────────────────────────────
@@ -412,17 +416,27 @@ export const sdk = {
     // ── Upload ────────────────────────────────────────────────
     upload: {
       create: async (data: any) => {
-        if (data?.files?.length) {
-          const formData = new FormData()
-          formData.append("file", data.files[0])
-          try {
-            const res = await fetch("/api/admin/uploads", { method: "POST", body: formData })
-            return parseJsonResponse(res)
-          } catch {
-            return { files: [{ url: URL.createObjectURL(data.files[0]) }] }
-          }
+        if (!data?.files?.length) {
+          return { files: [] }
         }
-        return { files: [] }
+
+        const formData = new FormData()
+        // 对齐 Medusa 官方: multer upload.array("files")
+        for (const file of data.files) {
+          formData.append("files", file)
+        }
+
+        const headers: Record<string, string> = {
+          ...getAuthHeaders(),
+          // 不设 Content-Type，浏览器自动设为 multipart/form-data + boundary
+        }
+
+        const res = await fetch("/api/admin/uploads", {
+          method: "POST",
+          body: formData,
+          headers,
+        })
+        return parseJsonResponse(res)
       },
       retrieve: noop,
       delete: noop,

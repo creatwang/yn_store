@@ -34,9 +34,23 @@ const defaultAdminProductFields = [
   "*variants", "*sales_channels",
 ]
 
-/** 按 fields 列表加载关联数据（类似 Medusa refetchEntity 的按需加载） */
+/** 按 fields 列表加载关联数据（对齐 Medusa refetchEntity 语义）
+ *  - 仅有负值字段（如 "-type,-variants"）→ 用默认字段，排除负值
+ *  - 有正值字段（如 "*images"）→ 只看正值字段，遵循排除
+ *  - 无 fields → 用默认字段
+ */
 async function fetchRelations(db: any, id: string, item: any, fields: string[] = defaultAdminProductFields) {
-  const wants = (name: string) => fields.includes(`*${name}`) || fields.includes(name)
+  const hasPositives = fields.some((f) => !f.startsWith("-"))
+  const effectiveFields = hasPositives ? fields : [...defaultAdminProductFields, ...fields]
+
+  const negated = new Set(
+    fields.filter((f) => f.startsWith("-")).map((f) => f.slice(1))
+  )
+
+  const wants = (name: string) => {
+    if (negated.has(name)) return false
+    return effectiveFields.includes(`*${name}`) || effectiveFields.includes(name)
+  }
 
   const result: Record<string, any> = {}
 

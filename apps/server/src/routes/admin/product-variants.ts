@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 import { variantService } from "../../services/variant.service"
+import { imageService } from "../../services/image.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminProductVariants = new Hono<{ Variables: AuthVariables }>()
@@ -37,6 +38,11 @@ export const adminProductVariants = new Hono<{ Variables: AuthVariables }>()
   .post("/:productId/variants/:variantId", async (c) => {
     const body = await c.req.json()
     const result = await variantService.updateVariant(c.req.param("productId"), c.req.param("variantId"), body)
+    return c.json(result)
+  })
+  .post("/:productId/variants/:variantId/images/batch", async (c) => {
+    const body = await c.req.json()
+    const result = await imageService.batchVariantImages(c.req.param("variantId"), body)
     return c.json(result)
   })
   .delete("/:productId/variants/:variantId", async (c) => {
