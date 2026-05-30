@@ -396,7 +396,7 @@ function formatShippingMethod(
       shipping_method_id: link.shipping_method_id,
       version: link.version,
     },
-    tax_lines: taxLines.map((line) => formatTaxLine(line as OrderLineItemTaxLineRow, amount)),
+    tax_lines: taxLines.map((line) => formatTaxLine(line as any, amount)),
     adjustments: adjustments.map((adj) => ({
       ...adj,
       amount: toAmount(adj.amount ?? adj.raw_amount),
@@ -729,9 +729,9 @@ export async function presentAdminOrders(
     )
 
     if (fieldConfig.wantsSummary) {
-      dto = formatAdminOrder({ order: dto, summaryRow })
+      dto = formatAdminOrder({ order: dto as any, summaryRow }) as any
     } else if (fieldConfig.wantsTotal) {
-      dto = { ...dto, total: extractOrderTotal(summaryRow) }
+      dto = { ...dto, total: extractOrderTotal(summaryRow) } as any
     }
 
     return applyOrderFieldMask(dto, fieldConfig)

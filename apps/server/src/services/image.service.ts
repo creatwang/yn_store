@@ -31,11 +31,8 @@ export const imageService = {
     return { image: created }
   },
 
-  /**
-   * 对齐官方 batchImageVariantsWorkflow
-   * POST /admin/products/:id/images/:imageId/variants/batch
-   * body: { add: string[], remove: string[] }
-   */
+  // 参考: @medusajs/medusa/dist/api/admin/products/[id]/images/[image_id]/variants/batch/route.js
+  // 官方用 batchImageVariantsWorkflow，这里是等价 Drizzle 实现，API 契约一致
   async batchImageVariants(imageId: string, input: { add?: string[]; remove?: string[] }) {
     const db = getDb()
 
@@ -60,11 +57,8 @@ export const imageService = {
     return { added: input.add ?? [], removed: input.remove ?? [] }
   },
 
-  /**
-   * 对齐官方 batchVariantImagesWorkflow
-   * POST /admin/products/:id/variants/:variantId/images/batch
-   * body: { add: string[], remove: string[] }
-   */
+  // 参考: @medusajs/medusa/dist/api/admin/products/[id]/variants/[variant_id]/images/batch/route.js
+  // 官方用 batchVariantImagesWorkflow，这里是等价 Drizzle 实现，API 契约一致
   async batchVariantImages(variantId: string, input: { add?: string[]; remove?: string[] }) {
     const db = getDb()
 

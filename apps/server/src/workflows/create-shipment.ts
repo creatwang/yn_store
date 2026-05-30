@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { generateId, getDb, fulfillment, fulfillmentLabel, orderItem } from "@my-store/db"
 import type { CreateShipmentInput } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
@@ -6,8 +6,8 @@ import { createWorkflow, step } from "../lib/workflow"
 
 type Input = CreateShipmentInput & { order_id: string; fulfillment_id: string }
 
-export const createShipmentWorkflow = createWorkflow("create-shipment", [
-  step("ship", async ({ input }) => {
+export const createShipmentWorkflow = createWorkflow<Input, any>("create-shipment", [
+  step("ship", async ({ input }: { input: Input }) => {
     const db = getDb()
     const [f] = await db.select().from(fulfillment)
       .where(eq(fulfillment.id, input.fulfillment_id))
@@ -15,7 +15,7 @@ export const createShipmentWorkflow = createWorkflow("create-shipment", [
     if (!f) throw new HTTPException(404, { message: "Fulfillment not found" })
 
     await db.update(fulfillment)
-      .set({ shipped_at: new Date().toISOString(), marked_shipped_by: "admin" })
+      .set({ shipped_at: sql`now()`, marked_shipped_by: "admin" })
       .where(eq(fulfillment.id, input.fulfillment_id))
 
     if (input.labels?.length) {
@@ -33,7 +33,7 @@ export const createShipmentWorkflow = createWorkflow("create-shipment", [
     if (input.items?.length) {
       for (const item of input.items) {
         await db.update(orderItem)
-          .set({ shipped_quantity: item.quantity })
+          .set({ shipped_quantity: String(item.quantity) })
           .where(eq(orderItem.item_id, item.item_id))
       }
     }

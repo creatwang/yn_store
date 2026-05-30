@@ -67,7 +67,7 @@ export const orderService = {
       db.select({ total: count() }).from(order).where(where),
     ])
 
-    const enriched = await presentAdminOrders(db, orders, { fields: query.fields })
+    const enriched = await presentAdminOrders(db as any, orders, { fields: query.fields })
 
     return {
       orders: enriched,
@@ -136,7 +136,7 @@ export const orderService = {
 
     return {
       order: await presentAdminOrderDetail(
-        db,
+        db as any,
         item,
         fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
       ),

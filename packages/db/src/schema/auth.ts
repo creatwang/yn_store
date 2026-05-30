@@ -1,4 +1,4 @@
-import { jsonb, pgTable, text } from "drizzle-orm/pg-core"
+import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { timestamps } from "./timestamps"
 
 export const authIdentity = pgTable("auth_identity", {
@@ -23,6 +23,16 @@ export const user = pgTable("user", {
   last_name: text("last_name"),
   email: text("email").notNull(),
   avatar_url: text("avatar_url"),
+  metadata: jsonb("metadata"),
+  ...timestamps,
+})
+
+export const invite = pgTable("invite", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  accepted: boolean("accepted").default(false).notNull(),
+  token: text("token").notNull(),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
   metadata: jsonb("metadata"),
   ...timestamps,
 })

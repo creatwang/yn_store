@@ -220,7 +220,6 @@ export const fulfillmentService = {
       .set({
         shipped_at: sql`now()`,
         marked_shipped_by: "admin",
-        no_notification: input.no_notification ?? null,
       })
       .where(eq(fulfillment.id, fulfillmentId))
 

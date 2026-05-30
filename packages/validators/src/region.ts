@@ -11,14 +11,24 @@ export type ListRegionsQuery = z.infer<typeof listRegionsSchema>
 export const createRegionSchema = z.object({
   name: z.string().min(1),
   currency_code: z.string().min(1),
-  tax_rate: z.number().min(0).max(100),
-  countries: z.array(z.string()).min(1),
+  automatic_taxes: z.boolean().optional().default(true),
+  is_tax_inclusive: z.boolean().optional().default(false),
+  countries: z.array(z.string()).optional().default([]),
+  payment_providers: z.array(z.string()).optional().default([]),
   metadata: metadataSchema.optional(),
 })
 
 export type CreateRegionInput = z.infer<typeof createRegionSchema>
 
-export const updateRegionSchema = createRegionSchema.partial()
+export const updateRegionSchema = z.object({
+  name: z.string().optional(),
+  currency_code: z.string().optional(),
+  automatic_taxes: z.boolean().optional(),
+  is_tax_inclusive: z.boolean().optional(),
+  countries: z.array(z.string()).optional(),
+  payment_providers: z.array(z.string()).optional(),
+  metadata: metadataSchema.optional(),
+})
 
 export type UpdateRegionInput = z.infer<typeof updateRegionSchema>
 

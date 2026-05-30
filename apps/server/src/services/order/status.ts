@@ -142,7 +142,7 @@ export function getLastFulfillmentStatus(order: OrderStatusInput): string {
     (order.items ?? []).filter(
       (i) =>
         isDefined(i?.detail?.raw_fulfilled_quantity) &&
-        bn.lt(i.detail.raw_fulfilled_quantity, i.raw_quantity),
+        bn.lt(i.detail!.raw_fulfilled_quantity, i.raw_quantity),
     ).length > 0
 
   if (fulfillmentStatus[FulfillmentStatus.DELIVERED] > 0) {

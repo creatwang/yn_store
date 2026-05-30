@@ -31,7 +31,8 @@ export const adminClaims = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
   .post("/:id/inbound/items/:actionId", claimItemsSchema, async (c) => {
-    const result = await claimService.updateInboundItem(c.req.param("id"), c.req.param("actionId"), c.req.valid("json"))
+    const body = c.req.valid("json")
+    const result = await claimService.updateInboundItem(c.req.param("id"), c.req.param("actionId"), body.items[0] ?? body)
     return c.json(result)
   })
   .delete("/:id/inbound/items/:actionId", async (c) => {
@@ -40,11 +41,11 @@ export const adminClaims = new Hono<{ Variables: AuthVariables }>()
   })
   // ── Inbound Shipping ──────────────────────────────────
   .post("/:id/inbound/shipping-method", actionSchema, async (c) => {
-    const result = await claimService.addInboundShipping(c.req.param("id"), c.req.valid("json"))
+    const result = await claimService.addInboundShipping(c.req.param("id"), c.req.valid("json") as any)
     return c.json(result)
   })
   .post("/:id/inbound/shipping-method/:actionId", actionSchema, async (c) => {
-    const result = await claimService.updateInboundShipping(c.req.param("id"), c.req.param("actionId"), c.req.valid("json"))
+    const result = await claimService.updateInboundShipping(c.req.param("id"), c.req.param("actionId"), c.req.valid("json") as any)
     return c.json(result)
   })
   .delete("/:id/inbound/shipping-method/:actionId", async (c) => {
@@ -53,11 +54,11 @@ export const adminClaims = new Hono<{ Variables: AuthVariables }>()
   })
   // ── Outbound Shipping ─────────────────────────────────
   .post("/:id/outbound/shipping-method", actionSchema, async (c) => {
-    const result = await claimService.addOutboundShipping(c.req.param("id"), c.req.valid("json"))
+    const result = await claimService.addOutboundShipping(c.req.param("id"), c.req.valid("json") as any)
     return c.json(result)
   })
   .post("/:id/outbound/shipping-method/:actionId", actionSchema, async (c) => {
-    const result = await claimService.updateOutboundShipping(c.req.param("id"), c.req.param("actionId"), c.req.valid("json"))
+    const result = await claimService.updateOutboundShipping(c.req.param("id"), c.req.param("actionId"), c.req.valid("json") as any)
     return c.json(result)
   })
   .delete("/:id/outbound/shipping-method/:actionId", async (c) => {

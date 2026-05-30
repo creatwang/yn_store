@@ -14,8 +14,9 @@ import { adminSalesChannels } from "./routes/admin/sales-channels"
 import { adminProductVariants } from "./routes/admin/product-variants"
 import { adminProductOptions } from "./routes/admin/product-options"
 import { adminProductImages } from "./routes/admin/product-images"
-import { adminStockLocations } from "./routes/admin/stock-locations"
-import { adminInventoryItems } from "./routes/admin/inventory-items"
+import { adminStockLocationsFull } from "./routes/admin/batch"
+import { adminInventoryItemsFull } from "./routes/admin/batch"
+import { adminCategories, adminCollections, adminCustomerGroups, adminPriceLists, adminTaxRates, adminReservations, adminShippingProfiles, adminShippingOptionTypes, adminCurrencies, adminPromotions, adminCampaigns, adminApiKeys, adminNotifications, adminWorkflowExecutions, adminShippingOptions, adminPricePreferences, adminPropertyLabels, adminPaymentCollections } from "./routes/admin/batch"
 import { adminUploads } from "./routes/admin/uploads"
 import { adminStore } from "./routes/admin/store"
 import { adminPayments } from "./routes/admin/payments"
@@ -24,6 +25,8 @@ import { adminClaims } from "./routes/admin/claims"
 import { adminExchanges } from "./routes/admin/exchanges"
 import { adminOrderEdits } from "./routes/admin/order-edits"
 import { adminDraftOrders } from "./routes/admin/draft-orders"
+import { adminUsers, adminInvites } from "./routes/admin/users"
+import { adminProductTags, adminProductTypes, adminTaxRegions, adminReturnReasons, adminRefundReasons } from "./routes/admin/settings"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
@@ -48,8 +51,26 @@ const apiRoutes = new Hono()
   .route("/admin/products", adminProductVariants)
   .route("/admin/products", adminProductOptions)
   .route("/admin/products", adminProductImages)
-  .route("/admin/stock-locations", adminStockLocations)
-  .route("/admin/inventory-items", adminInventoryItems)
+  .route("/admin/stock-locations", adminStockLocationsFull)
+  .route("/admin/inventory-items", adminInventoryItemsFull)
+  .route("/admin/product-categories", adminCategories)
+  .route("/admin/collections", adminCollections)
+  .route("/admin/customer-groups", adminCustomerGroups)
+  .route("/admin/price-lists", adminPriceLists)
+  .route("/admin/tax-rates", adminTaxRates)
+  .route("/admin/reservations", adminReservations)
+  .route("/admin/shipping-profiles", adminShippingProfiles)
+  .route("/admin/shipping-option-types", adminShippingOptionTypes)
+  .route("/admin/currencies", adminCurrencies)
+  .route("/admin/promotions", adminPromotions)
+  .route("/admin/campaigns", adminCampaigns)
+  .route("/admin/api-keys", adminApiKeys)
+  .route("/admin/notifications", adminNotifications)
+  .route("/admin/workflows-executions", adminWorkflowExecutions)
+  .route("/admin/shipping-options", adminShippingOptions)
+  .route("/admin/price-preferences", adminPricePreferences)
+  .route("/admin/property-labels", adminPropertyLabels)
+  .route("/admin/payment-collections", adminPaymentCollections)
   .route("/admin/uploads", adminUploads)
   .route("/admin/stores", adminStore)
   .route("/admin/payments", adminPayments)
@@ -58,6 +79,13 @@ const apiRoutes = new Hono()
   .route("/admin/exchanges", adminExchanges)
   .route("/admin/order-edits", adminOrderEdits)
   .route("/admin/draft-orders", adminDraftOrders)
+  .route("/admin/users", adminUsers)
+  .route("/admin/invites", adminInvites)
+  .route("/admin/product-tags", adminProductTags)
+  .route("/admin/product-types", adminProductTypes)
+  .route("/admin/tax-regions", adminTaxRegions)
+  .route("/admin/return-reasons", adminReturnReasons)
+  .route("/admin/refund-reasons", adminRefundReasons)
   .route("/store/products", storeProducts)
   .route("/store/orders", storeOrders)
   .route("/store/carts", storeCarts)

@@ -292,17 +292,32 @@ export const sdk = {
     customer: {
       ...entityClient("customers"),
       batchCustomerGroups: noop,
-      createAddress: noop, updateAddress: noop, deleteAddress: noop,
-      listAddresses: async () => ({ addresses: [], count: 0 }),
-      retrieveAddress: async () => ({ address: {} }),
+      listAddresses: async (customerId: string, query?: any) => {
+        const res = await (api as any).admin.customers[":id"].addresses.$get({ param: { id: customerId }, query: toRpcQuery(query ?? {}) })
+        return parseJsonResponse(res)
+      },
+      retrieveAddress: async (customerId: string, addressId: string) => {
+        const res = await (api as any).admin.customers[":id"].addresses[":addressId"].$get({ param: { id: customerId, addressId } })
+        return parseJsonResponse(res)
+      },
+      createAddress: async (customerId: string, body?: any) => {
+        const res = await (api as any).admin.customers[":id"].addresses.$post({ param: { id: customerId }, json: body })
+        return parseJsonResponse(res)
+      },
+      updateAddress: async (customerId: string, addressId: string, body?: any) => {
+        const res = await (api as any).admin.customers[":id"].addresses[":addressId"].$post({ param: { id: customerId, addressId }, json: body })
+        return parseJsonResponse(res)
+      },
+      deleteAddress: async (customerId: string, addressId: string) => {
+        const res = await (api as any).admin.customers[":id"].addresses[":addressId"].$delete({ param: { id: customerId, addressId } })
+        return parseJsonResponse(res)
+      },
     },
     user: {
-      list: async () => ({ users: [], count: 0 }),
-      retrieve: async () => ({ user: {} }),
-      create: noop, update: noop, delete: noop,
+      ...entityClient("users"),
       me: async () => {
         try {
-          const res = await (api as any).auth.session.$get()
+          const res = await (api as any).admin.users.me.$get()
           const data = await parseJsonResponse<any>(res)
           return { user: data.user || data }
         } catch {
@@ -327,36 +342,22 @@ export const sdk = {
     },
 
     // ── Collections / Categories / Tags / Types ──────────────
-    // 注意：后端尚未实现这些路由，保留安全兜底
-    productCollection: {
-      list: async () => ({ collections: [], count: 0 }),
-      retrieve: async (id: string) => ({ collection: { id, title: "", handle: "" } }),
-      create: noop, update: noop, delete: noop, updateProducts: noop,
-    },
-    collection: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
+    productCollection: entityClient("collections"),
+    collection: entityClient("collections"),
 
-    productCategory: {
-      list: async () => ({ product_categories: [], count: 0 }),
-      retrieve: async (id: string) => ({ product_category: { id, name: "", handle: "" } }),
-      create: noop, update: noop, delete: noop, updateProducts: noop,
-    },
-    category: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
+    productCategory: entityClient("product-categories"),
+    category: entityClient("product-categories"),
 
-    productTag: {
-      list: async () => ({ product_tags: [], count: 0 }),
-      retrieve: async (id: string) => ({ product_tag: { id, value: "" } }),
-      create: noop, update: noop, delete: noop,
-    },
-    productType: {
-      list: async () => ({ product_types: [], count: 0 }),
-      retrieve: async (id: string) => ({ product_type: { id, value: "" } }),
-      create: noop, update: noop, delete: noop,
-    },
+    productTag: entityClient("product-tags"),
+    productType: entityClient("product-types"),
 
     // ── Inventory ──────────────────────────────────────────────
     inventoryItem: {
       ...entityClient("inventory-items"),
-      listLevels: noop,
+      listLevels: async (id: string) => {
+        const res = await (api as any).admin["inventory-items"][":id"]["location-levels"].$get({ param: { id } })
+        return parseJsonResponse(res)
+      },
       retrieveLevel: noop,
       updateLevel: noop,
       deleteLevel: noop,
@@ -370,22 +371,25 @@ export const sdk = {
       updateFulfillmentProviders: noop,
       updateSalesChannels: noop,
     },
-    reservation: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
+    reservation: entityClient("reservations"),
 
     // ── Pricing ────────────────────────────────────────────────
-    priceList: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, listPrices: noop, addPrices: noop, removePrices: noop, linkProducts: noop, batchPrices: noop },
-    pricePreference: { list: async () => ({ price_preferences: [], count: 0 }), retrieve: noop, create: noop, update: noop, delete: noop },
-    currency: { list: noop, retrieve: noop },
+    priceList: {
+      ...entityClient("price-lists"),
+      listPrices: noop, addPrices: noop, removePrices: noop, linkProducts: noop, batchPrices: noop,
+    },
+    pricePreference: entityClient("price-preferences"),
+    currency: entityClient("currencies"),
 
     // ── Promotions ─────────────────────────────────────────────
-    promotion: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, listRules: noop, addRules: noop, removeRules: noop },
-    campaign: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, batchPromotions: noop },
+    promotion: entityClient("promotions"),
+    campaign: entityClient("campaigns"),
 
     // ── Orders / Claims / Returns ─────────────────────────────
     claim: claimClient(),
     return: returnClient(),
-    returnReason: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
-    refundReason: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
+    returnReason: entityClient("return-reasons"),
+    refundReason: entityClient("refund-reasons"),
     orderEdit: orderEditClient(),
     draftOrder: draftOrderClient(),
     exchange: exchangeClient(),
@@ -394,16 +398,12 @@ export const sdk = {
     fulfillment: { list: noop, retrieve: noop, create: noop, cancel: noop, createShipment: noop },
     fulfillmentSet: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
     fulfillmentProvider: { list: noop, listFulfillmentOptions: noop },
-    shippingOption: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, updateRules: noop },
-    shippingOptionType: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
-    shippingProfile: {
-      list: async () => ({ shipping_profiles: [], count: 0 }),
-      retrieve: async (id: string) => ({ shipping_profile: { id, name: "" } }),
-      create: noop, update: noop, delete: noop,
-    },
+    shippingOption: entityClient("shipping-options"),
+    shippingOptionType: entityClient("shipping-option-types"),
+    shippingProfile: entityClient("shipping-profiles"),
 
     // ── Payment ────────────────────────────────────────────────
-    paymentCollection: { list: noop, retrieve: noop, markAsPaid: noop, createPaymentSession: noop },
+    paymentCollection: entityClient("payment-collections"),
 
     // ── Store ──────────────────────────────────────────────────
     store: {
@@ -443,15 +443,29 @@ export const sdk = {
     },
 
     // ── Others ────────────────────────────────────────────────
-    invite: { list: noop, retrieve: noop, create: noop, resend: noop, delete: noop, accept: noop },
-    apiKey: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, revoke: noop, batchSalesChannels: noop },
-    notification: { list: noop, retrieve: noop, markAsRead: noop },
+    invite: {
+      ...entityClient("invites"),
+      accept: async (payload: any, query?: any, headers?: any) => {
+        const res = await (api as any).admin.invites.accept.$post({
+          json: payload,
+          query: toRpcQuery(query ?? {}),
+        })
+        return parseJsonResponse(res)
+      },
+      resend: async (id: string) => {
+        const res = await (api as any).admin.invites[":id"].resend.$post({ param: { id } })
+        return parseJsonResponse(res)
+      },
+    },
+    apiKey: entityClient("api-keys"),
+    notification: entityClient("notifications"),
     payment: paymentsClient(),
-    taxRegion: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
+    taxRegion: entityClient("tax-regions"),
     taxRate: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop },
     taxProvider: { list: noop },
-    workflowExecution: { list: noop, retrieve: noop },
-    customerGroup: { list: noop, retrieve: noop, create: noop, update: noop, delete: noop, batchCustomers: noop },
+    workflowExecution: entityClient("workflows-executions"),
+    customerGroup: entityClient("customer-groups"),
+    propertyLabel: entityClient("property-labels"),
     locale: { list: noop, retrieve: noop },
   },
 

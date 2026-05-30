@@ -30,7 +30,7 @@ export function step<I, O>(
   return { name, handler, compensate }
 }
 
-export function createWorkflow<I, O>(name: string, steps: StepDef[]): WorkflowDef<I, O> {
+export function createWorkflow<I, O>(name: string, steps: StepDef<any, any>[]): WorkflowDef<I, O> {
   return {
     name,
     async run(input: I): Promise<O> {

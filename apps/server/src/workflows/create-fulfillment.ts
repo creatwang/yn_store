@@ -10,7 +10,7 @@ type Input = CreateFulfillmentInput & { order_id: string }
 export const createFulfillmentWorkflow = createWorkflow<Input, any>("create-fulfillment", [
   step("validate-order", async ({ input }) => {
     const db = getDb()
-    const [ord] = await db.select({ id: order.id }).from(order)
+    const [ord] = await db.select({ id: order.id, status: order.status }).from(order)
       .where(and(eq(order.id, input.order_id), isNull(order.deleted_at)))
       .limit(1)
     if (!ord) throw new HTTPException(404, { message: "Order not found" })

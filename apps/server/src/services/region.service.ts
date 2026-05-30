@@ -61,6 +61,7 @@ export const regionService = {
         id,
         name: input.name,
         currency_code: input.currency_code,
+        automatic_taxes: input.automatic_taxes ?? true,
         metadata: input.metadata ?? null,
         created_at: sql`now()`,
         updated_at: sql`now()`,
@@ -79,6 +80,7 @@ export const regionService = {
       .set({
         ...(input.name !== undefined && { name: input.name }),
         ...(input.currency_code !== undefined && { currency_code: input.currency_code }),
+        ...(input.automatic_taxes !== undefined && { automatic_taxes: input.automatic_taxes }),
         ...(input.metadata !== undefined && { metadata: input.metadata }),
         updated_at: sql`now()`,
       })

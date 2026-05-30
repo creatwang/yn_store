@@ -17,7 +17,7 @@ export const storeCustomers = new Hono()
   })
   .post("/register", zValidator("json", registerCustomerSchema), async (c) => {
     const body = c.req.valid("json")
-    const result = await customerService.register(body)
+    const result = await customerService.register({ ...body, has_account: true })
     return c.json(result, 201)
   })
   .get("/me", storeAuth, async (c) => {

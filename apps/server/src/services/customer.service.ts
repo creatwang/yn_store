@@ -202,6 +202,16 @@ export const customerService = {
     return { customer: updated }
   },
 
+  async delete(id: string) {
+    const db = getDb()
+    await this.getById(id)
+    await db
+      .update(customer)
+      .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+      .where(and(eq(customer.id, id), isNull(customer.deleted_at)))
+    return { id, object: "customer", deleted: true }
+  },
+
   async listAddresses(customerId: string) {
     const db = getDb()
     const addresses = await db
