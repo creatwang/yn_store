@@ -52,10 +52,17 @@ export const orderEditService = {
       })
 
       await db.insert(orderItem).values({
-        id: orderItemId, order_id: edit.order_id, item_id: lineItemId,
+        id: orderItemId, version: 1, order_id: edit.order_id, item_id: lineItemId,
         quantity: String(item.quantity), raw_quantity: { amount: item.quantity, precision: 0 },
         unit_price: item.unit_price ? String(item.unit_price) : null,
         raw_unit_price: item.unit_price ? { amount: item.unit_price, precision: 2 } : null,
+        fulfilled_quantity: "0",
+        shipped_quantity: "0",
+        delivered_quantity: "0",
+        return_requested_quantity: "0",
+        return_received_quantity: "0",
+        return_dismissed_quantity: "0",
+        written_off_quantity: "0",
       })
 
       addedItems.push({ line_item_id: lineItemId, order_item_id: orderItemId, variant_id: item.variant_id, quantity: item.quantity })
@@ -123,5 +130,39 @@ export const orderEditService = {
     }).where(eq(orderChange.id, editId)).returning()
     if (!updated) throw new HTTPException(404, { message: "Order edit not found" })
     return { order_edit: updated }
+  },
+
+  async _getMeta(editId: string) {
+    const db = getDb()
+    const [edit] = await db.select().from(orderChange).where(eq(orderChange.id, editId)).limit(1)
+    if (!edit) throw new HTTPException(404, { message: "Order edit not found" })
+    return { edit, meta: (edit.metadata as Record<string, any>) ?? {} }
+  },
+
+  async _saveMeta(editId: string, meta: Record<string, unknown>) {
+    const db = getDb()
+    await db.update(orderChange).set({ metadata: meta }).where(eq(orderChange.id, editId))
+    return this.getById(editId)
+  },
+
+  async addShippingMethod(editId: string, data: { shipping_option_id: string; amount?: number; name?: string }) {
+    const { meta } = await this._getMeta(editId)
+    const actionId = generateId("ordedshp")
+    meta.shipping_methods = [...(meta.shipping_methods ?? []), { id: actionId, ...data }]
+    return this._saveMeta(editId, meta)
+  },
+
+  async updateShippingMethod(editId: string, actionId: string, data: Record<string, unknown>) {
+    const { meta } = await this._getMeta(editId)
+    meta.shipping_methods = (meta.shipping_methods ?? []).map((s: any) =>
+      s.id === actionId ? { ...s, ...data } : s,
+    )
+    return this._saveMeta(editId, meta)
+  },
+
+  async removeShippingMethod(editId: string, actionId: string) {
+    const { meta } = await this._getMeta(editId)
+    meta.shipping_methods = (meta.shipping_methods ?? []).filter((s: any) => s.id !== actionId)
+    return this._saveMeta(editId, meta)
   },
 }

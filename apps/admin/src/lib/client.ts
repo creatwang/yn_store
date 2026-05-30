@@ -398,6 +398,11 @@ function orderEditClient() {
     updateOriginalItem: (id: string, itemId: string, body?: any) => rpcPost(rpc[":id"].items[":itemId"], body, { id, itemId }),
     updateAddedItem: (id: string, itemId: string, body?: any) => rpcPost(rpc[":id"].items[":itemId"].update, body, { id, itemId }),
     removeAddedItem: (id: string, itemId: string) => rpcDelete(rpc[":id"].items[":itemId"], { id, itemId }),
+    addShippingMethod: (id: string, body?: any) => rpcPost(rpc[":id"]["shipping-method"], body, { id }),
+    updateShippingMethod: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"]["shipping-method"][":actionId"], body, { id, actionId }),
+    removeShippingMethod: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"]["shipping-method"][":actionId"], { id, actionId }),
     update: (id: string, body?: any) => rpcPost(rpc[":id"].changes, body, { id }),
     delete: (id: string) => rpcDelete(rpc[":id"], { id }),
     initiateRequest: (payload?: any) => rpcPost(rpc, payload),

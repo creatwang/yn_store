@@ -632,12 +632,16 @@ async function loadFulfillments(db: Db, orderIds: string[]) {
       f.location_id, f.shipping_option_id, f.provider_id, f.metadata,
       fi.id AS fi_id, fi.title AS fi_title, fi.sku AS fi_sku, fi.quantity AS fi_quantity, fi.line_item_id,
       fl.id AS fl_id, fl.tracking_number, fl.tracking_url, fl.label_url,
-      so.id AS so_id, so.name AS so_name
+      so.id AS so_id, so.name AS so_name,
+      sz.id AS sz_id, sz.name AS sz_name,
+      fs.id AS fs_id, fs.name AS fs_name, fs.type AS fs_type
     FROM order_fulfillment of
     INNER JOIN fulfillment f ON f.id = of.fulfillment_id
     LEFT JOIN fulfillment_item fi ON fi.fulfillment_id = f.id
     LEFT JOIN fulfillment_label fl ON fl.fulfillment_id = f.id
     LEFT JOIN shipping_option so ON so.id = f.shipping_option_id
+    LEFT JOIN service_zone sz ON sz.id = so.service_zone_id
+    LEFT JOIN fulfillment_set fs ON fs.id = sz.fulfillment_set_id
     WHERE of.order_id IN (${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)})
       AND of.deleted_at IS NULL AND f.deleted_at IS NULL
   `)
@@ -660,7 +664,19 @@ async function loadFulfillments(db: Db, orderIds: string[]) {
         provider_id: row.provider_id,
         metadata: row.metadata,
         shipping_option: row.so_id
-          ? { id: row.so_id, name: row.so_name }
+          ? {
+              id: row.so_id,
+              name: row.so_name,
+              service_zone: row.sz_id
+                ? {
+                    id: row.sz_id,
+                    name: row.sz_name,
+                    fulfillment_set: row.fs_id
+                      ? { id: row.fs_id, name: row.fs_name, type: row.fs_type }
+                      : null,
+                  }
+                : null,
+            }
           : null,
         items: [],
         labels: [],

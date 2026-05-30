@@ -1,4 +1,6 @@
-import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import { mkdir, writeFile } from "node:fs/promises"
+import path from "node:path"
 import {
   generateId,
   getDb,
@@ -26,6 +28,18 @@ import {
   presentAdminOrders,
 } from "./order"
 import { buildAdminOrderPreview } from "./order/admin-order-preview"
+import { toCsv } from "../lib/csv"
+
+const EXPORT_DIR = path.resolve(process.cwd(), "public/exports")
+const ORDER_EXPORT_HEADERS = [
+  "Order Id",
+  "Display Id",
+  "Email",
+  "Status",
+  "Currency",
+  "Total",
+  "Created At",
+]
 
 export const orderService = {
   async list(query: ListOrdersQuery) {
@@ -557,12 +571,20 @@ export const orderService = {
 
     await db.insert(orderItem).values({
       id: orderItemId,
+      version: 1,
       order_id: orderId,
       item_id: lineItemId,
       quantity: String(input.quantity),
       raw_quantity: { amount: input.quantity, precision: 0 },
       unit_price: input.unit_price ? String(input.unit_price) : null,
       raw_unit_price: input.unit_price ? { amount: input.unit_price, precision: 2 } : null,
+      fulfilled_quantity: "0",
+      shipped_quantity: "0",
+      delivered_quantity: "0",
+      return_requested_quantity: "0",
+      return_received_quantity: "0",
+      return_dismissed_quantity: "0",
+      written_off_quantity: "0",
     })
 
     return { line_item: { id: lineItemId, order_item_id: orderItemId } }
@@ -637,5 +659,48 @@ export const orderService = {
     meta.shipping_methods = (meta.shipping_methods ?? []).filter((s: any) => s.id !== methodId)
     await db.update(order).set({ metadata: meta, updated_at: sql`now()` }).where(eq(order.id, orderId))
     return { order: { id: orderId, metadata: meta } }
+  },
+
+  async exportOrders() {
+    const db = getDb()
+    const rows = await db
+      .select()
+      .from(order)
+      .where(and(isNull(order.deleted_at), eq(order.is_draft_order, false)))
+      .orderBy(desc(order.created_at))
+      .limit(9999)
+
+    const orderIds = rows.map((r) => r.id)
+    const summaries =
+      orderIds.length > 0
+        ? await db.select().from(orderSummary).where(inArray(orderSummary.order_id, orderIds))
+        : []
+    const summaryByOrder = new Map(summaries.map((s) => [s.order_id, s]))
+
+    const csvRows = rows.map((o) => {
+      const sum = summaryByOrder.get(o.id)
+      const totals = (sum?.totals as Record<string, unknown> | null | undefined) ?? {}
+      const total = totals.total ?? totals.grand_total ?? totals.original_total ?? ""
+      return [
+        o.id,
+        String(o.display_id ?? ""),
+        o.email ?? "",
+        o.status ?? "",
+        o.currency_code ?? "",
+        String(total),
+        o.created_at ? new Date(o.created_at as string | Date).toISOString() : "",
+      ]
+    })
+
+    await mkdir(EXPORT_DIR, { recursive: true })
+    const transactionId = generateId("oexp")
+    const filename = `${transactionId}.csv`
+    await writeFile(path.join(EXPORT_DIR, filename), toCsv(ORDER_EXPORT_HEADERS, csvRows), "utf-8")
+
+    return {
+      transaction_id: transactionId,
+      url: `/exports/${filename}`,
+      count: csvRows.length,
+    }
   },
 }

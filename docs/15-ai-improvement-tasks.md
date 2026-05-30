@@ -35,7 +35,7 @@
 | 后端挂载 | `apps/server/src/app.ts` — 45+ admin/store 模块 |
 | Admin SDK 适配 | `client.ts` — **P0 hooks 已对齐**（2026-05-30 TASK-CLIENT-001） |
 | 订单 DTO | `admin-order.ts` — 主体齐 |
-| 集成测试 | **86/86 通过**（13 files） |
+| 集成测试 | **97 条**（15 files；RMA 7 + P1 loc/cat 4） |
 | Admin 类型债 | **~170 文件 @ts-nocheck**（非文档项，见 14 §10） |
 | 文档 | **14 / 15 / 16 已同步**（2026-05-30）；11 仅快照 |
 
@@ -362,35 +362,42 @@ dismissItems, updateDismissItem, removeDismissItem
 
 ### TASK-RMA-002
 
-**Exchange / Claim 细粒度 API**
+**RMA 端到端联调（Exchange / Claim / Preview）**
 
 | 项 | 内容 |
 |----|------|
 | 优先级 | P1 |
-| 状态 | 🔴 |
-| 依赖 | TASK-RMA-001 模式可复用 |
-| Client noop | exchange 10+、claim 8+、orderEdit 部分 |
+| 状态 | 🟡 2026-05-30（API 🟢，UI 待验） |
+| 已完成 | preview + line item actions；receive 流 API；claims hook 修复；order_item 必填列 |
 
 **验收**：
 
-- [ ] 换货/索赔创建页主流程可提交（按 MVP 范围定义）
+- [x] preview + request-items / claim inbound + `return_receive`（API 7 条）
+- [x] `claims.tsx` `useRemoveClaimItem` → `claim.removeInboundItem`
+- [ ] Admin RMA 向导 UI 手动走通
+
+```bash
+pnpm --filter=@my-store/server test tests/admin/rma-e2e.test.ts
+```
 
 ---
 
 ### TASK-LOC-001
 
-**Locations fulfillmentSet + shippingOption**
+**Locations fulfillmentSet + service zone**
 
 | 项 | 内容 |
 |----|------|
 | 优先级 | P1 |
-| 状态 | 🔴 |
-| Client noop | `stockLocation.createFulfillmentSet`, `updateFulfillmentProviders`, `updateSalesChannels`；`orders` 内嵌 shippingOption CRUD |
-| 后端 | `fulfillment-sets.ts`、`shipping-options.ts` 表级 CRUD 有，配置 workflow 缺 |
+| 状态 | 🟡 2026-05-30（API 🟢，UI 待验） |
+| 已完成 | `stock-location.service.ts` 嵌套加载；shipping option create + service_zone 链；service-zones CRUD |
 
 **验收**：
 
-- [ ] Location 详情可创建 service zone / shipping option（至少一条 happy path）
+- [x] API：location → fulfillment set → service zone + 详情嵌套（`p1-loc-cat.test.ts`）
+- [x] shipping option 含 `service_zone.fulfillment_set` + prices/rules API
+- [x] Admin 创建/编辑 shipping option UI（Medusa v2.15.3 拷贝）
+- [x] Admin Location 详情 sidebar（销售渠道 / 履约提供商 / manage areas）
 
 ---
 
@@ -401,13 +408,13 @@ dismissItems, updateDismissItem, removeDismissItem
 | 项 | 内容 |
 |----|------|
 | 优先级 | P1 |
-| 状态 | 🔴 |
-| 缺失 | `POST /admin/product-categories/:id/products`、`POST /admin/collections/:id/products` |
-| 页面 | `category-organize`、`collection-add-products` |
+| 状态 | 🟡 2026-05-30（API 🟢，UI 待验） |
+| 已完成 | 关联产品路由；category/collection create 补 handle；product categories 加载修复 |
 
 **验收**：
 
-- [ ] 向合集/分类添加产品后，产品详情可见关联
+- [x] API：分类/合集关联产品（`p1-loc-cat.test.ts`）
+- [ ] Admin 分类/合集 UI 手动走通
 
 ---
 

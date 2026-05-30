@@ -89,13 +89,13 @@
 | 列表/详情 | orders + fields | ✅ | ✅ | ✅ | payment/fulfillment_status |
 | 履行/发货 | fulfillments/shipments | ✅ | ✅ | ⚠️ | 订单下路由齐 |
 | 支付 capture/refund | payments | ✅ | ✅ | ✅ | |
-| **退货** | returns 细粒度 | ✅ | ✅ returnClient | ⚠️ | service 深度待联调 |
-| **换货** | exchanges inbound/outbound | ✅ | ✅ exchangeClient | ⚠️ | |
-| **索赔** | claims inbound/outbound | ✅ | ✅ claimClient | ⚠️ | service 深度待联调 |
-| 订单编辑 | order-edits | ✅ | ✅ | ⚠️ | 无 shipping-method 子路由 |
+| **退货** | returns 细粒度 | ✅ | ✅ returnClient | ⚠️ | preview DTO 已接；收货流待 UI 验 |
+| **换货** | exchanges inbound/outbound | ✅ | ✅ exchangeClient | ⚠️ | preview + return_id 已接 |
+| **索赔** | claims inbound/outbound | ✅ | ✅ claimClient | ⚠️ | preview + companion return 已接 |
+| 订单编辑 | order-edits | ✅ | ✅ | ✅ | shipping-method 子路由已补 |
 | 草稿订单 | draft-orders + edit | ✅ | ✅ | ✅ | |
 | 预览 | `GET .../preview` | ✅ | ✅ retrievePreview | ✅ | RMA 向导依赖 |
-| 导出 | `POST /admin/orders/export` | ⚠️ | ✅ | ⚠️ | 返回 JSON 列表，非 CSV |
+| 导出 | `POST /admin/orders/export` | ✅ CSV | ✅ | ✅ |
 
 ### 订单详情 DEFAULT_FIELDS（`order-detail/constants.ts`）
 
@@ -107,7 +107,7 @@
 | payment_collections.payments.refunds | ✅ |
 | items.variant.inventory_items | ✅ |
 | fulfillments + items/labels/shipping_option 浅层 | ✅ |
-| fulfillments.shipping_option.service_zone 链 | ❌ |
+| fulfillments.shipping_option.service_zone 链 | ✅ |
 
 ---
 
@@ -136,8 +136,8 @@
 |------|------|--------|------|
 | inventory-items CRUD | ✅ | ✅ | ✅ |
 | location-levels 单条/批量 | ✅ | ✅ | ✅ |
-| stock-locations + fulfillment-sets 子路由 | ✅ | ✅ createFulfillmentSet 等 | ⚠️ |
-| fulfillmentSet **service zone** | ⚠️ 表 CRUD | ❌ hooks 方法缺失 | ❌ |
+| stock-locations + fulfillment-sets 子路由 | ✅ | ✅ | ✅ | 详情含嵌套 fulfillment_sets |
+| fulfillmentSet **service zone** | ✅ CRUD 路由 | ✅ client 方法 | ✅ API 测试 |
 | 预留 reservations | ✅ | ✅ | ⚠️ |
 
 ---
@@ -163,7 +163,7 @@
 | fulfillment-providers | ✅ | ✅ | ✅ |
 | shipping-options CRUD | ✅ | ✅ | ⚠️ rules/batch 未实现 |
 | uploads | ✅ | ✅ retrieve/delete | ⚠️ retrieve 为占位 id→url |
-| **views**（列/视图配置） | ❌ | ❌ | ❌ |
+| **views**（列/视图配置） | ⚠️ 最小 stub | ⚠️ client 已接 | ⚠️ 空配置 |
 
 ---
 

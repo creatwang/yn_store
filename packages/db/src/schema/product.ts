@@ -129,7 +129,6 @@ export const productCategory = pgTable("product_category", {
 })
 
 export const productCategoryProduct = pgTable("product_category_product", {
-  id: text("id").primaryKey(),
   product_id: text("product_id").notNull(),
   product_category_id: text("product_category_id").notNull(),
 })

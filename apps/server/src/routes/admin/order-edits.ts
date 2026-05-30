@@ -51,6 +51,22 @@ export const adminOrderEdits = new Hono<{ Variables: AuthVariables }>()
     const result = await orderEditService.removeAddedItem(c.req.param("id"), c.req.param("itemId"))
     return c.json(result)
   })
+  .post("/:id/shipping-method", zValidator("json", z.record(z.unknown())), async (c) => {
+    const result = await orderEditService.addShippingMethod(c.req.param("id"), c.req.valid("json") as any)
+    return c.json(result)
+  })
+  .post("/:id/shipping-method/:actionId", zValidator("json", z.record(z.unknown())), async (c) => {
+    const result = await orderEditService.updateShippingMethod(
+      c.req.param("id"),
+      c.req.param("actionId"),
+      c.req.valid("json"),
+    )
+    return c.json(result)
+  })
+  .delete("/:id/shipping-method/:actionId", async (c) => {
+    const result = await orderEditService.removeShippingMethod(c.req.param("id"), c.req.param("actionId"))
+    return c.json(result)
+  })
   .post("/:id/changes", updateChangeSchema, async (c) => {
     const body = c.req.valid("json")
     const db = (await import("../../services/order.service")).orderService

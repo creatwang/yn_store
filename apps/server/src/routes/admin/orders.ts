@@ -1,4 +1,7 @@
 import { Hono } from "hono"
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { existsSync } from "node:fs"
 import { zValidator } from "@hono/zod-validator"
 import {
   createOrderSchema,
@@ -24,6 +27,21 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
   .get("/", zValidator("query", listOrdersSchema), async (c) => {
     const query = c.req.valid("query")
     const result = await orderService.list(query)
+    return c.json(result)
+  })
+  .get("/export/:transactionId", async (c) => {
+    const filePath = path.resolve(process.cwd(), "public/exports", `${c.req.param("transactionId")}.csv`)
+    if (!existsSync(filePath)) return c.json({ message: "Export not found" }, 404)
+    const csv = await readFile(filePath, "utf-8")
+    return new Response(csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="orders-${c.req.param("transactionId")}.csv"`,
+      },
+    })
+  })
+  .post("/export", async (c) => {
+    const result = await orderService.exportOrders()
     return c.json(result)
   })
   .get("/:id", async (c) => {
@@ -143,10 +161,5 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const { id, fulfillmentId } = c.req.param()
     const body = c.req.valid("json")
     const result = await fulfillmentService.markAsDelivered(id, fulfillmentId, body)
-    return c.json(result)
-  })
-  // ── Export ─────────────────────────────────────────────
-  .post("/export", async (c) => {
-    const result = await orderService.list({ limit: 9999, offset: 0 })
     return c.json(result)
   })

@@ -13,7 +13,6 @@ import {
   inventoryItem,
   inventoryLevel,
   reservationItem,
-  stockLocation,
   shippingProfile,
   shippingOptionType,
   currency,
@@ -22,14 +21,15 @@ import {
   apiKey,
   notification,
   workflowExecution,
-  shippingOption,
   pricePreference,
   propertyLabel,
   paymentCollection,
   fulfillmentSet,
   fulfillmentProvider,
+  stockLocation,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import { stockLocationService, shippingOptionService } from "./stock-location.service"
 
 function mkl(table: any, entityKey: string) {
   return async (query: { limit: number; offset: number }) => {
@@ -74,11 +74,42 @@ function mkdel(table: any) {
   }
 }
 
+function slugHandle(value: string, fallback: string) {
+  const handle = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+  return handle || fallback
+}
+
 // ── Categories ─────────────────────────────────────────────
 export const categoryService = {
   list: mkl(productCategory, "product_categories"),
   getById: mkg(productCategory, "product_categories"),
-  create: mkc(productCategory, "pcat", "product_categories"),
+  create: async (input: Record<string, unknown>) => {
+    const db = getDb()
+    const id = generateId("pcat")
+    const name = String(input.name ?? "Category")
+    const handle = String(input.handle ?? slugHandle(name, id))
+    const [created] = await db
+      .insert(productCategory)
+      .values({
+        id,
+        name,
+        description: String(input.description ?? ""),
+        handle,
+        mpath: String(input.mpath ?? id),
+        is_active: Boolean(input.is_active ?? false),
+        is_internal: Boolean(input.is_internal ?? false),
+        rank: Number(input.rank ?? 0),
+        parent_category_id: (input.parent_category_id as string | null | undefined) ?? null,
+        metadata: (input.metadata as Record<string, unknown> | null | undefined) ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+      .returning()
+    return { product_category: created }
+  },
   update: mku(productCategory, "product_categories"),
   delete: mkdel(productCategory),
 }
@@ -87,7 +118,24 @@ export const categoryService = {
 export const collectionService = {
   list: mkl(productCollection, "collections"),
   getById: mkg(productCollection, "collections"),
-  create: mkc(productCollection, "pcol", "collections"),
+  create: async (input: Record<string, unknown>) => {
+    const db = getDb()
+    const id = generateId("pcol")
+    const title = String(input.title ?? "Collection")
+    const handle = String(input.handle ?? slugHandle(title, id))
+    const [created] = await db
+      .insert(productCollection)
+      .values({
+        id,
+        title,
+        handle,
+        metadata: (input.metadata as Record<string, unknown> | null | undefined) ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+      .returning()
+    return { collection: created }
+  },
   update: mku(productCollection, "collections"),
   delete: mkdel(productCollection),
 }
@@ -142,14 +190,8 @@ export const reservationService = {
   delete: mkdel(reservationItem),
 }
 
-// ── Stock Locations ─────────────────────────────────────────
-export const stockLocationService = {
-  list: mkl(stockLocation, "stock_locations"),
-  getById: mkg(stockLocation, "stock_locations"),
-  create: mkc(stockLocation, "sloc", "stock_locations"),
-  update: mku(stockLocation, "stock_locations"),
-  delete: mkdel(stockLocation),
-}
+// ── Stock Locations / Shipping Options → stock-location.service.ts ──
+export { stockLocationService, shippingOptionService }
 
 // ── Shipping Profiles ───────────────────────────────────────
 export const shippingProfileService = {
@@ -198,9 +240,6 @@ export const notificationService = { list: mkl(notification, "notifications"), g
 
 // ── Workflow Executions ────────────────────────────────────
 export const workflowExecutionService = { list: mkl(workflowExecution, "workflow_executions"), getById: mkg(workflowExecution, "workflow_executions") }
-
-// ── Shipping Options ───────────────────────────────────────
-export const shippingOptionService = { list: mkl(shippingOption, "shipping_options"), getById: mkg(shippingOption, "shipping_options"), create: mkc(shippingOption, "so", "shipping_options"), update: mku(shippingOption, "shipping_options"), delete: mkdel(shippingOption) }
 
 // ── Price Preferences ──────────────────────────────────────
 export const pricePreferenceService = { list: mkl(pricePreference, "price_preferences"), getById: mkg(pricePreference, "price_preferences"), create: mkc(pricePreference, "ppref", "price_preferences"), update: mku(pricePreference, "price_preferences"), delete: mkdel(pricePreference) }
@@ -358,13 +397,41 @@ export const priceListPriceService = {
 }
 
 export const fulfillmentProviderService = {
-  async list() {
+  async list(query?: Record<string, unknown>) {
     const db = getDb()
     const rows = await db.select().from(fulfillmentProvider)
+
+    const stockLocationId = query?.stock_location_id as string | undefined
+    if (stockLocationId) {
+      const [loc] = await db
+        .select()
+        .from(stockLocation)
+        .where(and(eq(stockLocation.id, stockLocationId), isNull(stockLocation.deleted_at)))
+        .limit(1)
+      const meta = (loc?.metadata ?? {}) as Record<string, unknown>
+      const linkedIds = new Set(
+        [
+          ...(Array.isArray(meta.fulfillment_provider_ids) ? meta.fulfillment_provider_ids : []),
+          ...(Array.isArray(meta.providerIds) ? meta.providerIds : []),
+          ...(Array.isArray(meta.fulfillmentProviderIds) ? meta.fulfillmentProviderIds : []),
+        ].map(String),
+      )
+      const fulfillment_providers = rows.filter((row) => linkedIds.has(row.id))
+      return { fulfillment_providers, count: fulfillment_providers.length }
+    }
+
     return { fulfillment_providers: rows, count: rows.length }
   },
-  async listOptions(_id: string) {
-    return { fulfillment_options: [] }
+  async listOptions(id: string) {
+    return {
+      fulfillment_options: [
+        {
+          id: `${id}_manual`,
+          name: "Manual fulfillment",
+          provider_id: id,
+        },
+      ],
+    }
   },
 }
 

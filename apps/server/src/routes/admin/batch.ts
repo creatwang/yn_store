@@ -125,40 +125,14 @@ export const adminStockLocationsFull = new Hono<{ Variables: AuthVariables }>()
     return c.json(result, 201)
   })
   .post("/:id/fulfillment-providers", async (c) => {
-    const db = getDb()
-    const id = c.req.param("id")
     const body = await c.req.json()
-    const providerIds: string[] = body.add ?? body.provider_ids ?? body.providerIds ?? []
-    const [loc] = await db.select().from(stockLocation).where(eq(stockLocation.id, id)).limit(1)
-    if (!loc) return c.json({ message: "未找到" }, 404)
-    const metadata = {
-      ...((loc.metadata as Record<string, unknown>) ?? {}),
-      fulfillment_provider_ids: providerIds,
-    }
-    const [updated] = await db
-      .update(stockLocation)
-      .set({ metadata, updated_at: sql`now()` })
-      .where(eq(stockLocation.id, id))
-      .returning()
-    return c.json({ stock_location: updated })
+    const result = await stockLocationService.updateFulfillmentProviders(c.req.param("id"), body)
+    return c.json(result)
   })
   .post("/:id/sales-channels", async (c) => {
-    const db = getDb()
-    const id = c.req.param("id")
     const body = await c.req.json()
-    const channelIds: string[] = body.add ?? body.sales_channel_ids ?? body.salesChannelIds ?? []
-    const [loc] = await db.select().from(stockLocation).where(eq(stockLocation.id, id)).limit(1)
-    if (!loc) return c.json({ message: "未找到" }, 404)
-    const metadata = {
-      ...((loc.metadata as Record<string, unknown>) ?? {}),
-      sales_channel_ids: channelIds,
-    }
-    const [updated] = await db
-      .update(stockLocation)
-      .set({ metadata, updated_at: sql`now()` })
-      .where(eq(stockLocation.id, id))
-      .returning()
-    return c.json({ stock_location: updated })
+    const result = await stockLocationService.updateSalesChannels(c.req.param("id"), body)
+    return c.json(result)
   })
 
 // ── Currencies (read-only) ──────────────────────────────
@@ -284,7 +258,7 @@ export const adminFulfillmentSets = new Hono<{ Variables: AuthVariables }>()
 export const adminCategoryLinkProducts = new Hono<{ Variables: AuthVariables }>().use("*", adminAuth).post("/", async (c) => {
   const db = getDb(); const id = c.req.param("id")!; const b = await c.req.json(); const pids: string[] = b.product_ids || b.productIds || []
   await db.execute(sql`DELETE FROM product_category_product WHERE product_category_id = ${id}`)
-  for (const pid of pids) await db.execute(sql`INSERT INTO product_category_product (id, product_id, product_category_id) VALUES (${generateId("pcp")}, ${pid}, ${id})`)
+  for (const pid of pids) await db.execute(sql`INSERT INTO product_category_product (product_id, product_category_id) VALUES (${pid}, ${id})`)
   return c.json({ success: true })
 })
 export const adminSalesChannelLinkProducts = new Hono<{ Variables: AuthVariables }>().use("*", adminAuth).post("/", async (c) => {
@@ -324,7 +298,8 @@ export const adminInventoryBatchLevels = new Hono<{ Variables: AuthVariables }>(
 export const adminFulfillmentProviders = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
   .get("/", async (c) => {
-    const result = await fulfillmentProviderService.list()
+    const query = Object.fromEntries(new URL(c.req.url).searchParams.entries())
+    const result = await fulfillmentProviderService.list(query)
     return c.json(result)
   })
   .get("/:id/options", async (c) => {

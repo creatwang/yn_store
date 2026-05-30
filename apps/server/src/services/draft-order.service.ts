@@ -178,10 +178,17 @@ export const draftOrderService = {
       })
 
       await db.insert(orderItem).values({
-        id: orderItemId, order_id: id, item_id: lineItemId,
+        id: orderItemId, version: 1, order_id: id, item_id: lineItemId,
         quantity: String(item.quantity), raw_quantity: { amount: item.quantity, precision: 0 },
         unit_price: item.unit_price ? String(item.unit_price) : null,
         raw_unit_price: item.unit_price ? { amount: item.unit_price, precision: 2 } : null,
+        fulfilled_quantity: "0",
+        shipped_quantity: "0",
+        delivered_quantity: "0",
+        return_requested_quantity: "0",
+        return_received_quantity: "0",
+        return_dismissed_quantity: "0",
+        written_off_quantity: "0",
       })
 
       actions.push({ id: actionId, line_item_id: lineItemId, order_item_id: orderItemId, ...item })

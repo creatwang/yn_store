@@ -39,6 +39,10 @@ const defaultAdminProductFields = [
  *  - 有正值字段（如 "*images"）→ 只看正值字段，遵循排除
  *  - 无 fields → 用默认字段
  */
+function sqlRows(result: unknown): unknown[] {
+  return Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+}
+
 async function fetchRelations(db: any, id: string, item: any, fields: string[] = defaultAdminProductFields) {
   const hasPositives = fields.some((f) => !f.startsWith("-"))
   const effectiveFields = hasPositives ? fields : [...defaultAdminProductFields, ...fields]
@@ -100,7 +104,7 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
         FROM product_tag pt JOIN product_tags pts ON pts.product_tag_id = pt.id
         WHERE pts.product_id = ${id}
       `)
-      result.tags = rows.rows ?? []
+      result.tags = sqlRows(rows)
     } catch { result.tags = [] }
   }
 
@@ -111,7 +115,7 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
         FROM sales_channel sc JOIN product_sales_channel psc ON psc.sales_channel_id = sc.id
         WHERE psc.product_id = ${id}
       `)
-      result.sales_channels = rows.rows ?? []
+      result.sales_channels = sqlRows(rows)
     } catch { result.sales_channels = [] }
   }
 
@@ -122,7 +126,7 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
         FROM product_category pc JOIN product_category_product pcp ON pcp.product_category_id = pc.id
         WHERE pcp.product_id = ${id}
       `)
-      result.categories = rows.rows ?? []
+      result.categories = sqlRows(rows)
     } catch { result.categories = [] }
   }
 
@@ -517,7 +521,7 @@ export const productService = {
     const db = getDb()
     await db.execute(sql`DELETE FROM product_category_product WHERE product_id = ${productId}`)
     for (const catId of input.category_ids) {
-      await db.execute(sql`INSERT INTO product_category_product (id, product_id, product_category_id) VALUES (${generateId("pcp")}, ${productId}, ${catId})`)
+      await db.execute(sql`INSERT INTO product_category_product (product_id, product_category_id) VALUES (${productId}, ${catId})`)
     }
     return { success: true }
   },
