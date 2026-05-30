@@ -1,0 +1,48 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+---
+
+<BaseLayout title="我的账户">
+  <div id="account-root" class="mx-auto max-w-lg space-y-4">
+    <p class="text-gray-500">加载中…</p>
+  </div>
+</BaseLayout>
+
+<script>
+  import { apiFetch } from "../lib/cart"
+  import { clearCustomerSession, getCustomer } from "../lib/auth"
+
+  const root = document.getElementById("account-root")!
+
+  async function loadAccount() {
+    const cached = getCustomer()
+    if (!cached) {
+      window.location.href = "/login"
+      return
+    }
+
+    const res = await apiFetch("/store/customers/me")
+    if (!res.ok) {
+      clearCustomerSession()
+      window.location.href = "/login"
+      return
+    }
+
+    const { customer } = await res.json()
+    root.innerHTML = `
+      <div class="rounded border bg-white p-6">
+        <h1 class="mb-2 text-2xl font-bold">我的账户</h1>
+        <p class="text-gray-600">${customer.email}</p>
+        <p class="mt-1 text-sm text-gray-500">${[customer.first_name, customer.last_name].filter(Boolean).join(" ") || "未设置姓名"}</p>
+        <button id="logout-btn" type="button" class="mt-6 text-sm text-red-600 underline">退出登录</button>
+      </div>
+    `
+
+    document.getElementById("logout-btn")!.addEventListener("click", () => {
+      clearCustomerSession()
+      window.location.href = "/"
+    })
+  }
+
+  loadAccount()
+</script>

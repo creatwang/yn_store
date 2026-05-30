@@ -1,0 +1,62 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+---
+
+<BaseLayout title="注册">
+  <div class="mx-auto max-w-md rounded border bg-white p-6">
+    <h1 class="mb-4 text-2xl font-bold">创建账户</h1>
+    <form id="register-form" class="space-y-4">
+      <label class="block text-sm">
+        名
+        <input name="first_name" type="text" class="mt-1 w-full rounded border px-3 py-2" />
+      </label>
+      <label class="block text-sm">
+        姓
+        <input name="last_name" type="text" class="mt-1 w-full rounded border px-3 py-2" />
+      </label>
+      <label class="block text-sm">
+        邮箱
+        <input name="email" type="email" required class="mt-1 w-full rounded border px-3 py-2" />
+      </label>
+      <label class="block text-sm">
+        密码
+        <input name="password" type="password" required minlength="8" class="mt-1 w-full rounded border px-3 py-2" />
+      </label>
+      <p id="register-error" class="hidden text-sm text-red-600"></p>
+      <button type="submit" class="w-full rounded bg-gray-900 px-4 py-2 text-white hover:bg-gray-800">
+        注册
+      </button>
+    </form>
+    <p class="mt-4 text-center text-sm text-gray-600">
+      已有账号？<a href="/login" class="underline">登录</a>
+    </p>
+  </div>
+</BaseLayout>
+
+<script>
+  import { registerCustomer, linkCartToCustomer } from "../lib/auth"
+  import { getCartId } from "../lib/cart"
+
+  const form = document.getElementById("register-form") as HTMLFormElement
+  const errorEl = document.getElementById("register-error")!
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault()
+    errorEl.classList.add("hidden")
+    const fd = new FormData(form)
+    try {
+      await registerCustomer({
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
+        first_name: String(fd.get("first_name") || ""),
+        last_name: String(fd.get("last_name") || ""),
+      })
+      const cartId = getCartId()
+      if (cartId) await linkCartToCustomer(cartId)
+      window.location.href = "/account"
+    } catch (err) {
+      errorEl.textContent = err instanceof Error ? err.message : "注册失败"
+      errorEl.classList.remove("hidden")
+    }
+  })
+</script>

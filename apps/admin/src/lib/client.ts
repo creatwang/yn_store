@@ -6,6 +6,8 @@
  */
 import { api, toRpcQuery, parseJsonResponse, getAuthHeaders } from "./api"
 
+const baseUrl = import.meta.env.VITE_API_URL || ""
+
 async function rpcGet(rpc: any, params?: Record<string, any>, query?: Record<string, any>) {
   const res = await rpc.$get({ param: params, query: toRpcQuery(query ?? {}) })
   return parseJsonResponse(res)
@@ -654,11 +656,22 @@ export const sdk = {
     // ── Others ────────────────────────────────────────────────
     invite: {
       ...entityClient("invites"),
-      accept: async (payload: any, query?: any, headers?: any) => {
-        const res = await (api as any).admin.invites.accept.$post({
-          json: payload,
-          query: toRpcQuery(query ?? {}),
-        })
+      accept: async (payload: any, query?: any, extraHeaders?: Record<string, string>) => {
+        const inviteToken = payload.invite_token ?? query?.token ?? query?.invite_token
+        const { invite_token: _t, ...body } = payload
+        const res = await fetch(
+          `${baseUrl}/api/admin/invites/accept?${new URLSearchParams({
+            token: String(inviteToken ?? ""),
+          }).toString()}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...extraHeaders,
+            },
+            body: JSON.stringify(body),
+          },
+        )
         return parseJsonResponse(res)
       },
       resend: async (id: string) => {

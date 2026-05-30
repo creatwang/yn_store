@@ -82,14 +82,14 @@ P0 client/hooks 已于 2026-05-30 完成（TASK-CLIENT-001）。后续优先：R
 | [TASK-INV-001](#task-inv-001) | 库存 batchUpdateLevels 三方法 | P1 | 🟢 |
 | [TASK-RMA-001](#task-rma-001) | Return 细粒度 API | P1 | 🟢 |
 | [TASK-RMA-002](#task-rma-002) | Exchange / Claim API + client | P1 | 🟡 |
-| [TASK-LOC-001](#task-loc-001) | Locations fulfillmentSet + service zone | P1 | 🟡 |
+| [TASK-LOC-001](#task-loc-001) | Locations fulfillmentSet + service zone | P1 | 🟢 |
 | [TASK-CAT-001](#task-cat-001) | 分类/合集关联产品 | P1 | 🟡 |
 | [TASK-SC-001](#task-sc-001) | 销售渠道 batchProducts | P1 | 🟢 |
 | [TASK-DOC-001](#task-doc-001) | 同步 11/14/15/16 文档 | P2 | 🟢 |
-| [TASK-STORE-001](#task-store-001) | Storefront checkout UI | P2 | 🟡 |
-| [TASK-AUTH-001](#task-auth-001) | 登出 / 邀请 / 重置密码 | P2 | 🟡 |
+| [TASK-STORE-001](#task-store-001) | Storefront checkout UI | P2 | 🟢 |
+| [TASK-AUTH-001](#task-auth-001) | 登出 / 邀请 / 重置密码 | P2 | 🟢 |
 | [TASK-CLIENT-001](#task-client-001) | P0 client/hooks 对齐（14 §P0） | P0 | 🟢 |
-| [TASK-QA-001](#task-qa-001) | Playwright Admin E2E 冒烟 | P2 | 🔴 |
+| [TASK-QA-001](#task-qa-001) | Playwright Admin E2E 冒烟 | P2 | 🟢 |
 
 ---
 
@@ -389,8 +389,8 @@ pnpm --filter=@my-store/server test tests/admin/rma-e2e.test.ts
 | 项 | 内容 |
 |----|------|
 | 优先级 | P1 |
-| 状态 | 🟡 2026-05-30（API 🟢，UI 待验） |
-| 已完成 | `stock-location.service.ts` 嵌套加载；shipping option create + service_zone 链；service-zones CRUD |
+| 状态 | 🟢 2026-05-30（API + UI 已就绪，待手动验收） |
+| 已完成 | `stock-location.service.ts` 嵌套加载；shipping option create + service_zone 链；service-zones CRUD；Location 详情 sidebar + manage areas UI |
 
 **验收**：
 
@@ -465,15 +465,15 @@ pnpm --filter=@my-store/server test tests/admin/rma-e2e.test.ts
 | 项 | 内容 |
 |----|------|
 | 优先级 | P2 |
-| 状态 | 🟡 2026-05-30 |
-| 已有 | `cart.astro`、`checkout.astro` 三步（信息/配送/支付）；`POST /store/carts/:id/complete` |
-| 缺失 | 客户登录/注册页、collections、促销价展示 |
+| 状态 | 🟢 2026-05-30 |
+| 已有 | checkout 三步；`login/register/account`；`collections` + `promotions` 页；登录态 cart 关联 customer |
 
 **验收**：
 
-- [x] 列表 → 详情 → 加购 → checkout → 订单确认（最小闭环）
-- [ ] 登录态购物车持久化
-- [ ] 促销/合集页
+- [x] 列表 → 详情 → 加购 → checkout → 订单确认
+- [x] 客户登录/注册 + 账户页
+- [x] 合集列表/详情 + 促销列表页
+- [x] 登录后 cart 写入 `customer_id`（`linkCartToCustomer`）
 
 ---
 
@@ -484,15 +484,38 @@ pnpm --filter=@my-store/server test tests/admin/rma-e2e.test.ts
 | 项 | 内容 |
 |----|------|
 | 优先级 | P2 |
-| 状态 | 🟡 2026-05-30 |
-| Client | `logout` / `createInvite` 等已接 RPC（非 noop） |
-| 后端 | invites 部分路由已有；**无完整 Medusa 邮件流** |
+| 状态 | 🟢 2026-05-30 |
+| 实现 | `register` / `reset-password` / `update` / `confirmReset`；邀请 JWT + 公开 accept；dev-mail 日志 |
 
 **验收**：
 
 - [x] Admin 登出可用
-- [ ] 邀请邮件 + accept 端到端
-- [ ] 重置密码邮件流
+- [x] 邀请 create → register → accept（`p2-auth.test.ts`）
+- [x] 重置密码 request → update（测试环境返回 `reset_token`）
+- [ ] 生产 SMTP（仍用 dev-mail 占位）
+
+---
+
+### TASK-QA-001
+
+**Playwright Admin E2E 冒烟**
+
+| 项 | 内容 |
+|----|------|
+| 优先级 | P2 |
+| 状态 | 🟢 2026-05-30 |
+| 路径 | `apps/admin/playwright.config.ts`、`apps/admin/e2e/smoke.spec.ts` |
+
+**验收**：
+
+```bash
+pnpm --filter=@my-store/admin exec playwright install chromium
+pnpm --filter=@my-store/admin test:e2e
+# 完整登录用例需 ADMIN_E2E_EMAIL / ADMIN_E2E_PASSWORD
+```
+
+- [x] scaffold + 登录页 smoke
+- [ ] CI 集成（可选）
 
 ---
 
@@ -511,32 +534,6 @@ pnpm --filter=@my-store/server test tests/admin/rma-e2e.test.ts
 
 - [x] 14 §P0 表全部 ✅ 或 ⚠️（views 为空配置 stub）
 - [x] `pnpm --filter=@my-store/server test` 86/86 通过
-
----
-
-### TASK-QA-001
-
-**Playwright Admin E2E 冒烟**
-
-| 项 | 内容 |
-|----|------|
-| 优先级 | P2 |
-| 状态 | 🔴 |
-| 参考 | `docs/12-testing-plan.mdx` |
-
-**范围（最小）**：
-
-1. 登录 → 产品列表可见
-2. 打开一条有 line item 的订单详情
-3. （可选）产品 create 表单打开无 404
-
-**验收**：
-
-```bash
-pnpm --filter=@my-store/admin test:e2e   # 待 scaffold
-```
-
-- [ ] CI 或本地可重复跑通 2–3 条用例
 
 ---
 

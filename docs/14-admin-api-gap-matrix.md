@@ -172,10 +172,11 @@
 | 功能 | 状态 |
 |------|------|
 | 登录 / refresh / session GET | ✅ |
-| logout DELETE session | ✅ 简化 |
-| confirmReset password | ✅ 简化 |
-| 注册 / OAuth / 邮件 reset | ❌ |
-| invites create/accept/resend | ✅ API；❌ 无 SMTP |
+| logout DELETE session | ✅ |
+| confirmReset password | ✅ JWT 重置流 |
+| register / reset-password / update | ✅ |
+| invites create/accept/resend | ✅ JWT + 公开 accept；dev-mail 占位 |
+| 注册 / OAuth / 邮件 reset | ⚠️ 无 SMTP，dev-mail 日志 |
 
 ---
 
@@ -188,8 +189,8 @@
 | 配送 shipping-options + cart shipping-methods | ✅ | ⚠️ 依赖 DB 有 shipping_option |
 | 支付 payment-collections + manual authorize | ✅ | ⚠️ 仅 pp_system_default |
 | checkout 三步 UI | Astro | ✅ |
-| 客户注册/登录 UI | store/customers | ❌ 无页面 |
-| collections / promotions | — | ❌ |
+| 客户注册/登录 UI | store/customers + auth/customer | ✅ |
+| collections / promotions | GET /store/collections、/promotions | ✅ |
 
 ---
 
@@ -198,7 +199,7 @@
 | 项 | 状态 | 说明 |
 |----|------|------|
 | Admin `@ts-nocheck` | ~170 文件 | 类型债，不影响运行 |
-| Playwright Admin E2E | 无 | 见 `12-testing-plan.mdx` |
+| Playwright Admin E2E | ✅ scaffold | 见 `apps/admin/e2e/smoke.spec.ts` |
 | 全页 Network 404 扫描 | 未自动化 | 建议按模块手动验收 |
 | Drizzle vs 线上列差异 | 偶发 | 如 shipping_option.type_id — 已用 raw SQL 规避 |
 

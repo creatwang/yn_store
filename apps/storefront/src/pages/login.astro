@@ -1,0 +1,49 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+---
+
+<BaseLayout title="登录">
+  <div class="mx-auto max-w-md rounded border bg-white p-6">
+    <h1 class="mb-4 text-2xl font-bold">客户登录</h1>
+    <form id="login-form" class="space-y-4">
+      <label class="block text-sm">
+        邮箱
+        <input name="email" type="email" required class="mt-1 w-full rounded border px-3 py-2" />
+      </label>
+      <label class="block text-sm">
+        密码
+        <input name="password" type="password" required class="mt-1 w-full rounded border px-3 py-2" />
+      </label>
+      <p id="login-error" class="hidden text-sm text-red-600"></p>
+      <button type="submit" class="w-full rounded bg-gray-900 px-4 py-2 text-white hover:bg-gray-800">
+        登录
+      </button>
+    </form>
+    <p class="mt-4 text-center text-sm text-gray-600">
+      还没有账号？<a href="/register" class="underline">注册</a>
+    </p>
+  </div>
+</BaseLayout>
+
+<script>
+  import { loginCustomer, linkCartToCustomer } from "../lib/auth"
+  import { getCartId } from "../lib/cart"
+
+  const form = document.getElementById("login-form") as HTMLFormElement
+  const errorEl = document.getElementById("login-error")!
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault()
+    errorEl.classList.add("hidden")
+    const fd = new FormData(form)
+    try {
+      await loginCustomer(String(fd.get("email")), String(fd.get("password")))
+      const cartId = getCartId()
+      if (cartId) await linkCartToCustomer(cartId)
+      window.location.href = "/account"
+    } catch (err) {
+      errorEl.textContent = err instanceof Error ? err.message : "登录失败"
+      errorEl.classList.remove("hidden")
+    }
+  })
+</script>

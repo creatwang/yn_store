@@ -15,8 +15,13 @@ export function clearCartId() {
 
 export async function apiFetch(path: string, init?: RequestInit) {
   const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+  const { authHeaders } = await import("./auth")
   const res = await fetch(`${apiUrl}/api${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...init?.headers,
+    },
     ...init,
   })
   return res

@@ -9,6 +9,8 @@ import type {
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 import crypto from "node:crypto"
+import { signInviteToken, verifyOpaqueToken } from "../lib/jwt"
+import { adminAppUrl, logDevMail } from "../lib/dev-mail"
 
 export const userService = {
   // ── 用户 CRUD ──────────────────────────────────────────────
@@ -157,9 +159,15 @@ export const userService = {
   async createInvite(input: CreateInviteInput) {
     const db = getDb()
     const id = generateId("invite")
-    const token = crypto.randomBytes(32).toString("hex")
-    // 7天过期
+    const rawToken = crypto.randomBytes(32).toString("hex")
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const exp = Math.floor(expiresAt.getTime() / 1000)
+    const jwtToken = await signInviteToken({
+      id,
+      jti: rawToken,
+      email: input.email,
+      exp,
+    })
 
     const [created] = await db
       .insert(invite)
@@ -167,14 +175,20 @@ export const userService = {
         id,
         email: input.email,
         accepted: false,
-        token,
+        token: rawToken,
         expires_at: expiresAt,
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
       .returning()
 
-    return { invite: created }
+    const invite_url = adminAppUrl(`/invite?token=${encodeURIComponent(jwtToken)}`)
+    logDevMail("invite", { email: input.email, invite_url })
+
+    return {
+      invite: { ...created, token: jwtToken },
+      invite_url,
+    }
   },
 
   async getInviteById(id: string) {
@@ -192,20 +206,31 @@ export const userService = {
     return { invite: item }
   },
 
-  async acceptInvite(inviteToken: string, input: AcceptInviteInput) {
+  async acceptInvite(
+    inviteToken: string,
+    input: AcceptInviteInput,
+    authUser?: { actor_id: string; email: string },
+  ) {
     const db = getDb()
 
-    // 查找邀请
+    let dbToken = inviteToken
+    try {
+      const decoded = await verifyOpaqueToken(inviteToken)
+      dbToken = String(decoded.jti ?? inviteToken)
+    } catch {
+      // 兼容 raw hex token
+    }
+
     const [inv] = await db
       .select()
       .from(invite)
       .where(
         and(
-          eq(invite.token, inviteToken),
+          eq(invite.token, dbToken),
           eq(invite.email, input.email),
           eq(invite.accepted, false),
           isNull(invite.deleted_at),
-        )
+        ),
       )
       .limit(1)
 
@@ -213,12 +238,32 @@ export const userService = {
       throw new HTTPException(404, { message: "邀请不存在或已过期" })
     }
 
-    // 检查是否过期
     if (new Date(inv.expires_at) < new Date()) {
       throw new HTTPException(400, { message: "邀请已过期" })
     }
 
-    // 创建用户（如果不存在）
+    if (authUser) {
+      if (authUser.email !== input.email) {
+        throw new HTTPException(400, { message: "邮箱与邀请不匹配" })
+      }
+
+      await db
+        .update(invite)
+        .set({ accepted: true, updated_at: sql`now()` })
+        .where(eq(invite.id, inv.id))
+
+      await db
+        .update(user)
+        .set({
+          first_name: input.first_name,
+          last_name: input.last_name,
+          updated_at: sql`now()`,
+        })
+        .where(eq(user.id, authUser.actor_id))
+
+      return { user: { id: authUser.actor_id, email: input.email } }
+    }
+
     const [existingUser] = await db
       .select({ id: user.id })
       .from(user)
@@ -241,7 +286,6 @@ export const userService = {
       })
     }
 
-    // 标记邀请已接受
     await db
       .update(invite)
       .set({ accepted: true, updated_at: sql`now()` })
@@ -252,15 +296,22 @@ export const userService = {
 
   async resendInvite(id: string) {
     const db = getDb()
-    await this.getInviteById(id)
+    const { invite: current } = await this.getInviteById(id)
 
-    const newToken = crypto.randomBytes(32).toString("hex")
+    const rawToken = crypto.randomBytes(32).toString("hex")
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const exp = Math.floor(expiresAt.getTime() / 1000)
+    const jwtToken = await signInviteToken({
+      id: current.id,
+      jti: rawToken,
+      email: current.email,
+      exp,
+    })
 
     const [updated] = await db
       .update(invite)
       .set({
-        token: newToken,
+        token: rawToken,
         expires_at: expiresAt,
         accepted: false,
         updated_at: sql`now()`,
@@ -268,7 +319,10 @@ export const userService = {
       .where(and(eq(invite.id, id), isNull(invite.deleted_at)))
       .returning()
 
-    return { invite: updated }
+    const invite_url = adminAppUrl(`/invite?token=${encodeURIComponent(jwtToken)}`)
+    logDevMail("invite_resend", { email: current.email, invite_url })
+
+    return { invite: { ...updated, token: jwtToken }, invite_url }
   },
 
   async deleteInvite(id: string) {

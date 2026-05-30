@@ -5,7 +5,7 @@ import { beforeAll, afterAll } from "vitest"
 import { config } from "dotenv"
 import { resolve } from "path"
 import { sql } from "drizzle-orm"
-import { setDb, createDb, resetDb, getDb } from "@my-store/db"
+import { setDb, createDb, closeDb, getDb } from "@my-store/db"
 import { signToken } from "../src/lib/jwt"
 import { app } from "../src/app"
 
@@ -25,8 +25,8 @@ beforeAll(async () => {
   } catch { /* warmup 失败不影响测试 */ }
 })
 
-afterAll(() => {
-  resetDb()
+afterAll(async () => {
+  await closeDb()
 })
 
 // ---------------------------------------------------------------------------
