@@ -12,6 +12,7 @@ my-medusa-store-hono/
 │   ├── server/         ← Hono API 后端 (localhost:9000)，挂载 /app 静态文件
 │   └── storefront/     ← 前端商店
 ├── packages/
+│   ├── config/         ← 品牌全局配置（BRAND、EMAIL_DOMAIN 等）
 │   ├── db/             ← Drizzle ORM schema
 │   └── validators/     ← Zod 验证器
 └── scripts/            ← 构建/初始化脚本
@@ -80,6 +81,16 @@ pnpm dev:admin        # 仅 admin (localhost:5173，proxy /api → localhost:900
 pnpm dev:server       # 仅 server (localhost:9000)
 pnpm build:admin      # 构建 admin → apps/server/public/app/
 ```
+
+## Storefront (Astro) 开发规范
+
+**Storefront 使用 Astro 框架，开发时注意以下规则：**
+
+1. **安装集成用 `astro add`** — 不用手动编辑 `astro.config.mjs` 或 `package.json` 添加集成，用 `pnpm astro add <integration>`（如 `astro add tailwind`、`astro add react`）
+2. **验证当前 API** — AI 训练数据中的 Astro API 可能已过时，特别是 sessions、actions 等新特性。不确定时通过 MCP 服务器（`.mcp.json` 已配置 Astro docs MCP）查询最新文档
+3. **图片域名白名单** — 外部图片 URL 需在 `astro.config.mjs` 的 `image.domains` 中配置（已在 `apps/storefront/astro.config.mjs` 中预配）
+4. **API 请求** — Storefront 通过 `PUBLIC_API_URL` 环境变量指向 Hono Server，页面内 fetch 已带 `/api` 前缀
+5. **品牌名称** — 所有面向用户的名称从 `@my-store/config` 导入 `BRAND`，不要硬编码
 
 ---
 
