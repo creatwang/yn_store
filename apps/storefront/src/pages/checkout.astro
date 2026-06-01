@@ -24,6 +24,8 @@ import BaseLayout from "../layouts/BaseLayout.astro"
   let paymentSessionId = ""
   let selectedOptionId = ""
 
+  let selectedShipAmount = 0
+
   function render() {
     if (!cartId) {
       root.innerHTML = `<p class="text-gray-500">购物车为空，<a href="/" class="underline">返回首页</a></p>`
@@ -56,11 +58,11 @@ import BaseLayout from "../layouts/BaseLayout.astro"
                   `<label class="flex items-center gap-2 rounded border p-3 cursor-pointer">
               <input type="radio" name="ship" value="${o.id}" ${selectedOptionId === o.id ? "checked" : ""} />
               <span>${o.name}</span>
-              <span class="ml-auto text-sm text-gray-500">$${o.amount ?? 10}</span>
+              <span class="ml-auto text-sm text-gray-500">$${o.amount ?? 0}</span>
             </label>`,
               )
               .join("")
-          : `<p class="text-sm text-gray-500">暂无配送选项，将使用默认运费</p>
+          : `<p class="text-sm text-gray-500">暂无配送选项，将免运费</p>
              <input type="hidden" id="fallback-ship" value="default" />`
 
       root.innerHTML = `
@@ -144,6 +146,12 @@ import BaseLayout from "../layouts/BaseLayout.astro"
     const selected = document.querySelector<HTMLInputElement>('input[name="ship"]:checked')
     const optionId = selected?.value
 
+    // Store selected shipping amount for submitOrder
+    const shipOption = shippingOptions.find((o) => o.id === optionId)
+    if (shipOption) {
+      selectedShipAmount = shipOption.amount ?? 0
+    }
+
     if (optionId && optionId !== "default") {
       await apiFetch(`/store/carts/${cartId}/shipping-methods`, {
         method: "POST",
@@ -167,12 +175,13 @@ import BaseLayout from "../layouts/BaseLayout.astro"
   async function submitOrder() {
     const totals = await apiFetch(`/store/carts/${cartId}`)
     const cartData = totals.ok ? await totals.json() : { items: [] }
-    const total =
-      (cartData.items ?? []).reduce(
-        (s: number, i: { unit_price?: string; quantity: number }) =>
-          s + Number(i.unit_price ?? 0) * i.quantity,
-        0,
-      ) + 10
+    const items = cartData.items ?? []
+    const itemTotal = items.reduce(
+      (s: number, i: { unit_price?: string; quantity: number }) =>
+        s + Number(i.unit_price ?? 0) * i.quantity,
+      0,
+    )
+    const total = itemTotal + selectedShipAmount
 
     const pcRes = await apiFetch("/store/payment-collections", {
       method: "POST",

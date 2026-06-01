@@ -10,7 +10,7 @@ import type {
 import { HTTPException } from "hono/http-exception"
 import crypto from "node:crypto"
 import { signInviteToken, verifyOpaqueToken } from "../lib/jwt"
-import { adminAppUrl, logDevMail } from "../lib/dev-mail"
+import { adminAppUrl, sendInviteEmail, sendInviteResendEmail } from "../lib/mail"
 
 export const userService = {
   // ── 用户 CRUD ──────────────────────────────────────────────
@@ -183,7 +183,7 @@ export const userService = {
       .returning()
 
     const invite_url = adminAppUrl(`/invite?token=${encodeURIComponent(jwtToken)}`)
-    logDevMail("invite", { email: input.email, invite_url })
+    await sendInviteEmail(input.email, invite_url)
 
     return {
       invite: { ...created, token: jwtToken },
@@ -320,7 +320,7 @@ export const userService = {
       .returning()
 
     const invite_url = adminAppUrl(`/invite?token=${encodeURIComponent(jwtToken)}`)
-    logDevMail("invite_resend", { email: current.email, invite_url })
+    await sendInviteResendEmail(current.email, invite_url)
 
     return { invite: { ...updated, token: jwtToken }, invite_url }
   },

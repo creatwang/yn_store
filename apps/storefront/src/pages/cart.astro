@@ -25,6 +25,10 @@ import BaseLayout from "../layouts/BaseLayout.astro"
   const root = document.getElementById("cart-root")!
   const checkoutLink = document.getElementById("checkout-link")!
 
+  function formatPrice(amount: number | string): string {
+    return `$${Number(amount).toFixed(2)}`
+  }
+
   async function loadCart() {
     const cartId = getCartId()
     if (!cartId) {
@@ -47,21 +51,48 @@ import BaseLayout from "../layouts/BaseLayout.astro"
     }
 
     checkoutLink.classList.remove("hidden")
-    root.innerHTML = items
-      .map(
-        (item: Record<string, unknown>) => `
+
+    // Calculate totals
+    let subtotal = 0
+    const itemHtml = items
+      .map((item: Record<string, unknown>) => {
+        const price = Number(item.unit_price ?? 0)
+        const qty = Number(item.quantity ?? 1)
+        const lineTotal = price * qty
+        subtotal += lineTotal
+        return `
       <div class="flex items-center justify-between rounded border bg-white p-4" data-line-id="${item.id}">
-        <div>
+        <div class="flex-1">
           <p class="font-medium">${item.title || "商品"}</p>
-          <p class="text-sm text-gray-500">数量: ${item.quantity}</p>
+          <p class="text-sm text-gray-500">${formatPrice(price)} x ${qty} = <span class="font-semibold text-gray-900">${formatPrice(lineTotal)}</span></p>
         </div>
-        <button type="button" class="text-sm text-red-600 hover:underline remove-btn" data-line-id="${item.id}">
+        <button type="button" class="text-sm text-red-600 hover:underline remove-btn ml-4" data-line-id="${item.id}">
           移除
         </button>
       </div>
-    `,
-      )
+    `
+      })
       .join("")
+
+    const totalHtml = `
+      <div class="rounded border bg-gray-50 p-4 space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-600">小计</span>
+          <span class="font-medium">${formatPrice(subtotal)}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-600">运费</span>
+          <span class="font-medium">结算时计算</span>
+        </div>
+        <hr class="my-2" />
+        <div class="flex justify-between text-base font-semibold">
+          <span>合计</span>
+          <span>${formatPrice(subtotal)}</span>
+        </div>
+      </div>
+    `
+
+    root.innerHTML = itemHtml + totalHtml
 
     root.querySelectorAll(".remove-btn").forEach((btn) => {
       btn.addEventListener("click", async (e) => {

@@ -1,0 +1,67 @@
+name: e2e
+
+# Manual trigger only — requires a live database.
+# Run against the Supabase dev DB or a local instance.
+on:
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: apps/admin
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Build admin UI
+        run: pnpm build:admin
+
+      - name: Start server & run E2E
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORT: 9000
+          NODE_ENV: test
+          SERVE_ADMIN: "1"
+          ADMIN_E2E_EMAIL: admin@medusa-test.com
+          ADMIN_E2E_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || 'supersecret' }}
+          PLAYWRIGHT_BASE_URL: http://localhost:5173/app
+          PLAYWRIGHT_API_URL: http://localhost:9000
+          CI: "true"
+        run: |
+          cd apps/server
+          npx tsx scripts/seed-admin.ts
+          npx tsx entry.node.ts &
+          SERVER_PID=$!
+          # Wait for server ready
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/api/health && break
+            sleep 2
+          done
+          cd ../admin
+          pnpm test:e2e
+          kill $SERVER_PID || true
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: apps/admin/test-results/
+          retention-days: 7

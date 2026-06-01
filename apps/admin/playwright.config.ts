@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
     : {
-        command: "pnpm dev:admin",
+        command: "pnpm dev",
         url: "http://localhost:5173/app/login",
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

@@ -57,6 +57,21 @@ find apps/admin/demo/dashboard/src/routes/[feature-path] -type f | sort
 - 库存套件 → `demo/dashboard/src/routes/products/product-create-variant/components/`
 - 公共组件 → `demo/dashboard/src/routes/products/common/components/`
 
+## 项目规划文档（必读）
+
+在做任何功能开发或评估完成度前，**必须先查 docs/ 目录的规划文档**，不要仅凭代码是否存在判断。
+
+| 文档 | 用途 | 何时看 |
+|------|------|--------|
+| [docs/14-admin-api-gap-matrix.md](docs/14-admin-api-gap-matrix.md) | **权威缺口表**：Admin ↔ API / client / hooks 对照，P0/P1/P2 优先级，⚠️/🟢 状态标记 | 评估功能完成度 |
+| [docs/15-ai-improvement-tasks.md](docs/15-ai-improvement-tasks.md) | **P2 任务 backlog**：TASK-ID、验收命令、Wave 排期、勾选清单 | 找下一个要做的任务 |
+| [docs/16-full-completion-playbook.md](docs/16-full-completion-playbook.md) | **收尾手册**：Phase 0–6 状态、DoD 检查清单、完成度估算 | 全局进度判断 |
+| [docs/00-agent-handoff.md](docs/00-agent-handoff.md) | **主交接文档**：目标、目录、规则、实现顺序、自检清单 | 了解项目全貌 |
+| [docs/12-testing-plan.mdx](docs/12-testing-plan.mdx) | 自动化测试方案：Vitest + Hono Test Client + Playwright E2E | 写测试前 |
+| [docs/09-stitching-alignment.mdx](docs/09-stitching-alignment.mdx) | 缝合对齐规则：Dashboard ↔ SDK 适配层 ↔ Hono Server | 做 API 对接 |
+
+**注意**：`docs/11-feature-tracker.mdx` 已归档，缺口以 14 矩阵为准。15 任务 backlog 的 §3 总览表可能与 §4 详情状态不一致，以 16 playbook 代码核实为准。
+
 ## 运行命令
 
 ```bash

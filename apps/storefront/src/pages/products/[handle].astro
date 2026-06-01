@@ -18,6 +18,10 @@ try {
 } catch {
   error = "加载失败"
 }
+
+const variants = (product?.variants as Array<Record<string, unknown>> | undefined) ?? []
+const firstVariant = variants[0]
+const firstPrice = firstVariant?.price as { amount: number; currency_code: string } | null | undefined
 ---
 
 <BaseLayout title={product ? String(product.title) : "商品详情"}>
@@ -53,17 +57,29 @@ try {
             <p>{product.description}</p>
           </div>
         )}
+
+        <p id="variant-price" class="mt-4 text-2xl font-bold text-gray-900">
+          {firstPrice ? `$${firstPrice.amount.toFixed(2)}` : '暂无定价'}
+        </p>
+
         <p class="mt-4 font-mono text-xs text-gray-400">
           {product.handle}
         </p>
-        {(product.variants as Array<Record<string, unknown>> | undefined)?.length ? (
+        {variants.length > 0 ? (
           <div class="mt-8 space-y-4">
             <label class="block text-sm font-medium">
               规格
               <select id="variant-select" class="mt-1 w-full rounded border px-3 py-2">
-                {(product.variants as Array<Record<string, unknown>>).map((v) => (
-                  <option value={String(v.id)}>{v.title || v.sku || v.id}</option>
-                ))}
+                {variants.map((v) => {
+                  const p = v.price as { amount: number; currency_code: string } | null | undefined
+                  const priceStr = p ? ` — $${p.amount.toFixed(2)}` : ' — 暂无定价'
+                  const priceAttr = p ? String(p.amount) : ''
+                  return (
+                    <option value={String(v.id)} data-price={priceAttr}>
+                      {v.title || v.sku || v.id}{priceStr}
+                    </option>
+                  )
+                })}
               </select>
             </label>
             <label class="block text-sm font-medium">
@@ -87,13 +103,22 @@ try {
   )}
 </BaseLayout>
 
-<script define:vars={{ productId: product?.id ?? "" }}>
+<script define:vars={{ productId: product ? String(product.id) : "" }}>
   import { apiFetch, getCartId, setCartId } from "../../lib/cart"
 
   const btn = document.getElementById("add-to-cart")
   const msg = document.getElementById("cart-msg")
-  const variantSelect = document.getElementById("variant-select")
-  const qtyInput = document.getElementById("qty-input")
+  const variantSelect = document.getElementById("variant-select") as HTMLSelectElement
+  const qtyInput = document.getElementById("qty-input") as HTMLInputElement
+  const priceEl = document.getElementById("variant-price")
+
+  variantSelect?.addEventListener("change", () => {
+    const selected = variantSelect.options[variantSelect.selectedIndex]
+    const price = selected.dataset.price
+    if (priceEl) {
+      priceEl.textContent = price ? `$${Number(price).toFixed(2)}` : '暂无定价'
+    }
+  })
 
   btn?.addEventListener("click", async () => {
     if (!variantSelect || !qtyInput) return

@@ -11,7 +11,7 @@ import {
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import { signToken, signResetPasswordToken, verifyOpaqueToken } from "../lib/jwt"
-import { adminAppUrl, logDevMail } from "../lib/dev-mail"
+import { adminAppUrl, sendPasswordResetEmail } from "../lib/mail"
 
 type ProviderMetadata = {
   password?: string
@@ -293,10 +293,10 @@ export const authService = {
         .where(eq(providerIdentity.id, identity.id))
 
       const resetUrl = adminAppUrl(`/reset-password?token=${encodeURIComponent(resetToken)}`)
-      logDevMail("password_reset", { email, reset_url: resetUrl })
+      const result = await sendPasswordResetEmail(email, resetToken, resetUrl)
 
-      if (process.env.NODE_ENV === "test" || process.env.DEV_MAIL_LOG === "1") {
-        return { success: true, reset_token: resetToken, reset_url: resetUrl }
+      if (result.reset_token) {
+        return result
       }
     }
 

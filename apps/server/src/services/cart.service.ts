@@ -66,6 +66,24 @@ export const cartService = {
     const db = getDb()
     await this.getById(cartId)
 
+    // 查变体价格（USD），通过 price_set 链，写入 unit_price
+    let unitPrice = "0"
+    if (input.variant_id) {
+      try {
+        const priceRows = await db.execute(sql`
+          SELECT pr.amount FROM price pr
+          JOIN price_set ps ON ps.id = pr.price_set_id
+          JOIN product_variant_price_set pvps ON pvps.price_set_id = ps.id
+          WHERE pvps.variant_id = ${input.variant_id} AND pr.currency_code = 'usd'
+          LIMIT 1
+        `)
+        const rows = Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? []
+        if (rows[0]) {
+          unitPrice = String(rows[0].amount)
+        }
+      } catch { /* price table not yet populated or schema mismatch */ }
+    }
+
     const id = generateId("line")
 
     const [item] = await db
@@ -78,8 +96,8 @@ export const cartService = {
         title: input.title ?? "",
         quantity: input.quantity,
         metadata: input.metadata ?? null,
-        unit_price: "0",
-        raw_unit_price: { value: "0", precision: 20 },
+        unit_price: unitPrice,
+        raw_unit_price: { value: unitPrice, precision: 20 },
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })

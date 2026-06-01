@@ -220,8 +220,30 @@ export const productService = {
       db.select({ total: count() }).from(product).where(where),
     ])
 
+    // 加载每个产品的最低价（USD），通过 price_set 链
+    const productIds = products.map((p) => p.id)
+    const priceMap = new Map<string, number>()
+    if (productIds.length > 0) {
+      try {
+        const priceRows = await db.execute(sql`
+          SELECT pv.product_id, MIN(pr.amount)::numeric as min_price
+          FROM product_variant pv
+          JOIN product_variant_price_set pvps ON pvps.variant_id = pv.id
+          JOIN price_set ps ON ps.id = pvps.price_set_id
+          JOIN price pr ON pr.price_set_id = ps.id
+          WHERE pv.product_id = ANY(${productIds}::text[])
+            AND pr.currency_code = 'usd'
+            AND pv.deleted_at IS NULL
+          GROUP BY pv.product_id
+        `)
+        for (const row of (Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? [])) {
+          priceMap.set(row.product_id, Number(row.min_price))
+        }
+      } catch { /* price table not yet populated or schema mismatch */ }
+    }
+
     return {
-      products,
+      products: products.map((p) => ({ ...p, price: priceMap.get(p.id) ?? null })),
       count: Number(total),
       limit: query.limit,
       offset: query.offset,
@@ -279,7 +301,28 @@ export const productService = {
         )
       )
 
-    return { product: { ...item, variants } }
+    // 加载变体价格（USD），通过 price_set 链
+    const variantIds = variants.map((v) => v.id)
+    const priceMap = new Map<string, { amount: number; currency_code: string }>()
+    if (variantIds.length > 0) {
+      try {
+        const priceRows = await db.execute(sql`
+          SELECT pvps.variant_id, pr.amount, pr.currency_code
+          FROM product_variant_price_set pvps
+          JOIN price_set ps ON ps.id = pvps.price_set_id
+          JOIN price pr ON pr.price_set_id = ps.id
+          WHERE pvps.variant_id = ANY(${variantIds}::text[]) AND pr.currency_code = 'usd'
+          ORDER BY pr.amount ASC
+        `)
+        for (const row of (Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? [])) {
+          if (!priceMap.has(row.variant_id)) {
+            priceMap.set(row.variant_id, { amount: Number(row.amount), currency_code: row.currency_code })
+          }
+        }
+      } catch { /* price table not yet populated or schema mismatch */ }
+    }
+
+    return { product: { ...item, variants: variants.map((v) => ({ ...v, price: priceMap.get(v.id) ?? null })) } }
   },
 
   async create(input: CreateProductInput) {
