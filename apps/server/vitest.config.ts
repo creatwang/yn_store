@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
+    globalTeardown: ["./tests/global-teardown.ts"],
     testTimeout: 60000,
     hookTimeout: 30000,
     // Supabase session pooler pool_size=15；并行 worker 各自建连接池会触发 EMAXCONNSESSION

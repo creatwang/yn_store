@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import {
   generateId,
   getDb,
@@ -333,15 +333,62 @@ export const productExportService = {
       products = products.filter((p) => query.product_ids!.includes(p.id))
     }
 
-    const csvRows: string[][] = []
+    const productIds = products.map((p) => p.id)
+    const variantsByProduct = new Map<string, (typeof productVariant.$inferSelect)[]>()
+    const usdPriceByVariant = new Map<string, string>()
 
-    for (const p of products) {
+    if (productIds.length > 0) {
       const variants = await db
         .select()
         .from(productVariant)
         .where(
-          and(eq(productVariant.product_id, p.id), isNull(productVariant.deleted_at)),
+          and(inArray(productVariant.product_id, productIds), isNull(productVariant.deleted_at)),
         )
+
+      for (const v of variants) {
+        const list = variantsByProduct.get(v.product_id) ?? []
+        list.push(v)
+        variantsByProduct.set(v.product_id, list)
+      }
+
+      const variantIds = variants.map((v) => v.id)
+      if (variantIds.length > 0) {
+        const links = await db
+          .select()
+          .from(productVariantPriceSet)
+          .where(inArray(productVariantPriceSet.variant_id, variantIds))
+
+        const priceSetIds = [...new Set(links.map((l) => l.price_set_id))]
+        const priceBySetId = new Map<string, string>()
+
+        if (priceSetIds.length > 0) {
+          const prices = await db
+            .select()
+            .from(price)
+            .where(
+              and(
+                inArray(price.price_set_id, priceSetIds),
+                eq(price.currency_code, "USD"),
+                isNull(price.deleted_at),
+              ),
+            )
+
+          for (const p of prices) {
+            priceBySetId.set(p.price_set_id, String(p.amount))
+          }
+        }
+
+        for (const link of links) {
+          const usd = priceBySetId.get(link.price_set_id)
+          if (usd != null) usdPriceByVariant.set(link.variant_id, usd)
+        }
+      }
+    }
+
+    const csvRows: string[][] = []
+
+    for (const p of products) {
+      const variants = variantsByProduct.get(p.id) ?? []
 
       if (variants.length === 0) {
         csvRows.push([
@@ -363,28 +410,6 @@ export const productExportService = {
       }
 
       for (const v of variants) {
-        let usdPrice = ""
-        const [link] = await db
-          .select()
-          .from(productVariantPriceSet)
-          .where(eq(productVariantPriceSet.variant_id, v.id))
-          .limit(1)
-
-        if (link) {
-          const [priceRow] = await db
-            .select()
-            .from(price)
-            .where(
-              and(
-                eq(price.price_set_id, link.price_set_id),
-                eq(price.currency_code, "USD"),
-                isNull(price.deleted_at),
-              ),
-            )
-            .limit(1)
-          if (priceRow) usdPrice = String(priceRow.amount)
-        }
-
         csvRows.push([
           p.id,
           p.handle,
@@ -398,7 +423,7 @@ export const productExportService = {
           v.sku ?? "",
           String(v.allow_backorder ?? false).toUpperCase(),
           String(v.manage_inventory ?? true).toUpperCase(),
-          usdPrice,
+          usdPriceByVariant.get(v.id) ?? "",
         ])
       }
     }

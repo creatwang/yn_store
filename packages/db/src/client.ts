@@ -39,6 +39,13 @@ export function setDb(db: Database) {
   _db = db
 }
 
+/** 替换 DB 实例时关闭旧连接，避免 Vitest 多文件泄漏 pool 槽位 */
+export async function replaceDb(connectionString: string) {
+  await closeDb()
+  _db = createDb(connectionString)
+  return _db
+}
+
 /** 开发时 .env 变更后需重置连接池（一般由 tsx 重启进程，通常不必手动调用） */
 export function resetDb() {
   _db = null

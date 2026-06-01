@@ -1,11 +1,11 @@
 /**
  * 测试全局 Setup — DB 连接、JWT token 生成、seed/clean 工具
  */
-import { beforeAll, afterAll } from "vitest"
+import { beforeAll } from "vitest"
 import { config } from "dotenv"
 import { resolve } from "path"
 import { sql } from "drizzle-orm"
-import { setDb, createDb, closeDb, getDb } from "@my-store/db"
+import { setDb, createDb, getDb } from "@my-store/db"
 import { signToken } from "../src/lib/jwt"
 import { app } from "../src/app"
 
@@ -18,15 +18,14 @@ beforeAll(async () => {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL 未设置，请确保 apps/server/.env 存在")
   }
-  setDb(createDb(dbUrl))
-  // 预热：发送一个简单查询唤醒 Supabase 连接池
   try {
     await getDb().execute(sql`SELECT 1`)
-  } catch { /* warmup 失败不影响测试 */ }
-})
-
-afterAll(async () => {
-  await closeDb()
+  } catch {
+    setDb(createDb(dbUrl))
+    try {
+      await getDb().execute(sql`SELECT 1`)
+    } catch { /* warmup 失败不影响测试 */ }
+  }
 })
 
 // ---------------------------------------------------------------------------

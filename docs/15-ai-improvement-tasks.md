@@ -35,7 +35,7 @@
 | 后端挂载 | `apps/server/src/app.ts` — 45+ admin/store 模块 |
 | Admin SDK 适配 | `client.ts` — **P0 hooks 已对齐**（2026-05-30 TASK-CLIENT-001） |
 | 订单 DTO | `admin-order.ts` — 主体齐 |
-| 集成测试 | **97 条**（15 files；RMA 7 + P1 loc/cat 4） |
+| 集成测试 | **101 条全绿**（16 files；Vitest 单 worker 避免 Supabase pool 耗尽） |
 | Admin 类型债 | **~170 文件 @ts-nocheck**（非文档项，见 14 §10） |
 | 文档 | **14 / 15 / 16 已同步**（2026-05-30）；11 仅快照 |
 
