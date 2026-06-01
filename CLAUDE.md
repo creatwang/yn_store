@@ -70,8 +70,13 @@ find apps/admin/demo/dashboard/src/routes/[feature-path] -type f | sort
 | [docs/00-agent-handoff.md](docs/00-agent-handoff.md) | **主交接文档**：目标、目录、规则、实现顺序、自检清单 | 了解项目全貌 |
 | [docs/12-testing-plan.mdx](docs/12-testing-plan.mdx) | 自动化测试方案：Vitest + Hono Test Client + Playwright E2E | 写测试前 |
 | [docs/09-stitching-alignment.mdx](docs/09-stitching-alignment.mdx) | 缝合对齐规则：Dashboard ↔ SDK 适配层 ↔ Hono Server | 做 API 对接 |
+| [docs/ecommerce-c-end/full-tech-stack.md](docs/ecommerce-c-end/full-tech-stack.md) | **C 端全栈技术方案**：Astro + Hono 架构、Content Loader、Hybrid 渲染、支付、部署 | 改 C 端前必读 |
+| [docs/ecommerce-c-end/adoption-matrix.md](docs/ecommerce-c-end/adoption-matrix.md) | **功能 × Astro 适配矩阵**：三阶段路线、ROI 评级、转化漏斗 | 评估 C 端功能优先级 |
+| [docs/ecommerce-c-end/implementation-status.md](docs/ecommerce-c-end/implementation-status.md) | **C 端实现状态**：基础设施/数据层/UI/SEO/部署 各模块 ✅🟡❌ | 了解 C 端完成度 |
+| [docs/ecommerce-c-end/storefront-conventions.md](docs/ecommerce-c-end/storefront-conventions.md) | **Storefront 工程约定**：命名、网络调用、状态分层、检查单 | 写 C 端代码时 |
+| [docs/ecommerce-c-end/adapter-deployment.md](docs/ecommerce-c-end/adapter-deployment.md) | **部署方案**：Vercel/Docker/CI/Webhook | 部署 C 端时 |
 
-**注意**：`docs/11-feature-tracker.mdx` 已归档，缺口以 14 矩阵为准。15 任务 backlog 的 §3 总览表可能与 §4 详情状态不一致，以 16 playbook 代码核实为准。
+**注意**：`docs/11-feature-tracker.mdx` 已归档，缺口以 14 矩阵为准。15 任务 backlog 的 §3 总览表可能与 §4 详情状态不一致，以 16 playbook 代码核实为准。C 端实现状态以 `docs/ecommerce-c-end/implementation-status.md` 为准。
 
 ## 运行命令
 
@@ -84,13 +89,42 @@ pnpm build:admin      # 构建 admin → apps/server/public/app/
 
 ## Storefront (Astro) 开发规范
 
-**Storefront 使用 Astro 框架，开发时注意以下规则：**
+**Storefront 使用 Astro 5 + Hybrid 渲染，架构为「Hono 交易大脑 + Astro 展示壳」。**
 
-1. **安装集成用 `astro add`** — 不用手动编辑 `astro.config.mjs` 或 `package.json` 添加集成，用 `pnpm astro add <integration>`（如 `astro add tailwind`、`astro add react`）
-2. **验证当前 API** — AI 训练数据中的 Astro API 可能已过时，特别是 sessions、actions 等新特性。不确定时通过 MCP 服务器（`.mcp.json` 已配置 Astro docs MCP）查询最新文档
-3. **图片域名白名单** — 外部图片 URL 需在 `astro.config.mjs` 的 `image.domains` 中配置（已在 `apps/storefront/astro.config.mjs` 中预配）
-4. **API 请求** — Storefront 通过 `PUBLIC_API_URL` 环境变量指向 Hono Server，页面内 fetch 已带 `/api` 前缀
-5. **品牌名称** — 所有面向用户的名称从 `@my-store/config` 导入 `BRAND`，不要硬编码
+### 技术选型
+
+| 领域 | 选型 |
+|------|------|
+| 数据 | Content Loader ← Hono Store API（build 时同步），pages 禁止各自 fetch |
+| 渲染 | `output: "static"`，交易页 `prerender = false` |
+| UI 交互 | 原生 `<script>` + HTML5 标签（Preact 仅 checkout 必要时） |
+| 状态 | Nano Stores（`$cartCount`、`$cartId`），server cart 为权威 |
+| 样式 | Tailwind |
+| 认证 | Hono JWT customer，middleware 读 httpOnly cookie |
+| 图片 | `astro:assets` Image/Picture，`image.domains` 白名单 |
+
+### 开发规则
+
+1. **安装集成用 `astro add`** — 不手动编辑 `astro.config.mjs` 或 `package.json`
+2. **验证当前 API** — Astro sessions/actions 等新特性可能过时，通过 MCP（`.mcp.json`）查最新文档
+3. **图片域名白名单** — 外部图片 URL 需在 `astro.config.mjs` 的 `image.domains` 中配置
+4. **API 请求** — 通过 `PUBLIC_API_URL` 指向 Hono Server，fetch 带 `/api` 前缀
+5. **品牌名称** — 从 `@my-store/config` 导入 `BRAND`，不硬编码
+6. **不要用 React 岛** — checkout 复杂块可上 Preact `client:visible`，禁止 React
+7. **不动 Hono 认证** — 不换 Clerk/Better Auth/Astro Sessions，保持现有 JWT 方案
+
+### C 端技术方案文档
+
+在做 C 端改动前必读 `docs/ecommerce-c-end/`：
+
+| 先看 | 再看（按需） |
+|------|-------------|
+| [full-tech-stack.md](docs/ecommerce-c-end/full-tech-stack.md) — 全局架构 | [image-optimization.md](docs/ecommerce-c-end/image-optimization.md) |
+| [adoption-matrix.md](docs/ecommerce-c-end/adoption-matrix.md) — 三阶段路线 | [islands-strategy.md](docs/ecommerce-c-end/islands-strategy.md) |
+| [implementation-status.md](docs/ecommerce-c-end/implementation-status.md) — 完成度 | [cart-checkout-auth.md](docs/ecommerce-c-end/cart-checkout-auth.md) |
+| [storefront-conventions.md](docs/ecommerce-c-end/storefront-conventions.md) — 编码规范 | [seo-and-metadata.md](docs/ecommerce-c-end/seo-and-metadata.md) |
+| [adapter-deployment.md](docs/ecommerce-c-end/adapter-deployment.md) — 部署 | [native-html-components.md](docs/ecommerce-c-end/native-html-components.md) |
+| | [code-templates.md](docs/ecommerce-c-end/code-templates.md) |
 
 ---
 
