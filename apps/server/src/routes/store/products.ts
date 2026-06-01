@@ -9,6 +9,11 @@ export const storeProducts = new Hono()
     const result = await productService.listStore(query)
     return c.json(result)
   })
+  .get("/:id/realtime", async (c) => {
+    const id = c.req.param("id")
+    const result = await productService.getRealtime(id)
+    return c.json(result)
+  })
   .get("/:id", async (c) => {
     const id = c.req.param("id")
     if (id.startsWith("prod_")) {

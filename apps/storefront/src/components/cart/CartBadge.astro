@@ -1,0 +1,20 @@
+<a href="/cart" class="relative inline-flex items-center hover:text-gray-900">
+  购物车
+  <span
+    id="cart-badge"
+    class="absolute -right-3 -top-2 hidden min-w-[1.125rem] rounded-full bg-red-500 px-1 text-center text-xs leading-5 text-white"
+  >
+    0
+  </span>
+</a>
+
+<script>
+  import { $cartCount } from "../../stores/cartStore"
+
+  const el = document.getElementById("cart-badge")
+  $cartCount.subscribe((n) => {
+    if (!el) return
+    el.textContent = String(n)
+    el.classList.toggle("hidden", n <= 0)
+  })
+</script>

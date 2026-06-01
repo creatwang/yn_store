@@ -1,72 +1,34 @@
 ---
+import { getCollection } from "astro:content"
 import BaseLayout from "../layouts/BaseLayout.astro"
+import ProductCard from "../components/product/ProductCard.astro"
 
-const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
-
-let products: Array<{
-  id: string
-  title: string
-  handle: string
-  thumbnail: string | null
-  subtitle: string | null
-  price: number | null
-}> = []
-let error: string | null = null
-
-try {
-  const res = await fetch(`${apiUrl}/api/store/products?limit=24`)
-  if (res.ok) {
-    const data = await res.json()
-    products = data.products ?? []
-  } else {
-    error = "无法加载商品"
-  }
-} catch {
-  error = "API 连接失败，请确认 server 已启动"
-}
+const products = await getCollection("products")
+const sorted = [...products].sort((a, b) =>
+  a.data.title.localeCompare(b.data.title),
+)
 ---
 
-<BaseLayout title="首页">
+<BaseLayout
+  title="首页 — 跨境商城"
+  description="精选跨境商品，基于 Hono Store API 与 Astro 构建的高性能商城。"
+>
   <h1 class="mb-2 text-3xl font-bold">精选商品</h1>
-  <p class="mb-8 text-gray-600">基于 Hono Store API</p>
+  <p class="mb-8 text-gray-600">Content Loader · SSG</p>
 
-  {error && (
-    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-      {error}
+  {sorted.length === 0 ? (
+    <p class="text-gray-500">暂无已发布商品</p>
+  ) : (
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {sorted.map((entry) => (
+        <ProductCard
+          handle={entry.data.handle}
+          title={entry.data.title}
+          subtitle={entry.data.subtitle}
+          thumbnail={entry.data.thumbnail}
+          price={entry.data.price}
+        />
+      ))}
     </div>
   )}
-
-  {!error && products.length === 0 && (
-    <p class="text-gray-500">暂无已发布商品</p>
-  )}
-
-  <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-    {products.map((product) => (
-      <a
-        href={`/products/${product.handle}`}
-        class="block overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-md"
-      >
-        {product.thumbnail ? (
-          <img
-            src={product.thumbnail}
-            alt={product.title}
-            class="h-48 w-full object-cover"
-          />
-        ) : (
-          <div class="flex h-48 items-center justify-center bg-gray-100 text-gray-400">
-            无图
-          </div>
-        )}
-        <div class="p-4">
-          <h2 class="font-medium">{product.title}</h2>
-          {product.subtitle && (
-            <p class="mt-1 text-sm text-gray-500">{product.subtitle}</p>
-          )}
-          <p class="mt-2 text-lg font-semibold text-gray-900">
-            {product.price != null ? `$${product.price.toFixed(2)}` : '暂无定价'}
-          </p>
-        </div>
-      </a>
-    ))}
-  </div>
 </BaseLayout>

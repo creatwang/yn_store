@@ -1,54 +1,48 @@
 ---
+import { getCollection } from "astro:content"
 import BaseLayout from "../../layouts/BaseLayout.astro"
+import ProductCard from "../../components/product/ProductCard.astro"
 
-const { handle } = Astro.params
-const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
-
-let collection: {
-  title: string
-  handle: string
-  products?: Array<{ id: string; title: string; handle: string; thumbnail?: string | null }>
-} | null = null
-
-try {
-  const res = await fetch(`${apiUrl}/api/store/collections/${handle}`)
-  if (res.ok) {
-    const data = await res.json()
-    collection = data.collection ?? null
-  }
-} catch {
-  collection = null
+export async function getStaticPaths() {
+  const collections = await getCollection("collections")
+  return collections.map((entry) => ({
+    params: { handle: entry.id },
+    props: { entry },
+  }))
 }
+
+const { entry } = Astro.props
+const collection = entry.data
+const site = Astro.site?.href ?? "http://localhost:4321"
 ---
 
-<BaseLayout title={collection?.title ?? "合集"}>
-  {!collection ? (
-    <p class="text-gray-500">合集不存在</p>
+<BaseLayout
+  title={`${collection.title} — 合集`}
+  description={`${collection.title} 合集，共 ${collection.products.length} 件商品。`}
+  canonical={`${site}/collections/${collection.handle}`}
+>
+  <nav class="mb-4 text-sm text-gray-600" aria-label="面包屑">
+    <a href="/" class="underline">首页</a>
+    <span class="mx-1">/</span>
+    <a href="/collections" class="underline">合集</a>
+    <span class="mx-1">/</span>
+    <span>{collection.title}</span>
+  </nav>
+
+  <h1 class="mb-6 text-2xl font-bold">{collection.title}</h1>
+
+  {collection.products.length === 0 ? (
+    <p class="text-gray-500">该合集暂无商品</p>
   ) : (
-    <>
-      <a href="/collections" class="mb-4 inline-block text-sm text-gray-600 underline">← 全部合集</a>
-      <h1 class="mb-6 text-2xl font-bold">{collection.title}</h1>
-      {(collection.products ?? []).length === 0 ? (
-        <p class="text-gray-500">该合集暂无商品</p>
-      ) : (
-        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {(collection.products ?? []).map((product) => (
-            <a
-              href={`/products/${product.handle}`}
-              class="block overflow-hidden rounded-lg border bg-white shadow-sm hover:shadow-md"
-            >
-              {product.thumbnail ? (
-                <img src={product.thumbnail} alt={product.title} class="h-48 w-full object-cover" />
-              ) : (
-                <div class="flex h-48 items-center justify-center bg-gray-100 text-gray-400">无图</div>
-              )}
-              <div class="p-4">
-                <h2 class="font-medium">{product.title}</h2>
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
-    </>
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {collection.products.map((p) => (
+        <ProductCard
+          handle={p.handle}
+          title={p.title}
+          subtitle={p.subtitle}
+          thumbnail={p.thumbnail}
+        />
+      ))}
+    </div>
   )}
 </BaseLayout>

@@ -1,9 +1,10 @@
 ---
+export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
 ---
 
 <BaseLayout title="我的账户">
-  <div id="account-root" class="mx-auto max-w-lg space-y-4">
+  <div id="account-root" class="mx-auto max-w-2xl space-y-4">
     <p class="text-gray-500">加载中…</p>
   </div>
 </BaseLayout>
@@ -14,35 +15,240 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 
   const root = document.getElementById("account-root")!
 
-  async function loadAccount() {
+  type Tab = "profile" | "orders" | "addresses"
+  let currentTab: Tab = "profile"
+  let customer: any = null
+  let orders: any[] = []
+  let addresses: any[] = []
+
+  function formatPrice(n: number | string): string {
+    return `$${Number(n).toFixed(2)}`
+  }
+
+  // ── Load all data ──
+  async function loadData() {
     const cached = getCustomer()
     if (!cached) {
       window.location.href = "/login"
       return
     }
 
-    const res = await apiFetch("/store/customers/me")
-    if (!res.ok) {
+    const meRes = await apiFetch("/store/customers/me")
+    if (!meRes.ok) {
       clearCustomerSession()
       window.location.href = "/login"
       return
     }
+    const meData = await meRes.json()
+    customer = meData.customer
 
-    const { customer } = await res.json()
+    // Load orders and addresses in parallel
+    const [ordersRes, addrRes] = await Promise.all([
+      apiFetch("/store/orders?limit=50"),
+      apiFetch("/store/customers/me/addresses"),
+    ])
+    if (ordersRes.ok) {
+      const d = await ordersRes.json()
+      orders = d.orders ?? []
+    }
+    if (addrRes.ok) {
+      const d = await addrRes.json()
+      addresses = d.addresses ?? []
+    }
+
+    render()
+  }
+
+  // ── Actions ──
+  async function addAddress() {
+    const form = document.getElementById("addr-form") as HTMLFormElement | null
+    if (!form) return
+    const data: Record<string, string> = {}
+    form.querySelectorAll("input, textarea").forEach((el: any) => {
+      if (el.name && el.value) data[el.name] = el.value
+    })
+    if (!data.address_1 || !data.city || !data.country_code) {
+      alert("请填写街道、城市和国家")
+      return
+    }
+    const res = await apiFetch("/store/customers/me/addresses", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+    if (res.ok) {
+      const d = await res.json()
+      addresses.push(d.address)
+      render()
+    } else {
+      alert("添加地址失败")
+    }
+  }
+
+  async function deleteAddress(id: string) {
+    if (!confirm("确认删除该地址？")) return
+    await apiFetch(`/store/customers/me/addresses/${id}`, { method: "DELETE" })
+    addresses = addresses.filter((a) => a.id !== id)
+    render()
+  }
+
+  function logout() {
+    clearCustomerSession()
+    window.location.href = "/"
+  }
+
+  // ── Render ──
+  function render() {
     root.innerHTML = `
-      <div class="rounded border bg-white p-6">
-        <h1 class="mb-2 text-2xl font-bold">我的账户</h1>
-        <p class="text-gray-600">${customer.email}</p>
-        <p class="mt-1 text-sm text-gray-500">${[customer.first_name, customer.last_name].filter(Boolean).join(" ") || "未设置姓名"}</p>
-        <button id="logout-btn" type="button" class="mt-6 text-sm text-red-600 underline">退出登录</button>
+      <div class="rounded border bg-white">
+        ${renderTabs()}
+        ${currentTab === "profile" ? renderProfile() : ""}
+        ${currentTab === "orders" ? renderOrders() : ""}
+        ${currentTab === "addresses" ? renderAddresses() : ""}
       </div>
     `
 
-    document.getElementById("logout-btn")!.addEventListener("click", () => {
-      clearCustomerSession()
-      window.location.href = "/"
+    // Bind tab clicks
+    root.querySelectorAll("[data-tab]").forEach((el) => {
+      el.addEventListener("click", () => {
+        currentTab = (el as HTMLElement).dataset.tab as Tab
+        render()
+      })
     })
+
+    // Bind address actions
+    root.querySelector("#save-address")?.addEventListener("click", addAddress)
+    root.querySelectorAll(".del-addr-btn").forEach((el) => {
+      el.addEventListener("click", () => deleteAddress((el as HTMLElement).dataset.id!))
+    })
+
+    // Bind logout
+    root.querySelector("#logout-btn")?.addEventListener("click", logout)
   }
 
-  loadAccount()
+  function renderTabs() {
+    const tabs: { key: Tab; label: string }[] = [
+      { key: "profile", label: "个人资料" },
+      { key: "orders", label: `订单${orders.length ? ` (${orders.length})` : ""}` },
+      { key: "addresses", label: `收货地址${addresses.length ? ` (${addresses.length})` : ""}` },
+    ]
+    return `
+      <div class="flex border-b">
+        ${tabs.map((t) => `
+          <button data-tab="${t.key}" class="flex-1 py-3 text-sm font-medium text-center border-b-2 transition
+            ${currentTab === t.key ? "border-gray-900 text-gray-900" : "border-transparent text-gray-500 hover:text-gray-700"}">${t.label}</button>
+        `).join("")}
+      </div>
+    `
+  }
+
+  function renderProfile() {
+    return `
+      <div class="p-6 space-y-3">
+        <h2 class="text-lg font-semibold">个人信息</h2>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="text-gray-500">邮箱</p>
+            <p class="font-medium">${customer?.email ?? "—"}</p>
+          </div>
+          <div>
+            <p class="text-gray-500">姓名</p>
+            <p class="font-medium">${[customer?.first_name, customer?.last_name].filter(Boolean).join(" ") || "未设置"}</p>
+          </div>
+          ${customer?.phone ? `
+          <div>
+            <p class="text-gray-500">电话</p>
+            <p class="font-medium">${customer.phone}</p>
+          </div>` : ""}
+        </div>
+        <button id="logout-btn" class="mt-4 text-sm text-red-600 hover:underline">退出登录</button>
+      </div>
+    `
+  }
+
+  function renderOrders() {
+    if (orders.length === 0) {
+      return `
+        <div class="p-6 text-center text-gray-500">
+          <p>暂无订单</p>
+          <a href="/" class="mt-2 inline-block text-sm text-gray-900 underline">去逛逛</a>
+        </div>
+      `
+    }
+
+    // Calculate order total from line items
+    function orderTotal(o: any): string {
+      const items = o.items ?? o.line_items ?? []
+      const total = items.reduce((s: number, i: any) => s + Number(i.unit_price ?? 0) * Number(i.quantity ?? 1), 0)
+      return formatPrice(total)
+    }
+
+    const statusLabels: Record<string, string> = {
+      pending: "待处理", completed: "已完成", canceled: "已取消",
+      archived: "已归档", requires_action: "需处理",
+    }
+
+    return `
+      <div class="p-6 space-y-3">
+        <h2 class="text-lg font-semibold">订单历史</h2>
+        <div class="divide-y">
+          ${orders.map((o) => `
+            <div class="flex items-center justify-between py-3">
+              <div>
+                <p class="text-sm font-medium">#${o.id?.slice(-8) ?? "—"}</p>
+                <p class="text-xs text-gray-500">
+                  ${new Date(o.created_at).toLocaleDateString("zh-CN")}
+                  · ${statusLabels[o.status] ?? o.status ?? "—"}
+                  ${o.items?.length ? ` · ${o.items.length} 件商品` : ""}
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-semibold">${orderTotal(o)}</p>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `
+  }
+
+  function renderAddresses() {
+    const items = addresses.map((a: any) => `
+      <div class="flex items-start justify-between rounded border p-4">
+        <div class="text-sm">
+          <p class="font-medium">${[a.first_name, a.last_name].filter(Boolean).join(" ") || "未设置姓名"}</p>
+          <p class="text-gray-600">${a.address_1 ?? ""}${a.address_2 ? `, ${a.address_2}` : ""}</p>
+          <p class="text-gray-600">${[a.city, a.province, a.postal_code].filter(Boolean).join(", ")}</p>
+          <p class="text-gray-500">${a.country_code ?? ""} ${a.phone ? `· ${a.phone}` : ""}</p>
+          ${a.is_default_shipping ? '<span class="inline-block mt-1 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">默认配送</span>' : ""}
+        </div>
+        <button class="del-addr-btn text-xs text-red-500 hover:underline flex-shrink-0 ml-4" data-id="${a.id}">删除</button>
+      </div>
+    `).join("")
+
+    return `
+      <div class="p-6 space-y-4">
+        <h2 class="text-lg font-semibold">收货地址</h2>
+        ${addresses.length > 0 ? `<div class="space-y-3">${items}</div>` : '<p class="text-sm text-gray-500">暂无地址</p>'}
+
+        <details class="group">
+          <summary class="cursor-pointer text-sm text-gray-900 hover:underline">+ 添加新地址</summary>
+          <form id="addr-form" class="mt-4 grid grid-cols-2 gap-3">
+            <input name="first_name" class="col-span-1 rounded border px-3 py-2 text-sm" placeholder="名" />
+            <input name="last_name" class="col-span-1 rounded border px-3 py-2 text-sm" placeholder="姓" />
+            <input name="address_1" class="col-span-2 rounded border px-3 py-2 text-sm" placeholder="街道地址 *" required />
+            <input name="address_2" class="col-span-2 rounded border px-3 py-2 text-sm" placeholder="公寓/单元号" />
+            <input name="city" class="rounded border px-3 py-2 text-sm" placeholder="城市 *" required />
+            <input name="province" class="rounded border px-3 py-2 text-sm" placeholder="省份" />
+            <input name="postal_code" class="rounded border px-3 py-2 text-sm" placeholder="邮编" />
+            <input name="country_code" class="rounded border px-3 py-2 text-sm" placeholder="国家代码 * (如: CN, US)" required />
+            <input name="phone" class="rounded border px-3 py-2 text-sm" placeholder="电话" />
+            <button type="button" id="save-address" class="col-span-2 rounded bg-gray-900 py-2 text-sm text-white hover:bg-gray-800">保存地址</button>
+          </form>
+        </details>
+      </div>
+    `
+  }
+
+  // ── Start ──
+  loadData()
 </script>

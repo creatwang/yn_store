@@ -63,6 +63,17 @@ export const storeCarts = new Hono()
     })
     return c.json(result, 201)
   })
+  .post("/:id/promotions", async (c) => {
+    const body = await c.req.json<{ code: string }>()
+    const code = body.code?.trim()
+    if (!code) return c.json({ message: "请输入优惠码" }, 400)
+    const result = await cartService.applyPromo(c.req.param("id"), code)
+    return c.json(result)
+  })
+  .delete("/:id/promotions/:code", async (c) => {
+    const result = await cartService.removePromo(c.req.param("id"), c.req.param("code"))
+    return c.json(result)
+  })
   .post("/:id/complete", async (c) => {
     const result = await cartService.completeCheckout(c.req.param("id"))
     return c.json(result)

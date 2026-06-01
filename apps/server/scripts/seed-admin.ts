@@ -1,5 +1,5 @@
 /**
- * 创建首个管理员（写入 Medusa 表 user + auth_identity + provider_identity）
+ * 创建首个管理员
  *
  * 用法:
  *   pnpm seed:admin
@@ -15,11 +15,12 @@ import {
   providerIdentity,
   user,
 } from "@my-store/db"
+import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from "@my-store/config"
 
 loadEnv()
 
-const email = process.argv[2] ?? process.env.SEED_ADMIN_EMAIL ?? "admin@medusa-test.com"
-const password = process.argv[3] ?? process.env.SEED_ADMIN_PASSWORD ?? "supersecret"
+const email = process.argv[2] ?? process.env.SEED_ADMIN_EMAIL ?? DEFAULT_ADMIN_EMAIL
+const password = process.argv[3] ?? process.env.SEED_ADMIN_PASSWORD ?? DEFAULT_ADMIN_PASSWORD
 
 async function main() {
   const db = getDb()

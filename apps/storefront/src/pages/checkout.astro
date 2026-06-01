@@ -1,4 +1,5 @@
 ---
+export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
 ---
 
@@ -25,6 +26,7 @@ import BaseLayout from "../layouts/BaseLayout.astro"
   let selectedOptionId = ""
 
   let selectedShipAmount = 0
+  let appliedPromo: { code: string; discount: number } | null = null
 
   function render() {
     if (!cartId) {
@@ -98,6 +100,19 @@ import BaseLayout from "../layouts/BaseLayout.astro"
         <section class="rounded border bg-white p-4 space-y-3">
           <h2 class="font-medium">3. 支付方式</h2>
           <div class="space-y-2">${providers || '<p class="text-sm text-gray-500">默认手动支付</p>'}</div>
+
+          <div class="border-t pt-3">
+            <label class="block text-sm font-medium">优惠码</label>
+            <div class="mt-1 flex gap-2">
+              <input id="promo-code" type="text" class="flex-1 rounded border px-3 py-2 text-sm" placeholder="输入优惠码" ${appliedPromo ? "disabled" : ""} />
+              ${appliedPromo
+                ? `<button id="remove-promo" type="button" class="rounded border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">移除</button>`
+                : `<button id="apply-promo" type="button" class="rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800">应用</button>`
+              }
+            </div>
+            <p id="promo-msg" class="mt-1 text-xs ${appliedPromo ? 'text-green-600' : ''}">${appliedPromo ? `已应用：${appliedPromo.code} -$${appliedPromo.discount.toFixed(2)}` : ""}</p>
+          </div>
+
           <div class="flex gap-2">
             <button id="back-shipping" type="button" class="flex-1 rounded border py-2">上一步</button>
             <button id="submit-order" type="button" class="flex-1 rounded bg-gray-900 py-2 text-white">提交订单</button>
@@ -109,6 +124,40 @@ import BaseLayout from "../layouts/BaseLayout.astro"
         render()
       })
       document.getElementById("submit-order")!.addEventListener("click", submitOrder)
+      document.getElementById("apply-promo")?.addEventListener("click", applyPromo)
+      document.getElementById("remove-promo")?.addEventListener("click", removePromo)
+    }
+  }
+
+  async function applyPromo() {
+    const input = document.getElementById("promo-code") as HTMLInputElement
+    const code = input?.value.trim()
+    const msg = document.getElementById("promo-msg")!
+    if (!code) { msg.textContent = "请输入优惠码"; msg.className = "mt-1 text-xs text-red-600"; return }
+
+    const res = await apiFetch(`/store/carts/${cartId}/promotions`, {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      appliedPromo = { code, discount: data.discount_total ?? 0 }
+      render()
+    } else {
+      const err = await res.json().catch(() => ({ message: "应用失败" }))
+      msg.textContent = err.message ?? "应用失败"
+      msg.className = "mt-1 text-xs text-red-600"
+    }
+  }
+
+  async function removePromo() {
+    if (!appliedPromo) return
+    const res = await apiFetch(`/store/carts/${cartId}/promotions/${encodeURIComponent(appliedPromo.code)}`, {
+      method: "DELETE",
+    })
+    if (res.ok) {
+      appliedPromo = null
+      render()
     }
   }
 
@@ -181,7 +230,8 @@ import BaseLayout from "../layouts/BaseLayout.astro"
         s + Number(i.unit_price ?? 0) * i.quantity,
       0,
     )
-    const total = itemTotal + selectedShipAmount
+    const discount = appliedPromo?.discount ?? 0
+    const total = Math.max(0, itemTotal + selectedShipAmount - discount)
 
     const pcRes = await apiFetch("/store/payment-collections", {
       method: "POST",

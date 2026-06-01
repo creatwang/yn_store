@@ -1,0 +1,40 @@
+---
+interface Props {
+  name: string
+  description?: string
+  image?: string
+  sku?: string
+  price: number
+  currency?: string
+  inStock?: boolean
+}
+
+const {
+  name,
+  description = "",
+  image = "",
+  sku = "",
+  price,
+  currency = "USD",
+  inStock = true,
+} = Astro.props
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name,
+  description,
+  image: image || undefined,
+  sku,
+  offers: {
+    "@type": "Offer",
+    priceCurrency: currency,
+    price: price.toFixed(2),
+    availability: inStock
+      ? "https://schema.org/InStock"
+      : "https://schema.org/OutOfStock",
+  },
+}
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />

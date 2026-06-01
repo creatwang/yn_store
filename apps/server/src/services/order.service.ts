@@ -22,6 +22,7 @@ import type {
   ListOrderChangesQuery,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { sendOrderCanceledEmail } from "../lib/mail"
 import {
   DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
   presentAdminOrderDetail,
@@ -220,6 +221,15 @@ export const orderService = {
 
     if (!updated) {
       throw new HTTPException(404, { message: "Order not found" })
+    }
+
+    // Send cancellation email (fire-and-forget)
+    if (!updated.no_notification && updated.email) {
+      sendOrderCanceledEmail(
+        updated.email,
+        updated.display_id ?? id,
+        id,
+      ).catch((err) => console.error("[mail] order cancel failed:", err))
     }
 
     return { order: updated }

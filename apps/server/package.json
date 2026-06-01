@@ -27,11 +27,13 @@
     "@hono/zod-validator": "^0.4.3",
     "@my-store/db": "workspace:*",
     "@my-store/validators": "workspace:*",
+    "@my-store/config": "workspace:*",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.39.3",
     "hono": "^4.7.4",
     "jose": "^6.0.8",
     "nodemailer": "^8.0.10",
+    "resend": "^6.12.4",
     "zod": "^4.2.0"
   },
   "devDependencies": {

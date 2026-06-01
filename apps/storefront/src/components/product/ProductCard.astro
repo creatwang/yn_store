@@ -1,0 +1,29 @@
+---
+import ProductCardImage from "./ProductCardImage.astro"
+
+interface Props {
+  handle: string
+  title: string
+  subtitle?: string
+  thumbnail?: string
+  price?: number | null
+}
+
+const { handle, title, subtitle, thumbnail, price } = Astro.props
+---
+
+<a
+  href={`/products/${handle}`}
+  class="block overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-md"
+>
+  <ProductCardImage src={thumbnail} alt={title} />
+  <div class="p-4">
+    <h2 class="font-medium">{title}</h2>
+    {subtitle && <p class="mt-1 text-sm text-gray-500">{subtitle}</p>}
+    <p class="mt-2 text-lg font-semibold text-gray-900">
+      {price != null && price > 0
+        ? `$${price.toFixed(2)}`
+        : "暂无定价"}
+    </p>
+  </div>
+</a>

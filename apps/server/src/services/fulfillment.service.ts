@@ -17,6 +17,7 @@ import type {
   MarkAsDeliveredInput,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { sendFulfillmentCreatedEmail, sendShipmentEmail, sendOrderDeliveredEmail } from "../lib/mail"
 
 export const fulfillmentService = {
   async listByOrder(orderId: string, query: ListFulfillmentsQuery = { limit: 50, offset: 0 }) {
@@ -145,6 +146,15 @@ export const fulfillmentService = {
       }
     }
 
+    // Send fulfillment created email (fire-and-forget)
+    if (!ord.no_notification && ord.email) {
+      sendFulfillmentCreatedEmail(
+        ord.email,
+        ord.display_id ?? orderId,
+        orderId,
+      ).catch((err) => console.error("[mail] fulfillment created failed:", err))
+    }
+
     return this.getById(fId)
   },
 
@@ -251,6 +261,24 @@ export const fulfillmentService = {
       }
     }
 
+    // Send shipment email (fire-and-forget)
+    const [shipOrd] = await db
+      .select()
+      .from(order)
+      .where(and(eq(order.id, orderId), isNull(order.deleted_at)))
+      .limit(1)
+    if (shipOrd && !shipOrd.no_notification && shipOrd.email) {
+      const trackingNumbers = input.labels?.map((l) => l.tracking_number).filter(Boolean) as string[] | undefined
+      const trackingUrls = input.labels?.map((l) => l.tracking_url).filter(Boolean) as string[] | undefined
+      sendShipmentEmail(
+        shipOrd.email,
+        shipOrd.display_id ?? orderId,
+        orderId,
+        trackingNumbers?.length ? trackingNumbers : undefined,
+        trackingUrls?.length ? trackingUrls : undefined,
+      ).catch((err) => console.error("[mail] shipment email failed:", err))
+    }
+
     return this.getById(fulfillmentId)
   },
 
@@ -273,6 +301,20 @@ export const fulfillmentService = {
         delivered_at: sql`now()`,
       })
       .where(eq(fulfillment.id, fulfillmentId))
+
+    // Send delivered email (fire-and-forget)
+    const [delOrd] = await db
+      .select()
+      .from(order)
+      .where(and(eq(order.id, orderId), isNull(order.deleted_at)))
+      .limit(1)
+    if (delOrd && !delOrd.no_notification && delOrd.email) {
+      sendOrderDeliveredEmail(
+        delOrd.email,
+        delOrd.display_id ?? orderId,
+        orderId,
+      ).catch((err) => console.error("[mail] delivered email failed:", err))
+    }
 
     return this.getById(fulfillmentId)
   },

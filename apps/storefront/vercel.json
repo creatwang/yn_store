@@ -1,0 +1,8 @@
+{
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @my-store/storefront build",
+  "framework": null,
+  "env": {
+    "ASTRO_DEPLOY_TARGET": "vercel"
+  }
+}

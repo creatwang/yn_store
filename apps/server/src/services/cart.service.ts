@@ -1,18 +1,21 @@
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import {
   cart,
   cartLineItem,
+  cartLineItemAdjustment,
   cartShippingMethod,
   order,
   orderLineItem,
   orderItem,
   orderShippingMethod,
   paymentCollection,
+  promotion,
   getDb,
   generateId,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import type { CreateCartInput, AddToCartInput, UpdateCartInput } from "@my-store/validators"
+import { sendOrderConfirmationEmail } from "../lib/mail"
 
 export const cartService = {
   async create(input: CreateCartInput) {
@@ -59,7 +62,19 @@ export const cartService = {
       .from(cartShippingMethod)
       .where(and(eq(cartShippingMethod.cart_id, id), isNull(cartShippingMethod.deleted_at)))
 
-    return { cart: cartItem, items, shipping_methods: shippingMethods }
+    // Load adjustments (promo discounts) for display
+    const itemIds = [...items.map((i) => i.id)]
+    let adjustments: any[] = []
+    if (itemIds.length > 0) {
+      try {
+        adjustments = await db
+          .select()
+          .from(cartLineItemAdjustment)
+          .where(sql`${cartLineItemAdjustment.item_id} = ANY(${itemIds}::text[])`)
+      } catch { /* table may not exist yet */ }
+    }
+
+    return { cart: cartItem, items, shipping_methods: shippingMethods, adjustments }
   },
 
   async addItem(cartId: string, input: AddToCartInput) {
@@ -172,6 +187,96 @@ export const cartService = {
     }
 
     return { cart: updated }
+  },
+
+  /** Apply a promo code to the cart. Returns discount info. */
+  async applyPromo(cartId: string, code: string) {
+    const db = getDb()
+    await this.getById(cartId)
+
+    // Look up the promotion
+    const [promo] = await db
+      .select()
+      .from(promotion)
+      .where(and(eq(promotion.code, code), isNull(promotion.deleted_at)))
+      .limit(1)
+
+    if (!promo) throw new HTTPException(404, { message: "优惠码不存在" })
+    if (promo.status !== "active") throw new HTTPException(400, { message: "优惠码已失效" })
+
+    // Check if already applied
+    const [existing] = await db
+      .select({ id: cartLineItemAdjustment.id })
+      .from(cartLineItemAdjustment)
+      .innerJoin(cartLineItem, eq(cartLineItemAdjustment.item_id, cartLineItem.id))
+      .where(and(
+        eq(cartLineItemAdjustment.code, code),
+        eq(cartLineItem.cart_id, cartId),
+      ))
+      .limit(1)
+    if (existing) throw new HTTPException(400, { message: "该优惠码已使用" })
+
+    // Parse discount rule from metadata
+    const meta = (promo.metadata ?? {}) as Record<string, any>
+    const ruleType = String(meta.application_type ?? "percentage") // "percentage" | "fixed"
+    const ruleValue = Number(meta.value ?? 10) // default 10% or $10
+
+    // Apply to each line item
+    const items = await db
+      .select()
+      .from(cartLineItem)
+      .where(and(eq(cartLineItem.cart_id, cartId), isNull(cartLineItem.deleted_at)))
+
+    let totalDiscount = 0
+    for (const item of items) {
+      const itemTotal = Number(item.unit_price ?? 0) * item.quantity
+      let discount: number
+      if (ruleType === "fixed") {
+        discount = Math.min(ruleValue, itemTotal)
+      } else {
+        discount = Math.round(itemTotal * (ruleValue / 100))
+      }
+      totalDiscount += discount
+
+      await db.insert(cartLineItemAdjustment).values({
+        id: generateId("adj"),
+        description: `${promo.code}: ${ruleType === "fixed" ? `-$${discount.toFixed(2)}` : `-${ruleValue}%`}`,
+        code: promo.code,
+        amount: String(discount),
+        raw_amount: { value: String(discount), precision: 20 },
+        promotion_id: promo.id,
+        item_id: item.id,
+      })
+    }
+
+    return {
+      promotion: { id: promo.id, code: promo.code, type: promo.type },
+      discount_total: totalDiscount,
+    }
+  },
+
+  /** Remove a promo code from the cart. */
+  async removePromo(cartId: string, code: string) {
+    const db = getDb()
+    // Delete adjustments linked to this code and cart
+    const items = await db
+      .select({ id: cartLineItem.id })
+      .from(cartLineItem)
+      .where(and(eq(cartLineItem.cart_id, cartId), isNull(cartLineItem.deleted_at)))
+    const itemIds = items.map((i) => i.id)
+
+    if (itemIds.length > 0) {
+      await db
+        .delete(cartLineItemAdjustment)
+        .where(
+          and(
+            eq(cartLineItemAdjustment.code, code),
+            inArray(cartLineItemAdjustment.item_id, itemIds),
+          )
+        )
+    }
+
+    return { success: true }
   },
 
   async completeCheckout(cartId: string) {
@@ -299,6 +404,15 @@ export const cartService = {
       .update(cart)
       .set({ completed_at: sql`now()`, updated_at: sql`now()` })
       .where(eq(cart.id, cartId))
+
+    // Send order confirmation email (fire-and-forget)
+    if (createdOrder.email) {
+      sendOrderConfirmationEmail(
+        createdOrder.email,
+        createdOrder.display_id ?? orderId,
+        orderId,
+      ).catch((err) => console.error("[mail] order confirmation failed:", err))
+    }
 
     return { order: createdOrder }
   },

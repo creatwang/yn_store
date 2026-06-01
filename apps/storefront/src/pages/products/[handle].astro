@@ -1,158 +1,136 @@
 ---
+import { getCollection } from "astro:content"
+import { getImage } from "astro:assets"
 import BaseLayout from "../../layouts/BaseLayout.astro"
+import ProductAddToCart from "../../components/product/ProductAddToCart.astro"
+import ProductDetailPicture from "../../components/product/ProductDetailPicture.astro"
+import ProductJsonLd from "../../components/seo/ProductJsonLd.astro"
 
-const { handle } = Astro.params
-const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
-
-let product: Record<string, unknown> | null = null
-let error: string | null = null
-
-try {
-  const res = await fetch(`${apiUrl}/api/store/products/${handle}`)
-  if (res.ok) {
-    const data = await res.json()
-    product = data.product
-  } else {
-    error = "商品不存在"
-  }
-} catch {
-  error = "加载失败"
+export async function getStaticPaths() {
+  const products = await getCollection("products")
+  return products.map((entry) => ({
+    params: { handle: entry.id },
+    props: { entry },
+  }))
 }
 
-const variants = (product?.variants as Array<Record<string, unknown>> | undefined) ?? []
-const firstVariant = variants[0]
-const firstPrice = firstVariant?.price as { amount: number; currency_code: string } | null | undefined
+const { entry } = Astro.props
+const product = entry.data
+const site = Astro.site?.href ?? "http://localhost:4321"
+
+let ogImage: string | undefined
+if (product.coverImage) {
+  try {
+    const og = await getImage({
+      src: product.coverImage,
+      width: 1200,
+      height: 630,
+      format: "webp",
+    })
+    ogImage = new URL(og.src, site).href
+  } catch {
+    ogImage = product.coverImage
+  }
+}
+
+const desc =
+  product.description.slice(0, 160) ||
+  `${product.title} — 跨境商城精选商品`
 ---
 
-<BaseLayout title={product ? String(product.title) : "商品详情"}>
-  {error && (
-    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-      {error}
-      <a href="/" class="ml-2 underline">返回首页</a>
+<BaseLayout
+  title={`${product.title} — 跨境商城`}
+  description={desc}
+  canonical={`${site}/products/${product.handle}`}
+  ogImage={ogImage}
+>
+  <ProductJsonLd
+    name={product.title}
+    description={product.description}
+    image={product.coverImage}
+    sku={product.handle}
+    price={product.price}
+    inStock={product.stock > 0}
+  />
+
+  <article class="grid gap-8 md:grid-cols-2">
+    <div>
+      {product.coverImage ? (
+        <ProductDetailPicture
+          src={product.coverImage}
+          alt={product.title}
+        />
+      ) : (
+        <ProductDetailPicture src="" alt={product.title} />
+      )}
     </div>
-  )}
+    <div>
+      <h1 class="text-3xl font-bold">{product.title}</h1>
+      {product.subtitle && (
+        <p class="mt-2 text-lg text-gray-600">{product.subtitle}</p>
+      )}
+      {product.description && (
+        <div class="prose mt-6 max-w-none text-gray-700">
+          <p>{product.description}</p>
+        </div>
+      )}
 
-  {product && (
-    <article class="grid gap-8 md:grid-cols-2">
-      <div>
-        {product.thumbnail ? (
-          <img
-            src={String(product.thumbnail)}
-            alt={String(product.title)}
-            class="w-full rounded-lg object-cover"
-          />
-        ) : (
-          <div class="flex aspect-square items-center justify-center rounded-lg bg-gray-100 text-gray-400">
-            无图
-          </div>
-        )}
-      </div>
-      <div>
-        <h1 class="text-3xl font-bold">{product.title}</h1>
-        {product.subtitle && (
-          <p class="mt-2 text-lg text-gray-600">{product.subtitle}</p>
-        )}
-        {product.description && (
-          <div class="prose mt-6 max-w-none text-gray-700">
-            <p>{product.description}</p>
-          </div>
-        )}
+      <p class="mt-4 text-sm text-gray-600">
+        库存：
+        <meter
+          id="live-stock-meter"
+          min="0"
+          max={Math.max(product.stock, 1)}
+          value={product.stock}
+          class="ml-1 align-middle"
+        >
+          {product.stock}
+        </meter>
+        <span id="live-stock-label" class="ml-2">
+          {product.stock > 0 ? "有现货" : "已售罄"}
+        </span>
+      </p>
 
-        <p id="variant-price" class="mt-4 text-2xl font-bold text-gray-900">
-          {firstPrice ? `$${firstPrice.amount.toFixed(2)}` : '暂无定价'}
-        </p>
+      <p class="mt-2 font-mono text-xs text-gray-400">
+        <abbr title="Stock Keeping Unit">SKU</abbr> / {product.handle}
+      </p>
 
-        <p class="mt-4 font-mono text-xs text-gray-400">
-          {product.handle}
-        </p>
-        {variants.length > 0 ? (
-          <div class="mt-8 space-y-4">
-            <label class="block text-sm font-medium">
-              规格
-              <select id="variant-select" class="mt-1 w-full rounded border px-3 py-2">
-                {variants.map((v) => {
-                  const p = v.price as { amount: number; currency_code: string } | null | undefined
-                  const priceStr = p ? ` — $${p.amount.toFixed(2)}` : ' — 暂无定价'
-                  const priceAttr = p ? String(p.amount) : ''
-                  return (
-                    <option value={String(v.id)} data-price={priceAttr}>
-                      {v.title || v.sku || v.id}{priceStr}
-                    </option>
-                  )
-                })}
-              </select>
-            </label>
-            <label class="block text-sm font-medium">
-              数量
-              <input id="qty-input" type="number" min="1" value="1" class="mt-1 w-24 rounded border px-3 py-2" />
-            </label>
-            <button
-              id="add-to-cart"
-              type="button"
-              class="rounded bg-gray-900 px-6 py-2 text-white hover:bg-gray-800"
-            >
-              加入购物车
-            </button>
-            <p id="cart-msg" class="text-sm text-green-600"></p>
-          </div>
-        ) : (
-          <p class="mt-6 text-sm text-gray-500">暂无可售规格</p>
-        )}
-      </div>
-    </article>
-  )}
-</BaseLayout>
+      <ProductAddToCart
+        productId={product.id}
+        variants={product.variants}
+      />
+    </div>
+  </article>
 
-<script define:vars={{ productId: product ? String(product.id) : "" }}>
-  import { apiFetch, getCartId, setCartId } from "../../lib/cart"
+  <script
+    is:inline
+    define:vars={{
+      handle: product.handle,
+      basePrice: product.price,
+      baseStock: product.stock,
+      apiUrl: import.meta.env.PUBLIC_API_URL || "http://localhost:9000",
+    }}
+  >
+    const meter = document.getElementById("live-stock-meter")
+    const stockLabel = document.getElementById("live-stock-label")
+    const priceEl = document.getElementById("variant-price")
 
-  const btn = document.getElementById("add-to-cart")
-  const msg = document.getElementById("cart-msg")
-  const variantSelect = document.getElementById("variant-select") as HTMLSelectElement
-  const qtyInput = document.getElementById("qty-input") as HTMLInputElement
-  const priceEl = document.getElementById("variant-price")
-
-  variantSelect?.addEventListener("change", () => {
-    const selected = variantSelect.options[variantSelect.selectedIndex]
-    const price = selected.dataset.price
-    if (priceEl) {
-      priceEl.textContent = price ? `$${Number(price).toFixed(2)}` : '暂无定价'
-    }
-  })
-
-  btn?.addEventListener("click", async () => {
-    if (!variantSelect || !qtyInput) return
-    const variantId = variantSelect.value
-    const quantity = Math.max(1, parseInt(qtyInput.value, 10) || 1)
-
-    let cartId = getCartId()
-    if (!cartId) {
-      const createRes = await apiFetch("/store/carts", {
-        method: "POST",
-        body: JSON.stringify({ currency_code: "USD" }),
+    fetch(`${apiUrl}/api/store/products/${handle}/realtime`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (!body) return
+        const livePrice = body.price
+        const liveStock = body.stock
+        if (livePrice != null && priceEl) {
+          priceEl.textContent = Number(livePrice).toFixed(2)
+        }
+        if (liveStock != null && meter && stockLabel) {
+          const max = Math.max(liveStock, 1)
+          meter.max = String(max)
+          meter.value = String(liveStock)
+          stockLabel.textContent = liveStock > 0 ? "有现货" : "已售罄"
+        }
       })
-      if (!createRes.ok) {
-        if (msg) msg.textContent = "创建购物车失败"
-        return
-      }
-      const created = await createRes.json()
-      cartId = created.cart?.id
-      if (cartId) setCartId(cartId)
-    }
-
-    const res = await apiFetch(`/store/carts/${cartId}/line-items`, {
-      method: "POST",
-      body: JSON.stringify({
-        variant_id: variantId,
-        product_id: productId,
-        quantity,
-      }),
-    })
-
-    if (res.ok) {
-      if (msg) msg.textContent = "已加入购物车"
-    } else {
-      if (msg) msg.textContent = "加入失败"
-    }
-  })
-</script>
+      .catch(() => {})
+  </script>
+</BaseLayout>

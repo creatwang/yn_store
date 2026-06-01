@@ -39,6 +39,18 @@ export function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+export async function setSessionCookie(token: string) {
+  await fetch("/api/auth/cookie", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
+}
+
+export async function clearSessionCookie() {
+  await fetch("/api/auth/cookie", { method: "DELETE" })
+}
+
 export async function loginCustomer(email: string, password: string) {
   const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
   const res = await fetch(`${apiUrl}/api/auth/customer/emailpass`, {

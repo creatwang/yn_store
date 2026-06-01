@@ -5,7 +5,8 @@
     "lib": ["ES2022"],
     "paths": {
       "@my-store/db": ["../../packages/db/src"],
-      "@my-store/validators": ["../../packages/validators/src"]
+      "@my-store/validators": ["../../packages/validators/src"],
+      "@my-store/config": ["../../packages/config/src"]
     }
   },
   "include": ["src/**/*", "entry.*.ts"]

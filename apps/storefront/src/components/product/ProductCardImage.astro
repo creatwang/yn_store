@@ -1,0 +1,38 @@
+---
+import { Image } from "astro:assets"
+import placeholder from "../../assets/product-placeholder.svg"
+
+interface Props {
+  src?: string | null
+  alt: string
+}
+
+const { src, alt } = Astro.props
+const hasRemote = Boolean(src && src.startsWith("http"))
+---
+
+{
+  hasRemote ? (
+    <Image
+      src={src!}
+      alt={alt}
+      width={400}
+      height={400}
+      layout="constrained"
+      loading="lazy"
+      decoding="async"
+      class="h-48 w-full object-cover"
+    />
+  ) : (
+    <Image
+      src={placeholder}
+      alt={alt}
+      width={400}
+      height={400}
+      layout="constrained"
+      loading="lazy"
+      decoding="async"
+      class="h-48 w-full object-cover"
+    />
+  )
+}

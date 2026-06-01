@@ -37,6 +37,7 @@ import { storeRegions, storeSalesChannels } from "./routes/store/regions"
 import { storeShippingOptions } from "./routes/store/shipping-options"
 import { storePaymentCollections, storePaymentProviders } from "./routes/store/payment-collections"
 import { storeCollections, storePromotions } from "./routes/store/catalog"
+import { rebuildWebhook } from "./routes/webhooks/rebuild"
 import { mountAppSpa } from "./host/mount-app"
 
 /** /api 下所有路由，供 RPC 客户端通过 client.api.* 访问 */
@@ -116,6 +117,7 @@ const apiRoutes = new Hono()
   .route("/store/payment-providers", storePaymentProviders)
   .route("/store/collections", storeCollections)
   .route("/store/promotions", storePromotions)
+  .route("/webhooks", rebuildWebhook)
 
 const app = new Hono()
   .onError(errorHandler)

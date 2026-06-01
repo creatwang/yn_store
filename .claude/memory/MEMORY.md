@@ -1,0 +1,3 @@
+- [项目 P2 收尾进度](project-status.md) — 已完成/待做清单
+- [用户偏好和技术栈](user-prefs.md) — Supabase/Drizzle/JWT/不写测试
+- [架构关键事实](architecture.md) — 价格查询链/死代码/Playwright 坑

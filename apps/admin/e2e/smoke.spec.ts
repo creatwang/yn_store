@@ -10,11 +10,12 @@ async function loginViaUI(page: Parameters<Parameters<typeof test>[1]>[0]["page"
   const password = process.env.ADMIN_E2E_PASSWORD
   test.skip(!email, "需设置 ADMIN_E2E_EMAIL / ADMIN_E2E_PASSWORD")
 
-  await page.goto("/login")
-  await page.getByPlaceholder(/邮箱|email/i).fill(email!)
-  await page.getByPlaceholder(/密码|password/i).fill(password!)
-  await page.getByRole("button", { name: /登录|sign in|continue/i }).click()
-  await page.waitForURL(/\/(products|orders)?/, { timeout: 20_000 })
+  await page.goto("login")
+  await page.locator('input[autocomplete="email"]').fill(email!)
+  await page.locator('input[type="password"]').fill(password!)
+  // Submit button — "使用邮箱继续" (zhCN) or "Continue with email" (en)
+  await page.locator('button[type="submit"]').click()
+  await page.waitForURL(/\/app\/(products|orders)?/, { timeout: 20_000 })
   await expect(page.locator("body")).not.toContainText("Unauthorized")
 
   // Extract the JWT from localStorage so we can make API calls
@@ -48,11 +49,11 @@ async function createOrderViaAPI(token: string): Promise<string> {
 
 test.describe("Admin 冒烟", () => {
   test("登录页可打开", async ({ page }) => {
-    await page.goto("/login", { waitUntil: "domcontentloaded" })
-    // Verify the root div exists (SPA has loaded)
-    await expect(page.locator("#root")).not.toBeEmpty({ timeout: 20_000 })
-    // There should be an email input for login
-    await expect(page.locator('input[type="email"], input[autocomplete="email"], input[type="text"]').first()).toBeVisible({ timeout: 10_000 })
+    await page.goto("login", { waitUntil: "networkidle", timeout: 30_000 })
+    // Wait for React SPA to hydrate
+    await page.waitForSelector("#root > *", { timeout: 20_000 })
+    // Verify login form rendered: should have an email-type input
+    await expect(page.locator('input[autocomplete="email"]')).toBeVisible({ timeout: 5_000 })
   })
 
   test("登录后产品列表可见", async ({ page }) => {
@@ -64,7 +65,7 @@ test.describe("Admin 冒烟", () => {
 
   test("登录后订单列表可见", async ({ page }) => {
     await loginViaUI(page)
-    await page.goto("/orders")
+    await page.goto("orders")
     await page.waitForLoadState("networkidle")
     await expect(page.locator("body")).not.toContainText("Unauthorized")
     const bodyText = await page.locator("body").innerText()
@@ -77,7 +78,7 @@ test.describe("Admin 冒烟", () => {
 
     const orderId = await createOrderViaAPI(token)
 
-    await page.goto(`/orders/${orderId}`)
+    await page.goto(`orders/${orderId}`)
     await page.waitForLoadState("networkidle")
 
     await expect(page.locator("body")).not.toContainText("Unauthorized")

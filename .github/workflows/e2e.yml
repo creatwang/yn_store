@@ -1,9 +1,32 @@
 name: e2e
 
-# Manual trigger only — requires a live database.
-# Run against the Supabase dev DB or a local instance.
+# Playwright E2E smoke tests for Admin panel.
+# Requires a live database (Supabase) — spins up NO local PostgreSQL.
+# Set DATABASE_URL and JWT_SECRET as GitHub repo secrets.
+#
+# Local equivalent:
+#   ADMIN_E2E_EMAIL=admin@medusa-test.com ADMIN_E2E_PASSWORD=supersecret \
+#   PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://localhost:5174/app/ \
+#   pnpm --filter=@my-store/admin test:e2e
+
 on:
   workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/admin/src/**'
+      - 'apps/admin/e2e/**'
+      - 'apps/admin/playwright.config.ts'
+      - 'apps/server/src/**'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'apps/admin/src/**'
+      - 'apps/admin/e2e/**'
+      - 'apps/admin/playwright.config.ts'
+      - 'apps/server/src/**'
+      - '.github/workflows/e2e.yml'
 
 jobs:
   playwright:
@@ -29,39 +52,60 @@ jobs:
         working-directory: apps/admin
         run: pnpm exec playwright install chromium --with-deps
 
-      - name: Build admin UI
+      - name: Build admin UI (outputs to apps/server/public/app)
         run: pnpm build:admin
 
-      - name: Start server & run E2E
+      - name: Seed admin user & run E2E
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           PORT: 9000
           NODE_ENV: test
           SERVE_ADMIN: "1"
-          ADMIN_E2E_EMAIL: admin@medusa-test.com
-          ADMIN_E2E_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || 'supersecret' }}
-          PLAYWRIGHT_BASE_URL: http://localhost:5173/app
-          PLAYWRIGHT_API_URL: http://localhost:9000
-          CI: "true"
         run: |
           cd apps/server
+
+          # Seed admin user
           npx tsx scripts/seed-admin.ts
+
+          # Start server (serves both API + built Admin SPA at /app)
           npx tsx entry.node.ts &
           SERVER_PID=$!
-          # Wait for server ready
+          echo "Server PID: $SERVER_PID"
+
+          # Wait for health check
           for i in $(seq 1 30); do
-            curl -sf http://localhost:9000/api/health && break
+            if curl -sf http://localhost:9000/api/health > /dev/null; then
+              echo "Server ready"
+              break
+            fi
+            echo "Waiting for server... ($i)"
             sleep 2
           done
-          cd ../admin
-          pnpm test:e2e
-          kill $SERVER_PID || true
 
-      - name: Upload test results
+          # Verify server health
+          curl -s http://localhost:9000/api/health | head -c 500
+
+          # Run Playwright against the built-in server
+          cd ../admin
+          PLAYWRIGHT_SKIP_WEBSERVER=1 \
+          PLAYWRIGHT_BASE_URL=http://localhost:9000/app/ \
+          PLAYWRIGHT_API_URL=http://localhost:9000 \
+          ADMIN_E2E_EMAIL=admin@medusa-test.com \
+          ADMIN_E2E_PASSWORD="${ADMIN_E2E_PASSWORD:-supersecret}" \
+          CI=true \
+          pnpm test:e2e
+
+          PLAYWRIGHT_EXIT=$?
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          exit $PLAYWRIGHT_EXIT
+
+      - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
+          name: playwright-report
           path: apps/admin/test-results/
           retention-days: 7

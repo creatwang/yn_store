@@ -1,0 +1,139 @@
+name: storefront
+
+# Astro storefront：build + 可选 E2E
+# Secrets（至少其一）：
+#   STAGING_API_URL — 构建时 Content Loader 拉商品的 staging API（推荐）
+#   DATABASE_URL + JWT_SECRET — 无 staging 时在 CI 起本地 server
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "apps/storefront/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/storefront.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "apps/storefront/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/storefront.yml"
+
+jobs:
+  build-and-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build storefront
+        env:
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          STAGING_SITE_URL: ${{ secrets.STAGING_SITE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${STAGING_API_URL:-}" ]; then
+            export PUBLIC_API_URL="$STAGING_API_URL"
+            export PUBLIC_SITE_URL="${STAGING_SITE_URL:-https://example.com}"
+            export ASTRO_DEPLOY_TARGET=node
+            pnpm --filter @my-store/storefront build
+            echo "STOREFRONT_BUILT=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          if [ -n "${DATABASE_URL:-}" ]; then
+            export JWT_SECRET="${JWT_SECRET:-ci-storefront-build-secret-32chars-min}"
+            export PUBLIC_API_URL=http://localhost:9000
+            export PUBLIC_SITE_URL=http://localhost:4321
+            export ASTRO_DEPLOY_TARGET=node
+
+            cd apps/server
+            npx tsx entry.node.ts &
+            SERVER_PID=$!
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:9000/api/health > /dev/null && break
+              sleep 2
+            done
+            cd ../..
+
+            pnpm --filter @my-store/storefront build
+            kill $SERVER_PID 2>/dev/null || true
+            echo "STOREFRONT_BUILT=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "::warning::未配置 STAGING_API_URL 或 DATABASE_URL，跳过 storefront build（Loader 需要 Store API）"
+          echo "STOREFRONT_BUILT=0" >> "$GITHUB_ENV"
+
+      - name: Install Playwright
+        if: env.STOREFRONT_BUILT == '1'
+        working-directory: apps/storefront
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Storefront E2E
+        if: env.STOREFRONT_BUILT == '1'
+        env:
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -euo pipefail
+          export PUBLIC_API_URL="${STAGING_API_URL:-http://localhost:9000}"
+          export PUBLIC_SITE_URL=http://localhost:4321
+          SERVER_PID=""
+
+          if [ -z "${STAGING_API_URL:-}" ]; then
+            export JWT_SECRET="${JWT_SECRET:-ci-storefront-e2e-secret-32chars-min}"
+            cd apps/server
+            npx tsx entry.node.ts &
+            SERVER_PID=$!
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:9000/api/health > /dev/null && break
+              sleep 2
+            done
+            cd ../..
+          fi
+
+          cd apps/storefront
+          pnpm preview &
+          PREVIEW_PID=$!
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4321/ > /dev/null && break
+            sleep 2
+          done
+
+          PLAYWRIGHT_BASE_URL=http://localhost:4321 pnpm test:e2e
+          PLAYWRIGHT_EXIT=$?
+
+          kill $PREVIEW_PID 2>/dev/null || true
+          if [ -n "$SERVER_PID" ]; then
+            kill $SERVER_PID 2>/dev/null || true
+          fi
+          exit $PLAYWRIGHT_EXIT
+
+      - name: Upload Playwright report
+        if: failure() && env.STOREFRONT_BUILT == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: storefront-playwright-report
+          path: apps/storefront/test-results/
+          retention-days: 7

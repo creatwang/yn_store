@@ -325,6 +325,29 @@ export const productService = {
     return { product: { ...item, variants: variants.map((v) => ({ ...v, price: priceMap.get(v.id) ?? null })) } }
   },
 
+  async getRealtime(idOrHandle: string) {
+    const detail = idOrHandle.startsWith("prod_")
+      ? await this.getById(idOrHandle, true)
+      : await this.getByHandle(idOrHandle)
+    const product = detail.product as {
+      variants?: Array<{
+        price?: { amount: number } | null
+        inventory_quantity?: number | null
+      }>
+    }
+    const variants = product.variants ?? []
+    const firstPrice = variants.find((v) => v.price?.amount != null)?.price?.amount
+    const stock = variants.reduce(
+      (sum, v) => sum + (v.inventory_quantity ?? 0),
+      0,
+    )
+    return {
+      price: firstPrice ?? null,
+      stock,
+      currency: "USD",
+    }
+  },
+
   async create(input: CreateProductInput) {
     const db = getDb()
     const handle =

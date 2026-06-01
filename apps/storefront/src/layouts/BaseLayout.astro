@@ -1,9 +1,23 @@
 ---
+import CartBadge from "../components/cart/CartBadge.astro"
+import CartCountInit from "../components/cart/CartCountInit.astro"
+
 interface Props {
   title?: string
+  description?: string
+  canonical?: string
+  ogImage?: string
 }
 
-const { title = "商城" } = Astro.props
+const {
+  title = "商城",
+  description = "跨境商城 — Hono Store API + Astro",
+} = Astro.props
+
+const site = Astro.site?.href ?? "http://localhost:4321"
+const canonical = Astro.props.canonical ?? new URL(Astro.url.pathname, site).href
+const ogImage = Astro.props.ogImage
+const noindex = Astro.locals.noindex ?? false
 ---
 
 <!doctype html>
@@ -12,16 +26,37 @@ const { title = "商城" } = Astro.props
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content="website" />
+    {ogImage && <meta property="og:image" content={ogImage} />}
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900">
+    <CartCountInit />
     <header class="border-b bg-white">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
         <a href="/" class="text-xl font-semibold">跨境商城</a>
-        <nav class="flex flex-wrap gap-4 text-sm text-gray-600">
+        <form action="/search" method="get" class="order-3 w-full sm:order-none sm:w-auto">
+          <label for="site-search" class="sr-only">搜索商品</label>
+          <input
+            id="site-search"
+            name="q"
+            type="search"
+            placeholder="搜索商品…"
+            enterkeyhint="search"
+            autocomplete="off"
+            class="w-full rounded border border-gray-300 px-3 py-1.5 text-sm sm:w-48"
+          />
+        </form>
+        <nav class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
           <a href="/" class="hover:text-gray-900">首页</a>
           <a href="/collections" class="hover:text-gray-900">合集</a>
           <a href="/promotions" class="hover:text-gray-900">促销</a>
-          <a href="/cart" class="hover:text-gray-900">购物车</a>
+          <CartBadge />
           <a href="/account" class="hover:text-gray-900">账户</a>
           <a href="/login" class="hover:text-gray-900">登录</a>
         </nav>
@@ -31,7 +66,9 @@ const { title = "商城" } = Astro.props
       <slot />
     </main>
     <footer class="border-t py-8 text-center text-sm text-gray-500">
-      Powered by Hono + Astro
+      <address class="not-italic">
+        跨境商城 · Powered by Hono + Astro
+      </address>
     </footer>
   </body>
 </html>
