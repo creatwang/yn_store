@@ -2873,11 +2873,11 @@
   },
   "login": {
     "forgotPassword": "忘记密码？ - <0>重置</0>",
-    "title": "欢迎使用Medusa",
+    "title": "欢迎使用Yanan",
     "hint": "登录以访问账户区域"
   },
   "invite": {
-    "title": "欢迎使用Medusa",
+    "title": "欢迎使用Yanan",
     "hint": "在下面创建您的账户",
     "backToLogin": "返回登录",
     "createAccount": "创建账户",
