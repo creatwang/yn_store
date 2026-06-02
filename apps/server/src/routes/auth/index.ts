@@ -3,11 +3,13 @@ import { zValidator } from "@hono/zod-validator"
 import {
   loginSchema,
   registerUserSchema,
+  registerCustomerSchema,
   resetPasswordRequestSchema,
   updateProviderSchema,
   confirmResetPasswordSchema,
 } from "@my-store/validators"
 import { authService } from "../../services/auth.service"
+import { customerService } from "../../services/customer.service"
 import { adminAuth } from "../../middleware/auth"
 
 export const authRoutes = new Hono()
@@ -89,3 +91,38 @@ export const authRoutes = new Hono()
       return c.json(result)
     },
   )
+  // ── Customer registration (Auth module) ──
+  .post(
+    "/customer/emailpass/register",
+    zValidator("json", registerCustomerSchema),
+    async (c) => {
+      const { email, password, first_name, last_name } = c.req.valid("json")
+      const result = await customerService.register({
+        email, password, first_name, last_name, has_account: true,
+      })
+      // Generate token for the registered customer
+      const token = await authService.customerLogin(email, password)
+      return c.json({ ...result, ...token }, 201)
+    },
+  )
+  // ── OAuth callback (Admin + Storefront) ──
+  .on(["GET", "POST"], "/:actor_type/:auth_provider/callback", async (c) => {
+    const { actor_type, auth_provider } = c.req.param()
+    // Validate actor_type
+    if (actor_type !== "user" && actor_type !== "customer") {
+      return c.json({ message: `Invalid actor_type: ${actor_type}` }, 400)
+    }
+    // OAuth callback: validate with auth service
+    try {
+      const result = await authService.validateOAuthCallback(
+        actor_type as "user" | "customer",
+        auth_provider,
+        { url: c.req.url, headers: c.req.header(), query: c.req.query(), body: await c.req.json().catch(() => ({})) },
+      )
+      return c.json(result)
+    } catch (err: any) {
+      // Pass through Hono HTTPException status codes
+      if (err?.status) return c.json({ message: err.message }, err.status as any)
+      return c.json({ message: err?.message || "OAuth authentication failed" }, 401)
+    }
+  })

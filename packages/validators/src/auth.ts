@@ -33,6 +33,15 @@ export const confirmResetPasswordSchema = z.object({
 
 export type ConfirmResetPasswordInput = z.infer<typeof confirmResetPasswordSchema>
 
+export const registerCustomerSchema = z.object({
+  email: z.string().email("请输入有效邮箱"),
+  password: z.string().min(8, "密码至少 8 位"),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+})
+
+export type RegisterCustomerInput = z.infer<typeof registerCustomerSchema>
+
 export const refreshTokenSchema = z.object({
   token: z.string().min(1),
 })

@@ -108,6 +108,73 @@ describe("Auth P2 — register / reset / invite", () => {
   })
 })
 
+describe("Auth — C 端客户注册 + OAuth 回调", () => {
+  it("POST /auth/customer/emailpass/register — 客户注册返回 token", async () => {
+    const email = `cust_auth_${Date.now()}@test.com`
+    const res = await app.fetch(
+      new Request("http://localhost/api/auth/customer/emailpass/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: "password123" }),
+      }),
+    )
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.token).toBeTruthy()
+    expect(body.customer).toBeTruthy()
+    expect(body.customer.email).toBe(email)
+  })
+
+  it("POST /auth/customer/emailpass/register — 重复邮箱返回 409", async () => {
+    const email = `dup_auth_${Date.now()}@test.com`
+    const res1 = await app.fetch(
+      new Request("http://localhost/api/auth/customer/emailpass/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: "password123" }),
+      }),
+    )
+    expect(res1.status).toBe(201)
+    const res2 = await app.fetch(
+      new Request("http://localhost/api/auth/customer/emailpass/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: "password456" }),
+      }),
+    )
+    expect(res2.status).toBe(409)
+  })
+
+  it("GET /auth/:actor/:provider/callback — 无效 actor_type 返回 400", async () => {
+    const res = await app.fetch(
+      new Request("http://localhost/api/auth/admin/google/callback", {
+        method: "GET",
+      }),
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it("GET /auth/customer/github/callback — provider 未配置返回 501", async () => {
+    const res = await app.fetch(
+      new Request("http://localhost/api/auth/customer/github/callback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: "test_code" }),
+      }),
+    )
+    expect(res.status).toBe(501)
+  })
+
+  it("GET /auth/customer/google/callback — 返回 501（provider 未配置）", async () => {
+    const res = await app.fetch(
+      new Request("http://localhost/api/auth/customer/google/callback", {
+        method: "GET",
+      }),
+    )
+    expect(res.status).toBe(501)
+  })
+})
+
 describe("Store P2 — collections / promotions", () => {
   it("GET /store/collections — 列表", async () => {
     const res = await app.fetch(new Request("http://localhost/api/store/collections"))

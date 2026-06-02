@@ -303,6 +303,25 @@ export const authService = {
     return { success: true }
   },
 
+  /**
+   * OAuth callback validation — 对齐 Medusa GET/POST /auth/:actor/:provider/callback
+   * 当前无真实 OAuth provider 配置，返回 501。未来接 Google/GitHub 后在此实现。
+   */
+  async validateOAuthCallback(
+    actorType: "user" | "customer",
+    provider: string,
+    _authData: { url: string; headers: Record<string, string>; query: Record<string, string>; body: Record<string, unknown> },
+  ) {
+    // Supported OAuth providers — extend when API keys are configured
+    const supportedProviders = ["google", "github"]
+    if (!supportedProviders.includes(provider)) {
+      throw new HTTPException(404, { message: `OAuth provider "${provider}" is not supported. Supported: ${supportedProviders.join(", ")}` })
+    }
+    throw new HTTPException(501, {
+      message: `OAuth provider "${provider}" is not yet configured. Set ${provider.toUpperCase()}_CLIENT_ID and ${provider.toUpperCase()}_CLIENT_SECRET env vars.`,
+    })
+  },
+
   async updateProviderPassword(token: string, password: string) {
     return this.applyPasswordReset(token, password)
   },
