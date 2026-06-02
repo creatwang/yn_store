@@ -7,6 +7,14 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./medusa/*": {
+      "types": "./src/medusa/*.ts",
+      "default": "./src/medusa/*.ts"
+    },
+    "./helpers/*": {
+      "types": "./src/helpers/*.ts",
+      "default": "./src/helpers/*.ts"
     }
   },
   "dependencies": {

@@ -1,222 +1,426 @@
 # 架构冲突记录 — Medusa 官方 vs Hono 自定义实现
 
-> 本文档记录因架构差异导致无法直接对齐 Medusa 官方实现的点。
-> 每个冲突列出现状、官方做法、影响范围、候选方案，逐项讨论决策。
+> 本文档记录因架构差异导致未完全对齐 Medusa 官方实现的点。
+> 每项列出：代码实际状态（非代码文件存在 = 已完成，以调用链路核实为准）、缺口、影响。
+>
+> **核实日期**：2026-06-02 · **核实方式**：Drizzle schema + 路由 handler → service → 内部函数调用链追溯，非仅 grep 函数名。
 
 ---
 
-## C-01: Workflow 编排层
+## C-01: Workflow 编排 + 事务回滚
+
+### 状态 🟡 方案已定，待实施（2026-06-02）
+
+> 详细方案见 **[docs/workflow-plan.md](workflow-plan.md)**
+
+### 当前实况
+
+5 个 workflow 文件 0 调用，所有 service 方法直接裸写 DB，无事务包裹。
+
+---
+
+### 全量功能分类
+
+> 全量扫完 302 个方法，逐条标注
+
+#### ✅ Workflow（8 个）— DB → 外部服务 → 补偿
+
+| # | 方法 | 所在文件 | 核心步骤 | 外部调用 | Provider |
+|---|------|---------|---------|---------|:--:|
+| 1 | `completeCheckout` | `cart.service.ts` | 创建订单 + 地址 + items + shipping + payment | 支付授权 | Payment |
+| 2 | `capture` | `payment.service.ts` | 创建 capture 记录 → 调用支付网关 → 更新状态 | 第三方扣款 | Payment |
+| 3 | `refund` | `payment.service.ts` | 创建 refund 记录 → 调用退款网关 → 更新状态 | 第三方退款 | Payment |
+| 4 | `create` | `fulfillment.service.ts` | 创建 fulfillment + items + labels + 更新 orderItems | 创建物流面单 | Shipping |
+| 5 | `createShipment` | `fulfillment.service.ts` | 更新 fulfillment + labels + 更新 orderItems | 确认发货 | Shipping |
+| 6 | `create` | `return.service.ts` | 创建 return + items + orderItems + orderChange | 退款（预留） | — |
+| 7 | `create` | `claim.service.ts` | 创建 claim + items + orderItems + change + actions + companion return | 退款（预留） | — |
+| 8 | `create` | `exchange.service.ts` | 创建 exchange + change + actions + companion return | 差价处理（预留） | — |
+
+#### 🟡 dispatchRollbackProcess（11 个）— 多表 DB 写，部分失败需业务回滚
+
+| # | 方法 | 所在文件 | 回滚逻辑 |
+|---|------|---------|---------|
+| 1 | `update` | `order.service.ts` | 创建 address → 更新 order 失败 → 删 address |
+| 2 | `requestTransfer` | `order.service.ts` | INSERT orderChange → UPDATE order 失败 → 删 change |
+| 3 | `cancelTransfer` | `order.service.ts` | UPDATE orderChange → UPDATE order 失败 → 回滚 change |
+| 4 | `addLineItem` | `order.service.ts` | INSERT orderLineItem → INSERT orderItem 失败 → 删 lineItem |
+| 5 | `removeReturnItem` | `return.service.ts` | DELETE returnItem → UPDATE orderItem 失败 → 恢复 returnItem |
+| 6 | `receiveItems` | `return.service.ts` | UPDATE returnItem + orderItem + orderReturn 中间失败 → 回滚已更新的 |
+| 7 | `addInboundItems` | `claim.service.ts` | INSERT claimItem → UPDATE orderItem 失败 → 删 claimItem |
+| 8 | `removeInboundItem` | `claim.service.ts` | DELETE claimItem → UPDATE orderItem 失败 → 恢复 claimItem |
+| 9 | `addInboundItems` | `exchange.service.ts` | 同上 |
+| 10 | `removeInboundItem` | `exchange.service.ts` | 同上 |
+| 11 | `confirm` | `order-edit.service.ts` | 批量 apply actions → 某个 action 失败 → 回滚已 apply 的 |
+
+#### 🔵 db.transaction()（11 个）— 纯 DB 跨表操作，PostgreSQL 原生回滚
+
+| # | 方法 | 所在文件 | 涉及表 |
+|---|------|---------|--------|
+| 1 | `applyPromo` | `cart.service.ts` | cartLineItemAdjustment×N + promotion.used |
+| 2 | `removePromo` | `cart.service.ts` | cartLineItemAdjustment×N |
+| 3 | `create` | `order.service.ts` | orderAddress×N + order |
+| 4 | `cancel` | `order.service.ts` | order + email |
+| 5 | `cancel` | `fulfillment.service.ts` | fulfillment + orderItem×N |
+| 6 | `markAsDelivered` | `fulfillment.service.ts` | fulfillment + email |
+| 7 | `addReturnItems` | `return.service.ts` | returnItem×N + orderItem×N |
+| 8 | `cancel` | `order-edit.service.ts` | orderChangeAction×N + orderChange |
+| 9 | `confirm` | `product-import.service.ts` | product + variant + price + priceSet + saleChannel |
+| 10 | `convertToOrder` | `draft-order.service.ts` | 多表 |
+| 11 | `addReturnShipping` | `return.service.ts` | metadata 操作（单表但多步） |
+
+#### ⚪ 不需要（其他全部 272 个方法）
+
+单表 CRUD、纯读取、metadata 简单操作——不需要事务包装。
+
+---
+
+### 三层回滚体系
+
+#### 三层回滚体系
+
+```
+Workflow 引擎             → DB ─→ 外部服务 ─→ compensate ─→ 下一个 step
+                          8 个跨服务 + 外部调用的核心流程
+
+dispatchRollbackProcess  → try { action() } catch { rollback() }
+                          非 workflow 但有业务回滚逻辑的场景
+
+db.transaction()         → PostgreSQL 原生回滚
+                          纯 DB 跨表操作，无外部调用
+```
+
+#### Workflow 引擎升级计划
+
+| 当前 | 升级后 |
+|------|--------|
+| handler 签名 `({ input })` | `({ input, output, providers })` — 可读前序 step 输出 + 注入 provider |
+| compensate 拿不到 step 数据 | compensate 可访问 step 已产生的数据，精确回滚 |
+| createWorkflow 纯 step 数组 | 新增 `providers` 参数，自动注入 |
+
+#### `dispatchRollbackProcess` — 独立于引擎的业务回滚
+
+```ts
+// lib/rollback.ts
+export async function dispatchRollbackProcess<T>(
+  action: () => Promise<T>,
+  rollback: (result: T | null, error: Error) => Promise<void>,
+): Promise<T>
+```
+
+适用于不需要多步编排、但需要"失败时做业务回滚"的场景（如 order-edit addItems、claim addItems 等）。与 Workflow 引擎不冲突——引擎管多步编排，`dispatchRollbackProcess` 管单步回滚。
+
+详见 **[docs/workflow-plan.md](workflow-plan.md)** §4。
+
+#### 不用 Workflow 也不需 dispatchRollbackProcess 的场景
+
+| 场景 | 原因 |
+|------|------|
+| order.cancel / complete | 纯 DB 操作 |
+| fulfillment.cancel | 纯 DB 操作 |
+| fulfillment.delivered | DB + 通知。通知 fire-and-forget 无需补偿 |
+| order-edit confirm | 纯 DB 操作（apply actions），价格差手动处理 |
+| 所有通知/邮件 | fire-and-forget，失败不影响业务数据 |
+
+---
+
+### 版本历史
+
+| 日期 | 变更 |
+|------|------|
+| 2026-06-02 | 代码调用链核实：5 个 workflow 文件 0 调用，标注为死代码。确定 8 个流程需 workflow + 4 类 Provider 接口方案。 |
+
+---
+
+## C-02: fields 字段按需加载
+
+### 状态 🟡 部分完成（基础设施就绪，部分路由未接线）
+
+### 已实现：Orders 模块
+
+`services/order/fields.ts` 提供完整 fields 解析：
+- `parseOrderFields(fieldsParam)` — 逗号分隔 → string[]
+- `resolveOrderFieldsConfig(fields)` — 解析 wantsFulfillments / wantsCustomer / wantsSummary 等标记
+- `DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS` — 30+ 字段对齐官方 `defaultAdminOrderFields`
+- `DEFAULT_ADMIN_ORDER_LIST_FIELDS` — 列表默认字段集
+- `applyOrderFieldMask(dto, fieldConfig)` — 按 fields 裁剪响应
+
+### 调用链验证
+
+```
+GET /admin/orders     → orderService.list(query)
+  query.fields 来自 listOrdersSchema（Zod validator 包含 fields?: string）
+  → presentAdminOrders(db, orders, { fields: query.fields })
+  → resolveOrderFieldsConfig(fields)
+  ✅ 列表 fields 全链路通
+
+GET /admin/orders/:id  → orderService.getById(id)
+  实际调用：orderService.getById(c.req.param("id"))  ← 未传 fields!
+  → presentAdminOrderDetail(db, item, DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS)
+  ❌ 详情 fields 未从 query string 接线（固定用默认集）
+```
+
+### 仍缺
+
+| 端点 | 问题 |
+|------|------|
+| `GET /admin/orders/:id` | 路由 handler 未读 `c.req.query("fields")`，未传给 `getById()` |
+| `GET /admin/products/:id` | 产品详情同样未接线 fields query |
+| `GET /admin/products` | 产品列表 fields 存在但未确认全链路 |
+| Store 端订单/产品 | 无 fields 支持，返回固定结构 |
+
+### 候选方案
+
+- **短平快**：在 `GET /admin/orders/:id` handler 里补 `const fields = c.req.query("fields")`，透传给 `getById(id, false, undefined, fields)`
+- **完整方案**：在 products 和 store 模块复用同一 `parseFields` + field mask 模式
+
+---
+
+## C-03: 订单地址管理
+
+### 状态 ✅ 已解决（2026-06-02）
+
+### 调用链验证
+
+**读链路** — `presentAdminOrderDetail()` 通过 FK 加载地址：
+```typescript
+// services/order/admin-order.ts:974-979
+orderRow.shipping_address_id
+  ? db.select().from(orderAddress).where(eq(orderAddress.id, orderRow.shipping_address_id))
+  : Promise.resolve(null)
+```
+响应体包含 `shipping_address` 和 `billing_address`。
+
+**写链路** — 三处全部补完：
+
+| 写入点 | 做了什么 |
+|--------|---------|
+| `orderService.create()` | 接收 shipping_address / billing_address → INSERT INTO order_address → 写入 FK |
+| `orderService.update()` | 同上，支持 null（清除地址） |
+| `cartService.completeCheckout()` | 从 cart_address 迁移到 order_address，设置 FK |
+
+**Validator 对齐** — `packages/validators/src/order.ts`：
+- `addressSchema` 对齐 Medusa `AddressPayload`（字段一致 + `nullish()` + `.strict()` + metadata）
+- `createOrderSchema` + `updateOrderSchema` 均包含 `shipping_address` / `billing_address`
+
+### 解决方式
+
+拷贝 Medusa 官方 `common-validators/common.js` 的 `AddressPayload` 定义（字段、nullish、strict），适配到项目 Zod schema。写入逻辑新建 address 行并盖 FK。
+
+### 已知局限
+
+- `cartService` 的 `getById()` 不返回 cart addresses，`completeCheckout` 直接查 `cart_address` 表而非通过 service 封装
+- `orderService.update()` 每次更新地址会新建 `order_address` 行，旧行不变（Medusa 同为新建行——地址不可变原则）
+
+---
+
+## C-04: Order Totals 结构化计算
 
 ### 状态 ✅ 已解决
 
-### 现状
-已实现轻量 Workflow 引擎（`apps/server/src/lib/workflow.ts`），支持 Step 定义 + 补偿回调。
-两个核心 Workflow 已迁移：
+### 调用链验证
 
-| Workflow | 步骤数 | 文件 |
-|----------|--------|------|
-| create-fulfillment | 8 steps | `workflows/create-fulfillment.ts` |
-| cancel-fulfillment | 6 steps | `workflows/cancel-fulfillment.ts` |
-
-Workflow 引擎支持：
-- 顺序执行步骤
-- 步骤失败时逆序执行补偿
-- 步骤间通过 `StepContext` 共享数据
-
-### 官方差异（有意为之）
-- 官方用函数闭包传递数据（`createWorkflow(name, fn)`），我们用数组定义 + `StepContext`
-- 官方支持 `StepResponse`/`StepError` 返回值，我们直接返回对象
-- 上层效果等价
-
-### 待迁移
-- create-shipment
-- create-return / receive-return
-- cancel-order / complete-order
-- 索赔/换货
-
----
-
-## C-02: fields 字段选择系统
-
-### 现状
-API 返回固定字段集，客户端无法控制返回哪些字段/关联。
-
-### 官方做法
-Medusa 通过 `req.queryConfig.fields` + `refetchEntity` 实现按需加载：
-```ts
-// query-config.ts 定义默认字段
-defaultAdminRetrieveOrderFields = [
-  "*items.*tax_lines",
-  "*shipping_address",
-  "*payment_collections.*payments",
-]
-
-// route.ts 按 fields 参数加载
-const product = await refetchEntity({
-  entity: "product",
-  idOrFilter: req.params.id,
-  fields: selectFields,  // 只查这些
-})
+```
+presentAdminOrderDetail()
+  → formatAdminOrder({ summaryRow, lineItemRows, shippingRows, ... })
+    → decorateLineItemTotals(item)           // 每个行项: subtotal, tax_total, discount_total, original_total
+    → decorateShippingMethodTotals(method)    // 每个配送: shipping_subtotal, shipping_total, shipping_tax_total
+    → parseSummaryTotals(summaryRow)          // fallback: 从 order_summary.totals JSON 读
+    → applyRootTotals(order, summary)         // 展平 20+ 字段到 order 顶层:
+         total, subtotal, tax_total, discount_total, discount_subtotal, discount_tax_total,
+         shipping_total, shipping_subtotal, shipping_tax_total, shipping_discount_total,
+         item_total, item_subtotal, item_tax_total, item_discount_total,
+         original_item_total, original_item_subtotal, original_item_tax_total,
+         original_shipping_total, original_shipping_subtotal, original_shipping_tax_total,
+         credit_line_subtotal, credit_line_tax_total, pending_difference
 ```
 
-`*` 前缀表示展开关联对象，无 `*` 只返回外键。
+与官方 `decorateCartTotals`（`@medusajs/utils`）对齐。`AdminOrder` TypeScript 类型（`services/order/types.ts`）也定义了完整字段。
 
-### 影响范围
-- GET /admin/products/:id（已部分实现 fields 解析）
-- GET /admin/orders/:id（未实现 fields 解析）
-- GET /admin/orders（列表未支持 fields）
-
-### 候选方案
-- **A**: 为 orders 和 products 分别实现 fields 解析器（类似官方的 `wants()` 函数）
-- **B**: 保持当前固定返回，后续按需扩展
-- **C**: 实现通用 `parseFields()` 工具函数，各 route 复用
+**结论**：文档原描述"API 响应不包含 subtotal、tax_total"已过时。
 
 ---
 
-## C-03: 地址管理
+## C-05: order_change_action 版本化
 
-### 现状
-`order` 表无 `shipping_address_id` / `billing_address_id` 字段。
-地址数据存在 `metadata` 中，非结构化。
+### 状态 🟡 基础实现完成（2026-06-02），claim/exchange 详细追踪仍需补
 
-### 官方做法
-Medusa 使用 `order_address` 表存储地址，order 通过 `shipping_address_id` / `billing_address_id` 引用。
-`AdminUpdateOrder` 可以直接传 `shipping_address` / `billing_address` 完整对象。
+### 已实现
 
+**Drizzle schema** — `order_change_action` 表（`packages/db/src/schema/order.ts`）：
 ```sql
-order_address (id, customer_id, company, first_name, ...)
-order (id, ..., shipping_address_id FK, billing_address_id FK)
+order_change_action (id, order_id, order_change_id, return_id, claim_id, exchange_id,
+  ordering, version, reference, reference_id, action, details, amount, raw_amount, timestamps)
 ```
+16 个字段对齐 Medusa 官方。
 
-### 影响范围
-- POST /admin/orders/:id（更新地址）
-- POST /admin/orders（创建时带地址）
-- GET /admin/orders/:id（响应含 `*shipping_address` 和 `*billing_address`）
+**orderChange 表** — 新增 `status` 列（pending/requested/confirmed/canceled/declined）。
 
-### 候选方案
-- **A**: 给 `order` 表加 `shipping_address_id` / `billing_address_id` 列，地址写入 `order_address`
-- **B**: 保持 metadata 存储，地址作为 JSON 写入
-- **C**: 在 `order_address` 表存地址记录，但通过 metadata 引用 ID
+**3 个 service 已接入 action 记录**：
 
----
+| 服务 | 接入程度 |
+|------|---------|
+| **orderEditService** | ✅ 全部操作通过 action 表：ITEM_ADD、ITEM_UPDATE、SHIPPING_ADD、SHIPPING_UPDATE。confirm 批量 apply，cancel 全部删除。`getById` 返回 `actions` 数组。`list()` 每条 change 含 actions。 |
+| **claimService** | ✅ `create()` 为每个 claim_item 创建 WRITE_OFF_ITEM / ITEM_ADD action |
+| **exchangeService** | ✅ `create()` 为 outbound items 创建 ITEM_ADD action |
 
-## C-04: Order Totals 计算
+**order.service.ts** — `getChanges()` 加载每条 change 的 actions 数组。
 
-### 现状
-`order_summary` 表存储 JSON 格式的 totals，但未做结构化计算。
-API 响应不包含 `subtotal`、`tax_total`、`discount_total` 等顶层字段。
+### 仍缺（按优先级）
 
-### 官方做法
-Medusa 在 OrderSummary Module 中自动计算 totals：
-```ts
-// 计算逻辑（简化）
-item_total = Σ (item.unit_price × item.quantity) - discounts
-shipping_total = Σ shipping_methods.amount
-tax_total = Σ tax_lines.rate × taxable_amount
-total = item_total + shipping_total + tax_total
-```
+| 缺口 | 涉及 | 说明 |
+|------|------|------|
+| **Claim 入站 shipping** | `claimService.addInboundShipping()` | 仍存 metadata，未写 action |
+| **Claim 出站 items/shipping** | `claimService.addOutboundItems()` 等 | 存 metadata |
+| **Exchange 入站/出站 shipping** | `exchangeService` | 存 metadata |
+| **Action-based preview** | `buildAdminOrderPreview()` | 直接查询 action 计算差异（当前用 summary JSON） |
+| **Draft order items** | `draft-order.service.ts` | 仍用 metadata，未接 action 表 |
 
-### 影响范围
-- GET /admin/orders/:id 响应缺少 `total`, `subtotal`, `tax_total`, `discount_total`, `item_total`, `shipping_total`
-- Admin 订单详情页依赖这些字段显示金额
+### 与官方差异
 
-### 候选方案
-- **A**: 在 `getById` 中加 Drizzle SQL 计算 totals
-- **B**: 在 order_service 中加 `computeTotals()` 函数
-- **C**: 接受现状，前端自己计算（不推荐）
+官方用 `beginOrderEditOrderWorkflow` → `orderEditAddNewItemWorkflow` → `confirmOrderEditRequestWorkflow` 等 Workflow 封装。我们直接在 service 层操作，不包 Workflow。效果等价：action 记录创建 → 批量 apply/delete。
 
----
+### 版本历史
 
-## C-05: Versioning / Order Change Actions
-
-### 现状
-`orderChange` 表记录了变更元信息，但无 `order_change_action` 表。
-所有操作（添加商品、修改配送）不会拆分为独立的 Action 记录。
-
-### 官方做法
-Medusa 的每个订单编辑操作都创建 `order_change_action` 记录：
-```ts
-// 添加商品 → 创建 action
-action = { id, type: "ITEM_ADD", reference: "product_variant", reference_id, amount, ... }
-// 修改数量 → 创建 action
-action = { id, type: "ITEM_UPDATE", reference: "order_item", reference_id, new_quantity, ... }
-// 确认编辑 → 批量应用所有 pending actions
-```
-
-### 影响范围
-- 订单编辑工作流（/admin/order-edits）
-- 索赔/换货编辑（inbound/outbound items）
-- 草稿订单编辑
-- GET /admin/orders/:id/changes（返回 actions 列表）
-
-### 候选方案
-- **A**: 新建 `order_change_action` 表，实现 action 追踪
-- **B**: 将 actions 作为 JSON 存在 `orderChange.metadata` 中
-- **C**: 保持现状，actions 隐式写在其他表中
+| 日期 | 变更 |
+|------|------|
+| 2026-06-02 | 建 `order_change_action` 表 + `orderChange.status` 列。orderEditService 全量重写为 action 驱动。claim/exchange create 创建 action 记录。order.service.ts getChanges 加载 actions。 |
 
 ---
 
 ## C-06: 通知系统
 
-### 现状
-无通知模块。所有 API 的 `no_notification` 参数存在但被忽略。
+### 状态 🟡 Module 抽象层就绪（2026-06-02），多渠道/模板引擎/notification 表直接读写仍可改进
 
-### 官方做法
-Medusa Notification Module 处理邮件/SMS/webhook 通知：
-```ts
-await notificationService.create({
+### 已实现
+
+**notificationService**（`services/notification.service.ts`）— 对齐 Medusa `notificationModuleService`：
+
+```typescript
+// 调用方
+notificationService.send({
   to: customer.email,
-  channel: "email",
   template: "order.confirmed",
-  data: { order_id, ... }
+  data: { display_id, order_id },
+  trigger_type: "order.placed",
+  resource_id: orderId,
+  resource_type: "order",
+  idempotency_key: `order-confirm-${orderId}`,
+  no_notification: false,
+  sender: () => sendOrderConfirmationEmail(email, displayId, orderId),
 })
 ```
 
-### 影响范围
-- 订单确认通知
-- 发货通知
-- 退货确认
+能力：
+- **send()** — 写 `notification` 表 (status=pending) → 异步 sender() → status=sent/failed
+- **idempotency** — `idempotency_key` 防重发
+- **list() / getById() / resend()** — 管理 CRUD
+- **no_notification** — 透传跳过
 
-### 候选方案
-- **A**: 接入第三方通知服务（如 Resend/SendGrid）
-- **B**: 暂时忽略 no_notification，后续再实现
-- **C**: 加一个简单的 console.log 通知桩
+**接入点**（6 处，替换原 fire-and-forget 裸调用）：
 
----
+| 服务 | 模板 |
+|------|------|
+| `cartService.completeCheckout()` | `order.confirmed` |
+| `orderService.cancel()` | `order.canceled` |
+| `fulfillmentService.create()` | `fulfillment.created` |
+| `fulfillmentService.createShipment()` | `fulfillment.shipped` |
+| `fulfillmentService.markAsDelivered()` | `fulfillment.delivered` |
 
-## C-07: 事件系统
+**邮件函数** — 8 个保持不变（`lib/mail.ts`），但调用链路从 `service → mail()` 改为 `service → notificationService.send(..., sender: () => mail())`。
 
-### 现状
-无事件总线。操作完成后不触发任何事件。
+**事件订阅者** — `event-subscribers.ts` 不再直接发邮件，改为 console.log（邮件在 service 层通过 notificationService 触发）。订阅者职责收敛为审计/日志/未来扩展点。
 
-### 官方做法
-Medusa Workflow 在每个 Step 完成后 emit 事件：
-```
-order.placed, order.canceled, fulfillment.created, return.requested, ...
-```
+### 仍缺
 
-其他模块（Search, Notification, Webhook）通过订阅事件做出响应。
-
-### 影响范围
-- 跨模块联动
-- 第三方集成
-- 审计日志
-
-### 候选方案
-- **A**: 引入 EventEmitter / 消息队列
-- **B**: 不实现，需要时手动调用
-- **C**: 用 Hono middleware 做简单的 after-hook
+| 维度 | 说明 |
+|------|------|
+| **admin 通知列表** | `/admin/notifications` 通过 `batch.service.ts` 的通用 CRUD 挂载，用的是旧 `notificationService`。新 `notification.service.ts` 的 `list()`/`getById()`/`resend()` 未接到路由上（两个同名 service） |
+| **多渠道** | 仅 email（Resend）。无 SMS、Webhook、Slack channel |
+| **模板引擎** | 硬编码 HTML inline，非 Handlebar 模板 + 变量渲染 |
+| **provider 注册** | 无 `NotificationProvider` 抽象（provider.register → channel 路由） |
+| **退货/索赔/换货通知** | return.requested / claim.created / exchange.created 事件无对应邮件模板（仅 console.log） |
+| **订单编辑通知** | order-edit.requested / confirmed 无事件，无通知 |
 
 ---
 
-## 讨论顺序建议
+## C-07: 事件总线
 
-| 优先级 | 冲突 | 理由 |
-|:------:|------|------|
-| P1 | C-03 地址管理 | Admin UI 订单编辑页面直接依赖 |
-| P1 | C-04 Totals 计算 | Admin 订单详情金额显示 |
-| P2 | C-02 fields 系统 | 产品已部分实现，订单需要补 |
-| P2 | C-05 Versioning | 订单编辑/索赔/换货工作流 |
-| P3 | C-01 Workflow | 长周期，可后做 |
-| P3 | C-06 通知 | 无通知系统也可运行 |
-| P3 | C-07 事件 | 无事件也可运行 |
+### 状态 ✅ 已解决（2026-06-02）
+
+### 调用统计（全量接入后）
+
+```
+Workflow 级 emit:
+  create-fulfillment.ts   emit("fulfillment.created")
+  cancel-fulfillment.ts   emit("fulfillment.canceled")
+  create-shipment.ts      emit("fulfillment.shipped")
+  cancel-order.ts         emit("order.canceled")
+  complete-order.ts       emit("order.completed")
+
+Service 级 emit:
+  cart.service.ts         emit("order.placed")              ← completeCheckout
+  fulfillment.service.ts  emit("fulfillment.delivered")    ← markAsDelivered
+  return.service.ts       emit("return.requested")         ← create
+  claim.service.ts        emit("claim.created")            ← create
+  exchange.service.ts     emit("exchange.created")         ← create
+
+Subscriber（订阅处理）:
+  lib/event-subscribers.ts  on("order.placed") → email
+                            on("order.canceled") → email
+                            on("order.completed") → log
+                            on("fulfillment.*") → email/log
+                            on("return.requested") → log
+                            on("claim.created") → log
+                            on("exchange.created") → log
+  app.ts                  import "registerSubscribers()" 启动加载
+```
+
+### 事件对照（对齐 Medusa）
+
+| 事件 | 状态 | 发出位置 |
+|------|:--:|------|
+| `order.placed` | ✅ | `cartService.completeCheckout()` |
+| `order.canceled` | ✅ | `cancelOrderWorkflow` |
+| `order.completed` | ✅ | `completeOrderWorkflow` |
+| `fulfillment.created` | ✅ | `createFulfillmentWorkflow` |
+| `fulfillment.canceled` | ✅ | `cancelFulfillmentWorkflow` |
+| `fulfillment.shipped` | ✅ | `createShipmentWorkflow` |
+| `fulfillment.delivered` | ✅ | `fulfillmentService.markAsDelivered()` |
+| `return.requested` | ✅ | `returnService.create()` |
+| `claim.created` | ✅ | `claimService.create()` |
+| `exchange.created` | ✅ | `exchangeService.create()` |
+
+### 仍缺
+
+| 事件 | 说明 |
+|------|------|
+| `return.received` | receive return 时无事件 |
+| `claim.completed` / `exchange.completed` | 确认/取消时无事件 |
+| `order-edit.requested` / `order-edit.confirmed` | orderEditService 未接事件 |
+| 事件持久化 | 当前纯内存 EventBus，进程重启丢失 |
+| 外部 Webhook 触发器 | 无 webhook 订阅者 |
+
+---
+
+## 汇总与优先级
+
+| # | 冲突 | 状态 | 核心缺口 | 建议优先级 |
+|---|------|:--:|---------|:--:|
+| C-03 | 地址管理 | ✅ | —（2026-06-02 解决） | — |
+| C-05 | order_change_action | 🟡 | 基础实现，claim/exchange 详细追踪仍缺 | **P1** — 索赔/换货 metadata 待迁 |
+| C-07 | 事件总线 | ✅ | —（2026-06-02 解决） | — |
+| C-06 | 通知系统 | 🟡 | 缺 Module 抽象，无 DB 记录 | **P2** — 邮件覆盖尚可但无扩展性 |
+| C-01 | Workflow + 事务回滚 | 🟡 | 方案定，待实施：8 Workflow + 11 dispatchRollback + 11 db.transaction | **P0** — 立刻实施 |
+| C-02 | fields | 🟡 | 基础设施在，路由部分未接线 | **P3** — 性能优化（非阻塞） |
+| C-04 | Totals | ✅ | — | — |
+
+### 变动记录
+
+| 日期 | 变更 |
+|------|------|
+| 2026-06-02 | 代码调用链全量核实，重写 7 项判断。C-04 标记已解决，C-03 降级至 🔴，C-07 降级至 🟡 |
+| 2026-06-02 | C-03 解决：orderService(create/update) + cartService.completeCheckout 写入 order_address，Zod addressSchema 对齐官方 AddressPayload |
+| 2026-06-02 | C-05 基础实现：建 order_change_action 表 + orderChange.status，orderEditService 全量重写为 action 驱动，claim/exchange create 创建 action 记录 |
+| 2026-06-02 | C-07 解决：5 workflow + 5 service 补全事件 emit，新建 event-subscribers.ts 注册 10 个事件订阅，app.ts 启动加载 |
+| 2026-06-02 | C-06 半解决：建 notificationService.send() 抽象层（idempotency + DB 记录 + 异步 sender），6 处 service 接入。event-subscribers 收敛为日志/审计。路由层两个同名 notificationService 待统一。 |
+| 2026-06-02 | C-01 全量扫完 302 个方法：8 Workflow + 11 dispatchRollbackProcess + 11 db.transaction + 272 不需要。方案已定待实施。 |

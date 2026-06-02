@@ -1,8 +1,10 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, orderClaim, orderClaimItem, orderChange, orderItem } from "@my-store/db"
+import { generateId, getDb, orderClaim, orderClaimItem, orderChange, orderChangeAction, orderItem } from "@my-store/db"
 import type { CreateClaimInput, ListClaimsQuery } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 import { createCompanionReturn } from "./order/admin-order-preview"
+import { eventBus } from "../lib/events"
+import { claimCreateWorkflow } from "../workflows/claim-create"
 
 export const claimService = {
   async list(query: ListClaimsQuery) {
@@ -34,43 +36,14 @@ export const claimService = {
   },
 
   async create(input: CreateClaimInput) {
-    const db = getDb()
-    const id = generateId("claim")
-
-    const [created] = await db.insert(orderClaim).values({
-      id, order_id: input.order_id, order_version: input.order_version ?? 1,
-      type: input.type ?? "refund",
-      refund_amount: input.refund_amount ? String(input.refund_amount) : null,
-      raw_refund_amount: input.refund_amount ? { amount: input.refund_amount, precision: 2 } : null,
-      created_by: "admin",
-    }).returning()
-
-    if (input.claim_items?.length) {
-      for (const ci of input.claim_items) {
-        const citemId = generateId("clmitm")
-        await db.insert(orderClaimItem).values({
-          id: citemId, claim_id: id, item_id: ci.item_id, reason: ci.reason ?? null,
-          quantity: String(ci.quantity), raw_quantity: { amount: ci.quantity, precision: 0 },
-          is_additional_item: ci.is_additional_item ?? false, note: ci.note ?? null,
-        })
-
-        await db.update(orderItem).set({
-          return_requested_quantity: sql`COALESCE(return_requested_quantity::numeric, 0) + ${ci.quantity}`,
-        }).where(and(eq(orderItem.item_id, ci.item_id), eq(orderItem.order_id, input.order_id)))
-      }
-    }
-
-    const returnId = await createCompanionReturn(input.order_id, input.order_version ?? 1)
-
-    await db.insert(orderChange).values({
-      id: generateId("ordch"), order_id: input.order_id, claim_id: id, return_id: returnId,
-      version: input.order_version ?? 1, change_type: "claim", created_by: "admin",
-    })
-
-    return this.getById(id)
+    const result = await claimCreateWorkflow.run({
+      order_id: input.order_id, order_version: input.order_version,
+      type: input.type, refund_amount: input.refund_amount,
+      claim_items: input.claim_items ?? [],
+      additional_items: (input.additional_items ?? []) as any,
+    });
+    return this.getById(String(result?.claimId ?? ''));
   },
-
-  // ── Inbound Items ────────────────────────────────────
 
   async addInboundItems(claimId: string, payload: { items: { item_id: string; quantity: number; reason?: string; note?: string }[] }) {
     const claim = await this.getById(claimId)

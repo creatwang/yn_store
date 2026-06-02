@@ -1,8 +1,10 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, orderExchange, orderChange } from "@my-store/db"
+import { generateId, getDb, orderExchange, orderChange, orderChangeAction } from "@my-store/db"
 import type { CreateExchangeInput, ListExchangesQuery } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 import { createCompanionReturn } from "./order/admin-order-preview"
+import { eventBus } from "../lib/events"
+import { exchangeCreateWorkflow } from "../workflows/exchange-create"
 
 export const exchangeService = {
   async list(query: ListExchangesQuery) {
@@ -29,25 +31,14 @@ export const exchangeService = {
   },
 
   async create(input: CreateExchangeInput) {
-    const db = getDb()
-    const id = generateId("exchange")
-    const [created] = await db.insert(orderExchange).values({
-      id, order_id: input.order_id, order_version: input.order_version ?? 1,
-      difference_due: input.difference_due ? String(input.difference_due) : null,
-      raw_difference_due: input.difference_due ? { amount: input.difference_due, precision: 2 } : null,
-      allow_backorder: input.allow_backorder ?? false, created_by: "admin",
-    }).returning()
-
-    const returnId = await createCompanionReturn(input.order_id, input.order_version ?? 1)
-
-    await db.insert(orderChange).values({
-      id: generateId("ordch"), order_id: input.order_id, exchange_id: id, return_id: returnId,
-      version: input.order_version ?? 1, change_type: "exchange", created_by: "admin",
-    })
-    return { exchange: { ...created, return_id: returnId } }
+    const result = await exchangeCreateWorkflow.run({
+      order_id: input.order_id, order_version: input.order_version,
+      difference_due: input.difference_due, allow_backorder: input.allow_backorder,
+      additional_items: (input.additional_items ?? []) as any,
+    });
+    return this.getById(String(result?.exchangeId ?? ''));
   },
 
-  // ── Inbound Items ────────────────────────────────────
   async addInboundItems(exchangeId: string, payload: { items: { item_id: string; quantity: number }[] }) {
     const exchange = await this.getById(exchangeId)
     const meta = (exchange.exchange.metadata as Record<string, any>) ?? {}

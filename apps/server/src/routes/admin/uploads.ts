@@ -2,8 +2,9 @@ import { Hono } from "hono"
 import { existsSync } from "node:fs"
 import { mkdir, writeFile, readdir, unlink } from "node:fs/promises"
 import path from "node:path"
+import { and, eq, isNull } from "drizzle-orm"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
-import { generateId } from "@my-store/db"
+import { file, generateId, getDb } from "@my-store/db"
 
 const UPLOADS_DIR = path.resolve(process.cwd(), "public/uploads")
 
@@ -13,25 +14,14 @@ async function ensureUploadsDir() {
   }
 }
 
-/** 按文件 ID 查找实际文件（上传时文件名格式为 {name}-{id}{ext}） */
-async function findFileById(id: string): Promise<{ filename: string; url: string } | null> {
-  if (!existsSync(UPLOADS_DIR)) return null
-  const entries = await readdir(UPLOADS_DIR)
-  const match = entries.find((e) => e.includes(`-${id}.`))
-  if (!match) return null
-  return { filename: match, url: `/uploads/${match}` }
-}
-
 /**
- * 对齐 Medusa 官方 POST /admin/uploads
- * - 官方: multer upload.array("files") → req.files → uploadFilesWorkflow → { files: result }
- * - 此处: Hono parseBody → 本地文件存储 → { files: [{ id, url }] }
- * - defaultAdminUploadFields: ["id", "url"]
+ * POST /admin/uploads
+ * 对齐 Medusa 官方：formData → 本地存储 + DB file 记录
+ * defaultAdminUploadFields: ["id", "url"]
  */
 export const adminUploads = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
   .post("/", async (c) => {
-    // c.req.parseBody() 对同名多文件不可靠，改用 formData().getAll()
     const form = await c.req.formData()
     const raw: (File | string)[] = form.getAll("files") as (File | string)[]
     const files: File[] = raw.filter((f): f is File => f instanceof File)
@@ -41,22 +31,35 @@ export const adminUploads = new Hono<{ Variables: AuthVariables }>()
     }
 
     await ensureUploadsDir()
+    const db = getDb()
 
     const uploadedFiles = await Promise.all(
-      files.map(async (file) => {
+      files.map(async (f) => {
         const id = generateId("file")
-        const ext = path.extname(file.name)
+        const ext = path.extname(f.name)
         const safeBase = path
-          .basename(file.name, ext)
-          .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, "_")
+          .basename(f.name, ext)
+          .replace(/[^a-zA-Z0-9一-鿿_-]/g, "_")
         const filename = `${safeBase}-${id}${ext}`
         const filepath = path.join(UPLOADS_DIR, filename)
 
-        const buffer = Buffer.from(await file.arrayBuffer())
+        const buffer = Buffer.from(await f.arrayBuffer())
         await writeFile(filepath, buffer)
 
-        // 对齐 defaultAdminUploadFields: ["id", "url"]
-        return { id, url: `/uploads/${filename}` }
+        const url = `/uploads/${filename}`
+
+        // Write DB record (gracefully degrade if file table missing)
+        try {
+          await db.insert(file).values({
+            id, url, filename,
+            mime_type: f.type || undefined,
+            size: buffer.byteLength,
+            access_type: "public",
+            provider_id: "local",
+          })
+        } catch { /* file table may not exist yet */ }
+
+        return { id, url }
       })
     )
 
@@ -64,18 +67,52 @@ export const adminUploads = new Hono<{ Variables: AuthVariables }>()
   })
   .get("/:id", async (c) => {
     const id = c.req.param("id")
-    const found = await findFileById(id)
-    if (!found) {
-      return c.json({ file: { id, url: `/uploads/${id}` } })
+
+    // DB lookup (try-catch: file table may not exist)
+    try {
+      const db = getDb()
+      const [row] = await db
+        .select()
+        .from(file)
+        .where(and(eq(file.id, id), isNull(file.deleted_at)))
+        .limit(1)
+      if (row) return c.json({ file: { id: row.id, url: row.url } })
+    } catch { /* file table may not exist */ }
+
+    // Legacy fallback: filesystem scan
+    if (existsSync(UPLOADS_DIR)) {
+      const entries = await readdir(UPLOADS_DIR)
+      const match = entries.find((e) => e.includes(`-${id}.`))
+      if (match) return c.json({ file: { id, url: `/uploads/${match}` } })
     }
-    return c.json({ file: { id, url: found.url } })
+    return c.json({ file: { id, url: `/uploads/${id}` } })
   })
   .delete("/:id", async (c) => {
     const id = c.req.param("id")
-    const found = await findFileById(id)
-    if (found) {
-      const filepath = path.join(UPLOADS_DIR, found.filename)
-      try { await unlink(filepath) } catch { /* 文件可能已被删除 */ }
+
+    // DB soft-delete (try-catch: file table may not exist)
+    let deleted = false
+    try {
+      const db = getDb()
+      const [row] = await db
+        .update(file)
+        .set({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .where(and(eq(file.id, id), isNull(file.deleted_at)))
+        .returning()
+      deleted = !!row
+      if (row?.filename && existsSync(UPLOADS_DIR)) {
+        try { await unlink(path.join(UPLOADS_DIR, row.filename)) } catch {}
+      }
+    } catch { /* file table may not exist */ }
+
+    // Legacy fallback: delete by filesystem match
+    if (!deleted && existsSync(UPLOADS_DIR)) {
+      const entries = await readdir(UPLOADS_DIR)
+      const match = entries.find((e) => e.includes(`-${id}.`))
+      if (match) {
+        try { await unlink(path.join(UPLOADS_DIR, match)) } catch {}
+      }
     }
+
     return c.json({ id, object: "file", deleted: true })
   })

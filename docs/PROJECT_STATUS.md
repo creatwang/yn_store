@@ -138,10 +138,10 @@
 | 　↳ `apps/server` 2 文件 | `product.service.ts`、`variant.service.ts` | — |
 | 　↳ `apps/storefront` 0 文件 | — | — |
 | 　↳ `packages/*` 0 文件 | — | — |
-| 促销规则引擎 | `promotion.code` 应用逻辑简化 | 低（表级 CRUD 有） |
-| shipping-options rules/batch | 高级配送规则 | 低（基础 CRUD 有） |
-| 订单 export 返回 JSON 非 CSV | 非导出文件格式 | 低 |
-| upload retrieve 是文件系统扫描 | 非真实文件检索 | 低 |
+| 促销规则引擎 | `promotion.code` 应用逻辑从 metadata 升级到 application_method 表 + 规则匹配（2026-06-02） | 低（需 CI 验证） |
+| shipping-options rules/batch | `POST /:id/rules/batch` 已补齐（2026-06-02） | 低（需 CI 验证） |
+| 订单 export 同步（大量订单可能超时） | 非异步工作流 | 低 |
+| upload 文件系统扫描 | 已改为 DB `file` 表记录 + provider 模式（2026-06-02） | 低（需 CI 验证） |
 
 ---
 

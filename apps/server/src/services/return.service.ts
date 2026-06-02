@@ -13,6 +13,8 @@ import type {
   ListReturnsQuery,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { eventBus } from "../lib/events"
+import { returnCreateWorkflow } from "../workflows/return-create"
 
 type ReturnItemInput = {
   item_id: string
@@ -71,39 +73,12 @@ export const returnService = {
   },
 
   async create(input: CreateReturnInput) {
-    const db = getDb()
-    const id = generateId("ret")
-
-    const [created] = await db
-      .insert(orderReturn)
-      .values({
-        id,
-        order_id: input.order_id,
-        order_version: input.order_version ?? 1,
-        location_id: input.location_id ?? null,
-        refund_amount: input.refund_amount ? String(input.refund_amount) : null,
-        raw_refund_amount: input.refund_amount
-          ? { amount: input.refund_amount, precision: 2 }
-          : null,
-        created_by: "admin",
-        status: "open",
-      })
-      .returning()
-
-    if (input.items?.length) {
-      await this.addReturnItems(id, input.order_id, input.items)
-    }
-
-    await db.insert(orderChange).values({
-      id: generateId("ordch"),
-      order_id: input.order_id,
-      return_id: id,
-      version: input.order_version ?? 1,
-      change_type: "return_request",
-      created_by: "admin",
-    })
-
-    return this.getById(created.id)
+    const result = await returnCreateWorkflow.run({
+      order_id: input.order_id, order_version: input.order_version,
+      location_id: input.location_id ?? undefined, refund_amount: input.refund_amount,
+      items: input.items ?? [],
+    });
+    return this.getById(String(result?.returnId ?? ''));
   },
 
   async addReturnItems(returnId: string, orderId: string, items: ReturnItemInput[]) {

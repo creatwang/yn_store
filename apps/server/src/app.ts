@@ -16,7 +16,9 @@ import { adminProductOptions } from "./routes/admin/product-options"
 import { adminProductImages } from "./routes/admin/product-images"
 import { adminStockLocationsFull } from "./routes/admin/batch"
 import { adminInventoryItemsFull } from "./routes/admin/batch"
-import { adminCategories, adminCollections, adminCustomerGroups, adminPriceLists, adminTaxRates, adminReservations, adminShippingProfiles, adminShippingOptionTypes, adminCurrencies, adminPromotions, adminCampaigns, adminApiKeys, adminNotifications, adminWorkflowExecutions, adminShippingOptions, adminPricePreferences, adminPropertyLabels, adminPaymentCollections, adminInventoryLevels, adminPriceListPrices, adminFulfillmentSets, adminCategoryLinkProducts, adminSalesChannelLinkProducts, adminCollectionLinkProducts, adminPriceListLinkProducts, adminPriceListBatchPrices, adminInventoryBatchLevels, adminFulfillmentProviders } from "./routes/admin/batch"
+import { adminCategories, adminCollections, adminCustomerGroups, adminPriceLists, adminTaxRates, adminReservations, adminShippingProfiles, adminShippingOptionTypes, adminCurrencies, adminCampaigns, adminApiKeys, adminNotifications, adminWorkflowExecutions, adminPricePreferences, adminPropertyLabels, adminPaymentCollections, adminInventoryLevels, adminPriceListPrices, adminFulfillmentSets, adminCategoryLinkProducts, adminSalesChannelLinkProducts, adminCollectionLinkProducts, adminPriceListLinkProducts, adminPriceListBatchPrices, adminInventoryBatchLevels, adminFulfillmentProviders } from "./routes/admin/batch"
+import { adminShippingOptions } from "./routes/admin/shipping-options"
+import { adminPromotions } from "./routes/admin/promotions"
 import { adminFulfillments } from "./routes/admin/fulfillments"
 import { adminUploads } from "./routes/admin/uploads"
 import { adminStore } from "./routes/admin/store"
@@ -39,6 +41,10 @@ import { storePaymentCollections, storePaymentProviders } from "./routes/store/p
 import { storeCollections, storePromotions } from "./routes/store/catalog"
 import { rebuildWebhook } from "./routes/webhooks/rebuild"
 import { mountAppSpa } from "./host/mount-app"
+import { registerSubscribers } from "./lib/event-subscribers"
+import { registerDefaultProviders } from "./lib/providers"
+registerSubscribers()
+registerDefaultProviders()
 
 /** /api 下所有路由，供 RPC 客户端通过 client.api.* 访问 */
 const apiRoutes = new Hono()

@@ -18,6 +18,9 @@ import {
   currency,
   promotion,
   promotionCampaign,
+  applicationMethod,
+  promotionRule,
+  promotionRuleValue,
   apiKey,
   notification,
   workflowExecution,
@@ -227,7 +230,194 @@ export const currencyService = {
 }
 
 // ── Promotions ────────────────────────────────────────────
-export const promotionService = { list: mkl(promotion, "promotions"), getById: mkg(promotion, "promotions"), create: mkc(promotion, "promo", "promotions"), update: mku(promotion, "promotions"), delete: mkdel(promotion) }
+export const promotionService = {
+  list: mkl(promotion, "promotions"),
+  getById: mkg(promotion, "promotions"),
+  delete: mkdel(promotion),
+
+  async create(input: Record<string, unknown>) {
+    const db = getDb()
+    const id = generateId("promo")
+    const { application_method, rules, ...promoFields } = input
+    const [created] = await db.insert(promotion).values({
+      id,
+      code: String(promoFields.code ?? ""),
+      type: String(promoFields.type ?? "standard"),
+      status: String(promoFields.status ?? "draft"),
+      is_automatic: Boolean(promoFields.is_automatic ?? false),
+      is_tax_inclusive: Boolean(promoFields.is_tax_inclusive ?? false),
+      campaign_id: (promoFields.campaign_id as string | null) ?? null,
+      limit: (promoFields.limit as number | null | undefined) ?? null,
+      used: 0,
+      metadata: (promoFields.metadata as Record<string, unknown> | null) ?? null,
+      created_at: sql`now()`,
+      updated_at: sql`now()`,
+    }).returning()
+
+    // Write application_method
+    const am = application_method as Record<string, unknown> | undefined
+    if (am) {
+      const amId = generateId("proappmet")
+      const amValue = am.value != null ? Number(am.value) : 0
+      await db.insert(applicationMethod).values({
+        id: amId,
+        promotion_id: id,
+        type: String(am.type ?? "percentage"),
+        target_type: String(am.target_type ?? "items"),
+        allocation: (am.allocation as string | undefined) ?? "across",
+        value: String(amValue),
+        raw_value: { value: String(amValue), precision: 20 },
+        currency_code: (am.currency_code as string | null | undefined) ?? null,
+        max_quantity: (am.max_quantity as number | null | undefined) ?? null,
+        apply_to_quantity: (am.apply_to_quantity as number | null | undefined) ?? null,
+        buy_rules_min_quantity: (am.buy_rules_min_quantity as number | null | undefined) ?? null,
+        description: (am.description as string | null) ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+
+      // Write target_rules / buy_rules into promotion_rule
+      for (const key of ["target_rules", "buy_rules"]) {
+        const ruleList = (am[key] as Array<Record<string, unknown>>) ?? []
+        for (const r of ruleList) {
+          const ruleId = generateId("prorul")
+          await db.insert(promotionRule).values({
+            id: ruleId,
+            promotion_id: id,
+            application_method_id: amId,
+            attribute: String(r.attribute ?? ""),
+            operator: String(r.operator ?? "eq"),
+            description: (r.description as string | null) ?? null,
+            created_at: sql`now()`,
+            updated_at: sql`now()`,
+          })
+          const vals = (r.values ?? r.value) as string[] | string | undefined
+          const valueList = Array.isArray(vals) ? vals : vals ? [vals] : []
+          for (const v of valueList) {
+            await db.insert(promotionRuleValue).values({
+              id: generateId("prorulval"),
+              promotion_rule_id: ruleId,
+              value: String(v),
+              created_at: sql`now()`,
+              updated_at: sql`now()`,
+            })
+          }
+        }
+      }
+    }
+
+    // Write top-level rules
+    const ruleList = (rules as Array<Record<string, unknown>>) ?? []
+    for (const r of ruleList) {
+      const ruleId = generateId("prorul")
+      await db.insert(promotionRule).values({
+        id: ruleId,
+        promotion_id: id,
+        attribute: String(r.attribute ?? ""),
+        operator: String(r.operator ?? "eq"),
+        description: (r.description as string | null) ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+      const vals = (r.values ?? r.value) as string[] | string | undefined
+      const valueList = Array.isArray(vals) ? vals : vals ? [vals] : []
+      for (const v of valueList) {
+        await db.insert(promotionRuleValue).values({
+          id: generateId("prorulval"),
+          promotion_rule_id: ruleId,
+          value: String(v),
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+      }
+    }
+
+    return { promotion: created }
+  },
+
+  async update(id: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const { application_method, rules, ...promoFields } = input
+    const [updated] = await db.update(promotion).set({
+      ...(promoFields.code !== undefined && { code: String(promoFields.code) }),
+      ...(promoFields.type !== undefined && { type: String(promoFields.type) }),
+      ...(promoFields.status !== undefined && { status: String(promoFields.status) }),
+      ...(promoFields.is_automatic !== undefined && { is_automatic: Boolean(promoFields.is_automatic) }),
+      ...(promoFields.is_tax_inclusive !== undefined && { is_tax_inclusive: Boolean(promoFields.is_tax_inclusive) }),
+      ...(promoFields.campaign_id !== undefined && { campaign_id: promoFields.campaign_id as string | null }),
+      ...(promoFields.limit !== undefined && { limit: promoFields.limit as number | null }),
+      ...(promoFields.metadata !== undefined && { metadata: promoFields.metadata as Record<string, unknown> | null }),
+      updated_at: sql`now()`,
+    }).where(and(eq(promotion.id, id), isNull(promotion.deleted_at))).returning()
+    if (!updated) throw new HTTPException(404, { message: "未找到" })
+
+    // Update application_method if provided
+    const am = application_method as Record<string, unknown> | undefined
+    if (am) {
+      const [existingAm] = await db.select().from(applicationMethod).where(eq(applicationMethod.promotion_id, id)).limit(1)
+      if (existingAm) {
+        const amValue = am.value != null ? Number(am.value) : undefined
+        const setAm: Record<string, any> = { updated_at: sql`now()` }
+        if (am.type !== undefined) setAm.type = String(am.type)
+        if (am.target_type !== undefined) setAm.target_type = String(am.target_type)
+        if (am.allocation !== undefined) setAm.allocation = String(am.allocation)
+        if (amValue !== undefined) { setAm.value = String(amValue); setAm.raw_value = { value: String(amValue), precision: 20 } }
+        if (am.currency_code !== undefined) setAm.currency_code = am.currency_code as string | null
+        if (am.max_quantity !== undefined) setAm.max_quantity = am.max_quantity as number | null
+        if (am.apply_to_quantity !== undefined) setAm.apply_to_quantity = am.apply_to_quantity as number | null
+        if (am.buy_rules_min_quantity !== undefined) setAm.buy_rules_min_quantity = am.buy_rules_min_quantity as number | null
+        await db.update(applicationMethod).set(setAm).where(eq(applicationMethod.id, existingAm.id))
+      } else {
+        const amId = generateId("proappmet")
+        const amValue = am.value != null ? Number(am.value) : 0
+        await db.insert(applicationMethod).values({
+          id: amId, promotion_id: id,
+          type: String(am.type ?? "percentage"), target_type: String(am.target_type ?? "items"),
+          allocation: (am.allocation as string) ?? "across",
+          value: String(amValue), raw_value: { value: String(amValue), precision: 20 },
+          currency_code: (am.currency_code as string | null) ?? null,
+          max_quantity: (am.max_quantity as number | null) ?? null,
+          apply_to_quantity: (am.apply_to_quantity as number | null) ?? null,
+          buy_rules_min_quantity: (am.buy_rules_min_quantity as number | null) ?? null,
+          description: (am.description as string | null) ?? null,
+          created_at: sql`now()`, updated_at: sql`now()`,
+        })
+      }
+    }
+
+    // Replace rules if provided
+    if (rules !== undefined) {
+      // Delete existing rules + values
+      const existingRules = await db.select().from(promotionRule).where(eq(promotionRule.promotion_id, id))
+      for (const er of existingRules) {
+        await db.delete(promotionRuleValue).where(eq(promotionRuleValue.promotion_rule_id, er.id))
+      }
+      await db.delete(promotionRule).where(eq(promotionRule.promotion_id, id))
+
+      // Re-create
+      const ruleList = rules as Array<Record<string, unknown>>
+      for (const r of ruleList) {
+        const ruleId = generateId("prorul")
+        await db.insert(promotionRule).values({
+          id: ruleId, promotion_id: id,
+          attribute: String(r.attribute ?? ""), operator: String(r.operator ?? "eq"),
+          description: (r.description as string | null) ?? null,
+          created_at: sql`now()`, updated_at: sql`now()`,
+        })
+        const vals = (r.values ?? r.value) as string[] | string | undefined
+        const valueList = Array.isArray(vals) ? vals : vals ? [vals] : []
+        for (const v of valueList) {
+          await db.insert(promotionRuleValue).values({
+            id: generateId("prorulval"), promotion_rule_id: ruleId, value: String(v),
+            created_at: sql`now()`, updated_at: sql`now()`,
+          })
+        }
+      }
+    }
+
+    return { promotion: updated }
+  },
+}
 
 // ── Campaigns ──────────────────────────────────────────────
 export const campaignService = { list: mkl(promotionCampaign, "campaigns"), getById: mkg(promotionCampaign, "campaigns"), create: mkc(promotionCampaign, "camp", "campaigns"), update: mku(promotionCampaign, "campaigns"), delete: mkdel(promotionCampaign) }

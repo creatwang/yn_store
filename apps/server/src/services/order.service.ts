@@ -5,7 +5,9 @@ import {
   generateId,
   getDb,
   order,
+  orderAddress,
   orderChange,
+  orderChangeAction,
   orderCreditLine,
   orderItem,
   orderSummary,
@@ -23,6 +25,8 @@ import type {
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 import { sendOrderCanceledEmail } from "../lib/mail"
+import { dispatchRollbackProcess } from "../lib/rollback"
+import { notificationService } from "./notification.service"
 import {
   DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
   presentAdminOrderDetail,
@@ -163,6 +167,26 @@ export const orderService = {
     const db = getDb()
     const id = generateId("order")
 
+    // Write addresses to order_address table
+    let shippingAddrId: string | null = null
+    let billingAddrId: string | null = null
+    if (input.shipping_address) {
+      shippingAddrId = generateId("ordaddr")
+      await db.insert(orderAddress).values({
+        id: shippingAddrId,
+        ...input.shipping_address,
+        metadata: input.shipping_address.metadata ?? null,
+      })
+    }
+    if (input.billing_address) {
+      billingAddrId = generateId("ordaddr")
+      await db.insert(orderAddress).values({
+        id: billingAddrId,
+        ...input.billing_address,
+        metadata: input.billing_address.metadata ?? null,
+      })
+    }
+
     const [created] = await db
       .insert(order)
       .values({
@@ -172,6 +196,8 @@ export const orderService = {
         sales_channel_id: input.sales_channel_id ?? null,
         email: input.email ?? null,
         currency_code: input.currency_code ?? "USD",
+        shipping_address_id: shippingAddrId,
+        billing_address_id: billingAddrId,
         metadata: input.metadata ?? null,
         created_at: sql`now()`,
         updated_at: sql`now()`,
@@ -185,25 +211,56 @@ export const orderService = {
     const db = getDb()
     await this.getById(id)
 
-    const [updated] = await db
-      .update(order)
-      .set({
-        ...(input.region_id !== undefined && { region_id: input.region_id }),
-        ...(input.customer_id !== undefined && { customer_id: input.customer_id }),
-        ...(input.sales_channel_id !== undefined && { sales_channel_id: input.sales_channel_id }),
-        ...(input.email !== undefined && { email: input.email }),
-        ...(input.currency_code !== undefined && { currency_code: input.currency_code }),
-        ...(input.locale !== undefined && { locale: input.locale }),
-        ...(input.metadata !== undefined && { metadata: input.metadata }),
-        updated_at: sql`now()`,
-      })
-      .where(and(eq(order.id, id), isNull(order.deleted_at)))
-      .returning()
+    let shippingAddrId: string | null | undefined
+    let billingAddrId: string | null | undefined
+    const createdAddrIds: string[] = []
 
-    if (!updated) {
-      throw new HTTPException(404, { message: "Order not found" })
-    }
+    await dispatchRollbackProcess(
+      async () => {
+        if (input.shipping_address !== undefined) {
+          if (input.shipping_address === null) {
+            shippingAddrId = null
+          } else {
+            const addrId = generateId("ordaddr")
+            await db.insert(orderAddress).values({ id: addrId, ...input.shipping_address, metadata: input.shipping_address.metadata ?? null })
+            createdAddrIds.push(addrId)
+            shippingAddrId = addrId
+          }
+        }
+        if (input.billing_address !== undefined) {
+          if (input.billing_address === null) {
+            billingAddrId = null
+          } else {
+            const addrId = generateId("ordaddr")
+            await db.insert(orderAddress).values({ id: addrId, ...input.billing_address, metadata: input.billing_address.metadata ?? null })
+            createdAddrIds.push(addrId)
+            billingAddrId = addrId
+          }
+        }
+        const setData: Record<string, any> = { updated_at: sql`now()` }
+        if (input.region_id !== undefined) setData.region_id = input.region_id
+        if (input.customer_id !== undefined) setData.customer_id = input.customer_id
+        if (input.sales_channel_id !== undefined) setData.sales_channel_id = input.sales_channel_id
+        if (input.email !== undefined) setData.email = input.email
+        if (input.currency_code !== undefined) setData.currency_code = input.currency_code
+        if (input.locale !== undefined) setData.locale = input.locale
+        if (input.metadata !== undefined) setData.metadata = input.metadata
+        if (shippingAddrId !== undefined) setData.shipping_address_id = shippingAddrId
+        if (billingAddrId !== undefined) setData.billing_address_id = billingAddrId
 
+        const [updated] = await db.update(order).set(setData).where(and(eq(order.id, id), isNull(order.deleted_at))).returning()
+        if (!updated) throw new HTTPException(404, { message: "Order not found" })
+        return { order: updated }
+      },
+      async () => {
+        for (const aid of createdAddrIds) {
+          try { await db.delete(orderAddress).where(eq(orderAddress.id, aid)) } catch {}
+        }
+      },
+    )
+
+    const [updated] = await db.select().from(order).where(eq(order.id, id)).limit(1)
+    if (!updated) throw new HTTPException(404, { message: "Order not found" })
     return { order: updated }
   },
 
@@ -225,11 +282,18 @@ export const orderService = {
 
     // Send cancellation email (fire-and-forget)
     if (!updated.no_notification && updated.email) {
-      sendOrderCanceledEmail(
-        updated.email,
-        updated.display_id ?? id,
-        id,
-      ).catch((err) => console.error("[mail] order cancel failed:", err))
+      const displayId = String(updated.display_id ?? id)
+      notificationService.send({
+        to: updated.email,
+        template: "order.canceled",
+        data: { display_id: displayId, order_id: id },
+        trigger_type: "order.canceled",
+        resource_id: id,
+        resource_type: "order",
+        idempotency_key: `order-cancel-${id}`,
+        no_notification: updated.no_notification,
+        sender: () => sendOrderCanceledEmail(updated.email!, displayId, id),
+      })
     }
 
     return { order: updated }
@@ -292,7 +356,19 @@ export const orderService = {
       db.select({ total: count() }).from(orderChange).where(and(...conditions)),
     ])
 
-    return { order_changes: changes, count: Number(total) }
+    // Load actions for each change
+    const changesWithActions = await Promise.all(
+      changes.map(async (change) => {
+        const actions = await db
+          .select()
+          .from(orderChangeAction)
+          .where(eq(orderChangeAction.order_change_id, change.id))
+          .orderBy(orderChangeAction.ordering)
+        return { ...change, actions }
+      })
+    )
+
+    return { order_changes: changesWithActions, count: Number(total) }
   },
 
   async getPreview(id: string) {

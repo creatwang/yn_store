@@ -2,6 +2,8 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, payment, capture, refund } from "@my-store/db"
 import type { ListPaymentsQuery, CapturePaymentInput, RefundPaymentInput } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { paymentCaptureWorkflow } from "../workflows/payment-capture"
+import { paymentRefundWorkflow } from "../workflows/payment-refund"
 
 export const paymentService = {
   async listPayments(query: ListPaymentsQuery) {
@@ -34,62 +36,17 @@ export const paymentService = {
   },
 
   async capture(id: string, input?: CapturePaymentInput) {
+    const amount = input?.amount ? Number(input.amount) : 0
+    await paymentCaptureWorkflow.run({ paymentId: id, amount })
     const db = getDb()
-    const [pmt] = await db
-      .select()
-      .from(payment)
-      .where(and(eq(payment.id, id), isNull(payment.deleted_at)))
-      .limit(1)
-
-    if (!pmt) {
-      throw new HTTPException(404, { message: "Payment not found" })
-    }
-
-    // Create capture record
-    const capId = generateId("capt")
-    await db.insert(capture).values({
-      id: capId,
-      payment_id: id,
-      amount: String(input?.amount ?? pmt.amount),
-      raw_amount: pmt.raw_amount,
-      created_by: "admin",
-    })
-
-    // Update payment captured_at
-    const [updated] = await db
-      .update(payment)
-      .set({
-        captured_at: sql`now()`,
-        updated_at: sql`now()`,
-      })
-      .where(eq(payment.id, id))
-      .returning()
-
+    const [updated] = await db.select().from(payment).where(eq(payment.id, id)).limit(1)
     return { payment: updated }
   },
 
   async refund(id: string, input: RefundPaymentInput) {
+    await paymentRefundWorkflow.run({ paymentId: id, amount: input.amount })
     const db = getDb()
-    const [pmt] = await db
-      .select()
-      .from(payment)
-      .where(and(eq(payment.id, id), isNull(payment.deleted_at)))
-      .limit(1)
-
-    if (!pmt) {
-      throw new HTTPException(404, { message: "Payment not found" })
-    }
-
-    const refId = generateId("ref")
-    await db.insert(refund).values({
-      id: refId,
-      payment_id: id,
-      amount: String(input.amount),
-      raw_amount: { amount: input.amount, precision: 2 },
-      note: input.note ?? null,
-      created_by: "admin",
-    })
-
-    return { refund: { id: refId, amount: input.amount, note: input.note } }
+    const [updated] = await db.select().from(payment).where(eq(payment.id, id)).limit(1)
+    return { payment: updated }
   },
 }

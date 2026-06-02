@@ -10,18 +10,20 @@ export const orderStatusEnum = z.enum([
   "draft",
 ])
 
+/** 对齐 Medusa AddressPayload（common-validators/common.js） */
 const addressSchema = z.object({
-  first_name: z.string().optional(),
-  last_name: z.string().optional(),
-  company: z.string().optional(),
-  address_1: z.string().optional(),
-  address_2: z.string().optional(),
-  city: z.string().optional(),
-  country_code: z.string().optional(),
-  province: z.string().optional(),
-  postal_code: z.string().optional(),
-  phone: z.string().optional(),
-})
+  first_name: z.string().nullish(),
+  last_name: z.string().nullish(),
+  phone: z.string().nullish(),
+  company: z.string().nullish(),
+  address_1: z.string().nullish(),
+  address_2: z.string().nullish(),
+  city: z.string().nullish(),
+  country_code: z.string().nullish(),
+  province: z.string().nullish(),
+  postal_code: z.string().nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+}).strict()
 
 export const listOrdersSchema = paginationSchema.extend({
   q: z.string().optional(),
@@ -52,6 +54,8 @@ export const createOrderSchema = z.object({
   sales_channel_id: z.string().optional(),
   email: z.string().email().optional(),
   currency_code: z.string().optional(),
+  shipping_address: addressSchema.optional(),
+  billing_address: addressSchema.optional(),
   metadata: metadataSchema.optional(),
 })
 

@@ -111,6 +111,16 @@ export const taxRate = pgTable("tax_rate", {
   ...timestamps,
 })
 
+export const taxRateRule = pgTable("tax_rate_rule", {
+  id: text("id").primaryKey(),
+  reference: text("reference").notNull(),
+  reference_id: text("reference_id").notNull(),
+  metadata: jsonb("metadata"),
+  created_by: text("created_by"),
+  tax_rate_id: text("tax_rate_id").notNull(),
+  ...timestamps,
+})
+
 export const taxProvider = pgTable("tax_provider", {
   id: text("id").primaryKey(),
   is_enabled: boolean("is_enabled").default(true).notNull(),

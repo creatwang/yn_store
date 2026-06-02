@@ -154,6 +154,7 @@ export const orderChange = pgTable("order_change", {
   exchange_id: text("exchange_id"),
   version: integer("version").notNull(),
   change_type: text("change_type"),
+  status: text("status").default("pending"),
   description: text("description"),
   internal_note: text("internal_note"),
   created_by: text("created_by"),
@@ -169,6 +170,25 @@ export const orderChange = pgTable("order_change", {
   carry_over_promotions: boolean("carry_over_promotions"),
   metadata: jsonb("metadata"),
   order_id: text("order_id").notNull(),
+  ...timestamps,
+})
+
+/** order_change_action — 订单变更的操作记录（对齐 Medusa） */
+export const orderChangeAction = pgTable("order_change_action", {
+  id: text("id").primaryKey(),
+  order_id: text("order_id").notNull(),
+  order_change_id: text("order_change_id"),
+  return_id: text("return_id"),
+  claim_id: text("claim_id"),
+  exchange_id: text("exchange_id"),
+  ordering: integer("ordering"),
+  version: integer("version"),
+  reference: text("reference"),
+  reference_id: text("reference_id"),
+  action: text("action").notNull(),
+  details: jsonb("details").default({}),
+  amount: numeric("amount"),
+  raw_amount: jsonb("raw_amount"),
   ...timestamps,
 })
 

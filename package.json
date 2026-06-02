@@ -25,7 +25,8 @@
     "sync:handoff": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-handoff-from-old.ps1",
     "migrate": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-from-legacy.ps1",
     "patch:hono-docs": "powershell -ExecutionPolicy Bypass -File ./scripts/patch-hono-docs.ps1",
-    "copy:dashboard-ui": "powershell -ExecutionPolicy Bypass -File ./scripts/copy-dashboard-ui.ps1"
+    "copy:dashboard-ui": "powershell -ExecutionPolicy Bypass -File ./scripts/copy-dashboard-ui.ps1",
+    "sync:validators": "node scripts/sync-validators-from-medusa.mjs"
   },
   "pnpm": {
     "overrides": {

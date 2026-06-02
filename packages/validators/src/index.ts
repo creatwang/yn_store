@@ -1,3 +1,13 @@
+// Shared helpers (ported from Medusa api/utils)
+export * from "./helpers/validators"
+export * from "./helpers/common-validators"
+export * from "./helpers/framework-utils"
+export * from "./helpers/types"
+
+// Official Medusa v2.15.3 validators — import by path, e.g.:
+// import { AdminGetProductsParams } from "@my-store/validators/medusa/admin/products/validators"
+
+// Project route/service schemas (Hono-specific + simplified aliases)
 export * from "./common"
 export * from "./auth"
 export * from "./product"
