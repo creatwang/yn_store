@@ -64,6 +64,7 @@ find apps/admin/demo/dashboard/src/routes/[feature-path] -type f | sort
 
 | 文档 | 用途 | 何时看 |
 |------|------|--------|
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | **快速启动**：clone 后 5 分钟跑起来 | 新人入职 |
 | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | **权威状态**：API 矩阵、测试覆盖、技术债（代码核实） | 评估功能完成度 |
 | [docs/00-agent-handoff.md](docs/00-agent-handoff.md) | **主交接文档**：目标、目录、规则、实现顺序、自检清单 | 了解项目全貌 |
 | [docs/09-stitching-alignment.mdx](docs/09-stitching-alignment.mdx) | 缝合对齐规则：Dashboard ↔ SDK 适配层 ↔ Hono Server | 做 API 对接 |

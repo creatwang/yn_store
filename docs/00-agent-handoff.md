@@ -55,20 +55,14 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 | # | 文件 | 用途 |
 |---|------|------|
 | 1 | `docs/00-agent-handoff.md` | 本文件：全局约束与流程 |
-| 2 | `docs/07-feature-spec.mdx` | 模块、页面、API、表、方案 A |
-| 2b | `docs/08-target-architecture.mdx` | Admin `/app` 内嵌 server、何时 build、mount-app |
+| 2 | `docs/PROJECT_STATUS.md` | **权威状态**：API 矩阵、测试覆盖、完成度 |
 | 3 | `docs/01-database-schema.mdx` | 表与字段 |
 | 4 | `docs/02-api-endpoints.mdx` | 全量路由；实现时对齐 **MVP** 节再扩展 |
 | 5 | `docs/03-business-workflows.mdx` | 购物车→订单等流程 |
 | 6 | `docs/06-drizzle-migration-guide.mdx` | Drizzle 写法、软删、bigNumber |
 | 7 | `docs/04-implementation-plan.mdx` | 分阶段（部分内容仍写 Next，以本 handoff 技术栈为准） |
-| 8 | `docs/05-tech-conventions.mdx` | 代码风格 |
-| **9** | **`docs/09-stitching-alignment.mdx`** | **缝合对齐规则（必读！Dashboard ↔ API 后端对照）** |
-| **10** | **`docs/15-ai-improvement-tasks.md`** | **AI 改善任务 backlog**：按 TASK-ID 执行、验收、更新状态 |
-| **10b** | **`docs/16-full-completion-playbook.md`** | **全量收尾**：Phase 0–6 顺序做完 + 完成度 + DoD |
-| 11 | `docs/14-admin-api-gap-matrix.md` | **权威** Admin ↔ API / client 缺口（模块级 + P0） |
-| 11b | `docs/11-feature-tracker.mdx` | 功能 ID 索引（**已归档**，逐行勿信） |
-| 12 | `docs/00-architecture-overview.mdx` | 历史总览；若与本文冲突以 **本文 + 07** 为准 |
+| **8** | **`docs/09-stitching-alignment.mdx`** | **缝合对齐规则（必读！Dashboard ↔ API 后端对照）** |
+| 9 | `docs/00-architecture-overview.mdx` | 历史总览；若与本文冲突以 **本文 + PROJECT_STATUS.md** 为准 |
 
 ---
 
@@ -188,7 +182,7 @@ pnpm run copy:dashboard-ui
 
 ## 11. 冲突处理
 
-- `docs/00-architecture-overview.mdx`、`docs/04-implementation-plan.mdx` 若仍写 **Next.js + Medusa 后端不动**，视为**过期表述**；实施以 **本文 + `docs/07-feature-spec.mdx` + `AGENTS.md`** 为准。
+- `docs/00-architecture-overview.mdx`、`docs/04-implementation-plan.mdx` 若仍写 **Next.js + Medusa 后端不动**，视为**过期表述**；实施以 **本文 + `docs/PROJECT_STATUS.md` + `AGENTS.md`** 为准。
 - 有疑问优先查 `docs/01`（表是否存在）与 `docs/02`（路径是否已有 Medusa 先例）。
 
 ---

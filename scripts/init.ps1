@@ -43,7 +43,6 @@ Write-Step "Check project layout"
 
 $requiredPaths = @(
   "docs/00-agent-handoff.md",
-  "docs/07-feature-spec.mdx",
   "AGENTS.md",
   "AGENT_HANDOFF.md",
   "START_HERE.md",

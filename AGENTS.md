@@ -52,7 +52,7 @@ docs/                # 蓝图（08-target-architecture.mdx）
 
 - **`docs/00-agent-handoff.md`** — **外部 Agent / Trae 完整交接（必读）**
 - `docs/README.md` — 文档索引
-- `docs/07-feature-spec.mdx` — **功能规格（优先阅读）**
+- `docs/PROJECT_STATUS.md` — **项目状态（优先阅读）**
 - `docs/01-database-schema.mdx` — 数据库表结构
 - `docs/02-api-endpoints.mdx` — Medusa API 对照
 - `docs/03-business-workflows.mdx` — 业务流程

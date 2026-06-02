@@ -262,7 +262,7 @@ pnpm install
 ### 必读文档
 
 1. `docs/00-agent-handoff.md` - 完整交接文档
-2. `docs/07-feature-spec.mdx` - 功能规格
+2. `docs/PROJECT_STATUS.md` - 项目状态
 3. `AGENTS.md` - AI 开发指南
 
 ### 核心规则

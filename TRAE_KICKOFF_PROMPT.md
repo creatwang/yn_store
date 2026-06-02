@@ -23,7 +23,7 @@ pnpm run init
 ## 必读（按顺序）
 
 1. `docs/00-agent-handoff.md`
-2. `docs/07-feature-spec.mdx`
+2. `docs/PROJECT_STATUS.md`（权威状态）
 3. `AGENTS.md`
 4. **`.cursor/skills/hono-medusa-rebuild/SKILL.md`**（可选；Trae 需手动 `@` 或粘贴路径，不会自动读）
 5. 若需与 Cursor 规则完全一致，可再读 `.cursor/rules/agent-handoff.mdc`（同样需手动指定）

@@ -134,6 +134,10 @@
 | 项 | 影响 | 优先级 |
 |----|------|:------:|
 | `@ts-nocheck` ~250 文件 | 类型检查不严 | P3 可选 |
+| 　↳ `apps/admin` ~248 文件 | Admin 前端（从 Medusa 源码拷贝，原始无类型） | — |
+| 　↳ `apps/server` 2 文件 | `product.service.ts`、`variant.service.ts` | — |
+| 　↳ `apps/storefront` 0 文件 | — | — |
+| 　↳ `packages/*` 0 文件 | — | — |
 | 促销规则引擎 | `promotion.code` 应用逻辑简化 | 低（表级 CRUD 有） |
 | shipping-options rules/batch | 高级配送规则 | 低（基础 CRUD 有） |
 | 订单 export 返回 JSON 非 CSV | 非导出文件格式 | 低 |

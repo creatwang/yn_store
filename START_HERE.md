@@ -22,7 +22,7 @@ pnpm run init
 ## 3. 必读
 
 1. `docs/00-agent-handoff.md`（Trae **首选**，含全部硬规则）
-2. `docs/07-feature-spec.mdx`
+2. `docs/PROJECT_STATUS.md`（权威状态）
 3. `AGENTS.md`
 4. `TRAE_KICKOFF_PROMPT.md`（**Trae 第一条消息粘贴本文件**）
 
