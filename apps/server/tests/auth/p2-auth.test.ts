@@ -165,13 +165,24 @@ describe("Auth — C 端客户注册 + OAuth 回调", () => {
     expect(res.status).toBe(501)
   })
 
-  it("GET /auth/customer/google/callback — 返回 501（provider 未配置）", async () => {
+  it("GET /auth/customer/google/callback — 无 credential 返回 400", async () => {
     const res = await app.fetch(
       new Request("http://localhost/api/auth/customer/google/callback", {
         method: "GET",
       }),
     )
-    expect(res.status).toBe(501)
+    expect(res.status).toBe(400)
+  })
+
+  it("POST /auth/customer/google/callback — 无效 credential 返回 401", async () => {
+    const res = await app.fetch(
+      new Request("http://localhost/api/auth/customer/google/callback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: "invalid_token" }),
+      }),
+    )
+    expect(res.status).toBe(401)
   })
 })
 

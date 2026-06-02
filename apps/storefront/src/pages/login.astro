@@ -1,6 +1,17 @@
 ---
 export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
+import GoogleSignIn from "../components/GoogleSignIn.astro"
+
+const redirect = Astro.url.searchParams.get("redirect")
+if (redirect?.startsWith("/") && !redirect.startsWith("//")) {
+  Astro.cookies.set("google_auth_redirect", redirect, {
+    path: "/",
+    maxAge: 600,
+    sameSite: "lax",
+    httpOnly: true,
+  })
+}
 ---
 
 <BaseLayout title="登录">
@@ -20,6 +31,10 @@ import BaseLayout from "../layouts/BaseLayout.astro"
         登录
       </button>
     </form>
+    <div class="mt-4 border-t pt-4">
+      <p class="mb-3 text-center text-sm text-gray-500">或</p>
+      <GoogleSignIn />
+    </div>
     <p class="mt-4 text-center text-sm text-gray-600">
       还没有账号？<a href="/register" class="underline">注册</a>
     </p>

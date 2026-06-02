@@ -1,18 +1,18 @@
 ---
-import { getCollection } from "astro:content"
+import { getCollectionByHandle } from "../../lib/catalog"
 import BaseLayout from "../../layouts/BaseLayout.astro"
 import ProductCard from "../../components/product/ProductCard.astro"
 
-export async function getStaticPaths() {
-  const collections = await getCollection("collections")
-  return collections.map((entry) => ({
-    params: { handle: entry.id },
-    props: { entry },
-  }))
+const handle = Astro.params.handle
+if (!handle) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
 }
 
-const { entry } = Astro.props
-const collection = entry.data
+const collection = await getCollectionByHandle(handle)
+if (!collection) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
+}
+
 const site = Astro.site?.href ?? "http://localhost:4321"
 ---
 

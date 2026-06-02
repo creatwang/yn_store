@@ -1,6 +1,7 @@
 ---
 export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
+import GoogleSignIn from "../components/GoogleSignIn.astro"
 ---
 
 <BaseLayout title="注册">
@@ -28,6 +29,10 @@ import BaseLayout from "../layouts/BaseLayout.astro"
         注册
       </button>
     </form>
+    <div class="mt-4 border-t pt-4">
+      <p class="mb-3 text-center text-sm text-gray-500">或</p>
+      <GoogleSignIn />
+    </div>
     <p class="mt-4 text-center text-sm text-gray-600">
       已有账号？<a href="/login" class="underline">登录</a>
     </p>

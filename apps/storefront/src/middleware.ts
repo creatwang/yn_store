@@ -1,7 +1,7 @@
 import { defineMiddleware } from "astro:middleware"
 
 const PROTECTED = ["/account", "/checkout"]
-const NOINDEX = ["/cart", "/checkout", "/account", "/login", "/register"]
+const NOINDEX = ["/cart", "/checkout", "/account", "/login", "/register", "/auth"]
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url
@@ -18,5 +18,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.customerToken = token
   }
 
-  return next()
+  const response = await next()
+  // Allow Google Sign-In popup to communicate via postMessage
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+  return response
 })

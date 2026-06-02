@@ -1,8 +1,8 @@
 ---
-import { getCollection } from "astro:content"
+import { listCollections } from "../../lib/catalog"
 import BaseLayout from "../../layouts/BaseLayout.astro"
 
-const collections = await getCollection("collections")
+const collections = await listCollections()
 ---
 
 <BaseLayout
@@ -15,14 +15,14 @@ const collections = await getCollection("collections")
     <p class="text-gray-500">暂无合集</p>
   ) : (
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {collections.map((entry) => (
+      {collections.map((collection) => (
         <a
-          href={`/collections/${entry.id}`}
+          href={`/collections/${collection.handle}`}
           class="block rounded border bg-white p-4 shadow-sm hover:shadow-md"
         >
-          <h2 class="font-medium">{entry.data.title}</h2>
+          <h2 class="font-medium">{collection.title}</h2>
           <p class="mt-1 text-sm text-gray-500">
-            {entry.data.products.length} 件商品
+            {collection.products.length} 件商品
           </p>
         </a>
       ))}

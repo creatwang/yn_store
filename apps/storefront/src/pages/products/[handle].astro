@@ -1,21 +1,21 @@
 ---
-import { getCollection } from "astro:content"
 import { getImage } from "astro:assets"
+import { getProductByHandle } from "../../lib/catalog"
 import BaseLayout from "../../layouts/BaseLayout.astro"
 import ProductAddToCart from "../../components/product/ProductAddToCart.astro"
 import ProductDetailPicture from "../../components/product/ProductDetailPicture.astro"
 import ProductJsonLd from "../../components/seo/ProductJsonLd.astro"
 
-export async function getStaticPaths() {
-  const products = await getCollection("products")
-  return products.map((entry) => ({
-    params: { handle: entry.id },
-    props: { entry },
-  }))
+const handle = Astro.params.handle
+if (!handle) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
 }
 
-const { entry } = Astro.props
-const product = entry.data
+const product = await getProductByHandle(handle)
+if (!product) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
+}
+
 const site = Astro.site?.href ?? "http://localhost:4321"
 
 let ogImage: string | undefined

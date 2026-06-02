@@ -9,9 +9,9 @@ import {
   user,
   customer,
 } from "@my-store/db"
-import { HTTPException } from "hono/http-exception"
 import { signToken, signResetPasswordToken, verifyOpaqueToken } from "../lib/jwt"
 import { adminAppUrl, sendPasswordResetEmail } from "../lib/mail"
+import { HTTPException } from "hono/http-exception"
 
 type ProviderMetadata = {
   password?: string
@@ -305,21 +305,95 @@ export const authService = {
 
   /**
    * OAuth callback validation — 对齐 Medusa GET/POST /auth/:actor/:provider/callback
-   * 当前无真实 OAuth provider 配置，返回 501。未来接 Google/GitHub 后在此实现。
    */
   async validateOAuthCallback(
     actorType: "user" | "customer",
     provider: string,
-    _authData: { url: string; headers: Record<string, string>; query: Record<string, string>; body: Record<string, unknown> },
+    authData: { url: string; headers: Record<string, string>; query: Record<string, string>; body: Record<string, unknown> },
   ) {
-    // Supported OAuth providers — extend when API keys are configured
     const supportedProviders = ["google", "github"]
     if (!supportedProviders.includes(provider)) {
       throw new HTTPException(404, { message: `OAuth provider "${provider}" is not supported. Supported: ${supportedProviders.join(", ")}` })
     }
+
+    if (provider === "google") {
+      const credential = (authData.body?.credential ?? authData.body?.id_token) as string | undefined
+      if (!credential) {
+        throw new HTTPException(400, { message: "Missing Google credential (id_token) in request body" })
+      }
+      const tokenInfo = await verifyGoogleIdToken(credential)
+      if (!tokenInfo.email) {
+        throw new HTTPException(401, { message: "Google token verification failed: no email" })
+      }
+      return this._oauthLogin(actorType, tokenInfo.email, {
+        first_name: tokenInfo.given_name ?? null,
+        last_name: tokenInfo.family_name ?? null,
+      })
+    }
+
+    // GitHub — not yet implemented
     throw new HTTPException(501, {
       message: `OAuth provider "${provider}" is not yet configured. Set ${provider.toUpperCase()}_CLIENT_ID and ${provider.toUpperCase()}_CLIENT_SECRET env vars.`,
     })
+  },
+
+  /** Internal: find or create auth identity for OAuth login, then sign JWT */
+  async _oauthLogin(
+    actorType: "user" | "customer",
+    email: string,
+    profile: { first_name?: string | null; last_name?: string | null },
+  ) {
+    const db = getDb()
+    const isAdmin = actorType === "user"
+    const actorTable = isAdmin ? user : customer
+    const prefix = isAdmin ? "user" : "cus"
+
+    const [existing] = await db
+      .select()
+      .from(providerIdentity)
+      .where(and(
+        eq(providerIdentity.entity_id, email),
+        eq(providerIdentity.provider, "google"),
+        isNull(providerIdentity.deleted_at),
+      ))
+      .limit(1)
+
+    let actorId: string
+    let authIdentityId: string
+    if (existing) {
+      authIdentityId = existing.auth_identity_id
+      const [auth] = await db.select().from(authIdentity)
+        .where(eq(authIdentity.id, existing.auth_identity_id))
+        .limit(1)
+      const appMeta = (auth?.app_metadata as Record<string, unknown> | null) ?? {}
+      actorId = String(appMeta.user_id ?? "")
+      if (!actorId) throw new HTTPException(401, { message: "Auth identity corrupted" })
+    } else {
+      actorId = generateId(prefix)
+      const values: Record<string, any> = { id: actorId, email, created_at: sql`now()`, updated_at: sql`now()` }
+      if (profile.first_name) values.first_name = profile.first_name
+      if (profile.last_name) values.last_name = profile.last_name
+      if (!isAdmin) values.has_account = true
+      await db.insert(actorTable).values(values)
+
+      authIdentityId = generateId("authid")
+      await db.insert(authIdentity).values({
+        id: authIdentityId, app_metadata: { user_id: actorId },
+        created_at: sql`now()`, updated_at: sql`now()`,
+      })
+      await db.insert(providerIdentity).values({
+        id: generateId("provid"), entity_id: email, provider: "google",
+        auth_identity_id: authIdentityId, provider_metadata: { profile },
+        created_at: sql`now()`, updated_at: sql`now()`,
+      })
+    }
+
+    const token = await signToken({
+      sub: authIdentityId!, actor_id: actorId,
+      actor_type: isAdmin ? "user" : "customer", email,
+    })
+    const [record] = await db.select().from(actorTable).where(eq(actorTable.id, actorId)).limit(1)
+    return { token, [isAdmin ? "user" : "customer"]: record }
   },
 
   async updateProviderPassword(token: string, password: string) {
@@ -383,4 +457,23 @@ export const authService = {
 
     return { success: true }
   },
+}
+
+/**
+ * Verify a Google ID token and return user info.
+ * Uses Google's tokeninfo endpoint (no API key required).
+ */
+async function verifyGoogleIdToken(idToken: string): Promise<{
+  email?: string
+  given_name?: string
+  family_name?: string
+  sub: string
+}> {
+  const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    const err = await res.text()
+    throw new HTTPException(401, { message: `Google token verification failed: ${err}` })
+  }
+  return res.json()
 }

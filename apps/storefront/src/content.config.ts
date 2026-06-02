@@ -2,6 +2,10 @@ import { defineCollection, z } from "astro:content"
 import { honoStoreLoader } from "./loaders/hono-store-loader"
 import { honoCollectionsLoader } from "./loaders/hono-collections-loader"
 import { honoPromotionsLoader } from "./loaders/hono-promotions-loader"
+import { noopLoader } from "./loaders/noop-loader"
+
+/** SSR 模式跳过 Loader 全量同步，页面改走 lib/catalog.ts 按需 fetch */
+const useContentLoader = process.env.ASTRO_OUTPUT !== "server"
 
 const variantSchema = z.object({
   id: z.string(),
@@ -12,7 +16,7 @@ const variantSchema = z.object({
 })
 
 const productsCollection = defineCollection({
-  loader: honoStoreLoader(),
+  loader: useContentLoader ? honoStoreLoader() : noopLoader("noop-products"),
   schema: z.object({
     id: z.string(),
     handle: z.string(),
@@ -28,7 +32,7 @@ const productsCollection = defineCollection({
 })
 
 const collectionsCollection = defineCollection({
-  loader: honoCollectionsLoader(),
+  loader: useContentLoader ? honoCollectionsLoader() : noopLoader("noop-collections"),
   schema: z.object({
     id: z.string(),
     handle: z.string(),
@@ -46,7 +50,7 @@ const collectionsCollection = defineCollection({
 })
 
 const promotionsCollection = defineCollection({
-  loader: honoPromotionsLoader(),
+  loader: useContentLoader ? honoPromotionsLoader() : noopLoader("noop-promotions"),
   schema: z.object({
     code: z.string(),
     type: z.string(),

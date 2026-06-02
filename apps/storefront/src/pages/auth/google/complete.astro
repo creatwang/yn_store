@@ -1,0 +1,33 @@
+---
+export const prerender = false
+import BaseLayout from "../../../layouts/BaseLayout.astro"
+
+const token = Astro.cookies.get("storefront_customer_token")?.value
+const pending = Astro.cookies.get("storefront_customer_pending")?.value
+const next = Astro.cookies.get("google_auth_redirect")?.value || "/account"
+
+if (!token || !pending) {
+  return Astro.redirect("/login?error=google_no_session")
+}
+
+let customer: Record<string, unknown>
+try {
+  customer = JSON.parse(pending)
+} catch {
+  return Astro.redirect("/login?error=google_no_session")
+}
+
+Astro.cookies.delete("storefront_customer_pending", { path: "/" })
+Astro.cookies.delete("google_auth_redirect", { path: "/" })
+
+const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/account"
+---
+
+<BaseLayout title="登录成功">
+  <p class="py-8 text-center text-gray-500">登录成功，正在跳转…</p>
+  <script define:vars={{ token, customer, safeNext }}>
+    localStorage.setItem("storefront_customer_token", token)
+    localStorage.setItem("storefront_customer", JSON.stringify(customer))
+    window.location.replace(safeNext)
+  </script>
+</BaseLayout>

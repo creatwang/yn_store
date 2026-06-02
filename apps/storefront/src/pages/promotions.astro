@@ -1,8 +1,8 @@
 ---
-import { getCollection } from "astro:content"
+import { listPromotions } from "../lib/catalog"
 import BaseLayout from "../layouts/BaseLayout.astro"
 
-const promotions = await getCollection("promotions")
+const promotions = await listPromotions()
 ---
 
 <BaseLayout
@@ -15,12 +15,12 @@ const promotions = await getCollection("promotions")
     <p class="text-gray-500">当前没有进行中的促销</p>
   ) : (
     <ul class="space-y-3">
-      {promotions.map((entry) => (
+      {promotions.map((promo) => (
         <li class="rounded border bg-white p-4">
-          <p class="font-mono text-lg font-semibold">{entry.data.code}</p>
+          <p class="font-mono text-lg font-semibold">{promo.code}</p>
           <p class="text-sm text-gray-500">
-            类型：{entry.data.type} ·
-            {entry.data.isAutomatic ? "自动应用" : "需输入优惠码"}
+            类型：{promo.type} ·
+            {promo.isAutomatic ? "自动应用" : "需输入优惠码"}
           </p>
         </li>
       ))}
