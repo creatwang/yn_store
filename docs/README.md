@@ -1,41 +1,39 @@
-# 文档索引（给人类与 Agent）
+# 文档索引
 
-## 从这里开始（外部工具必看）
+## 入口
 
 | 文档 | 说明 |
 |------|------|
-| [**00-agent-handoff.md**](00-agent-handoff.md) | **主交接**：目标、目录、规则、命令、实现顺序、自检清单 |
-| [../AGENT_HANDOFF.md](../AGENT_HANDOFF.md) | 根目录入口，链到上表 |
+| [PROJECT_STATUS.md](PROJECT_STATUS.md) | **项目状态 — 代码核实的单一事实来源**（API 矩阵、测试覆盖、技术债） |
+| [00-agent-handoff.md](00-agent-handoff.md) | 项目目标、目录结构、开发规则、命令 |
 
-## 蓝图（按主题）
+## C 端（Storefront / Astro）
 
-| 文件 | 主题 |
+| 文档 | 说明 |
 |------|------|
-| [07-feature-spec.mdx](07-feature-spec.mdx) | 功能规格、Admin 方案 A、模块与 API |
-| [**08-target-architecture.mdx**](08-target-architecture.mdx) | **目标架构 v3**：/api + /app（public/app）、Docker、Bun compile |
-| [01-database-schema.mdx](01-database-schema.mdx) | 102 张表、字段、关系 |
-| [02-api-endpoints.mdx](02-api-endpoints.mdx) | Medusa REST 全量 + MVP 节 |
-| [03-business-workflows.mdx](03-business-workflows.mdx) | 购物车→订单等业务流 |
-| [06-drizzle-migration-guide.mdx](06-drizzle-migration-guide.mdx) | Drizzle 映射与软删、bigNumber |
-| [04-implementation-plan.mdx](04-implementation-plan.mdx) | 分阶段计划（部分表述偏旧栈，以 handoff 为准） |
+| [ecommerce-c-end/full-tech-stack.md](ecommerce-c-end/full-tech-stack.md) | 全栈技术方案 |
+| [ecommerce-c-end/adoption-matrix.md](ecommerce-c-end/adoption-matrix.md) | 功能 × Astro 适配矩阵 + 三阶段路线 |
+| [ecommerce-c-end/implementation-status.md](ecommerce-c-end/implementation-status.md) | C 端实现状态 |
+| [ecommerce-c-end/storefront-conventions.md](ecommerce-c-end/storefront-conventions.md) | 编码规范 |
+| [ecommerce-c-end/adapter-deployment.md](ecommerce-c-end/adapter-deployment.md) | 部署方案 |
+
+## 参考（历史）
+
+| 文档 | 说明 |
+|------|------|
+| [09-stitching-alignment.mdx](09-stitching-alignment.mdx) | Dashboard ↔ Hono Server 缝合规则 |
+| [12-testing-plan.mdx](12-testing-plan.mdx) | 测试方案 |
+| [01-database-schema.mdx](01-database-schema.mdx) | 数据库表结构 |
+| [02-api-endpoints.mdx](02-api-endpoints.mdx) | Medusa REST API 参考 |
+| [03-business-workflows.mdx](03-business-workflows.mdx) | 业务流 |
 | [05-tech-conventions.mdx](05-tech-conventions.mdx) | 编码约定 |
-| [**09-stitching-alignment.mdx**](09-stitching-alignment.mdx) | **缝合对齐规则**：Dashboard ↔ SDK 适配层 ↔ Hono Server |
-| [**10-refactoring-plan.mdx**](10-refactoring-plan.mdx) | **完整重构计划**：阶段划分、文件模板、模块 Checklist、优先级矩阵 |
-| [**11-feature-tracker.mdx**](11-feature-tracker.mdx) | **功能 ID 索引（已归档）**：逐行表格为历史快照；模块统计见文内，**缺口以 14 为准** |
-| [**12-testing-plan.mdx**](12-testing-plan.mdx) | **自动化测试方案**：Vitest + Hono Test Client + Playwright E2E |
-| [**14-admin-api-gap-matrix.md**](14-admin-api-gap-matrix.md) | **权威缺口表**：Admin ↔ API / client / hooks 对照 + P0 优先项（2026-05-30） |
-| [**15-ai-improvement-tasks.md**](15-ai-improvement-tasks.md) | **AI 任务 backlog**：TASK-ID、验收命令、Wave 排期；文档项 TASK-DOC-001 已完成 |
-| [**16-full-completion-playbook.md**](16-full-completion-playbook.md) | **全量收尾手册**：Phase 0–6 🟢 + DoD；下一步见 §1.4 / TASK-CLIENT-001 |
-| [00-architecture-overview.mdx](00-architecture-overview.mdx) | 历史总览（若与 handoff 冲突以 handoff 为准） |
+| [07-feature-spec.mdx](07-feature-spec.mdx) | 功能规格 |
+| [10-refactoring-plan.mdx](10-refactoring-plan.mdx) | 重构计划 |
+| [MIGRATION.md](MIGRATION.md) | 迁移指南 |
 
-## 仓库级 AI 说明
+## 已归档
 
-- 根目录 [../AGENTS.md](../AGENTS.md)
-
-## Cursor 专用
-
-- `.cursor/rules/agent-handoff.mdc` — 全局协作规则
-- `.cursor/rules/medusa-project.mdc` — 项目技术规则
-- `.cursor/rules/admin-development.mdc` — Admin 开发
-- `.cursor/rules/storefront-development.mdc` — Astro 商城
-- `.cursor/skills/hono-medusa-rebuild/SKILL.md` — Skill 正文
+- `11-feature-tracker.mdx` — 功能跟踪（被 PROJECT_STATUS.md 替代）
+- `14-admin-api-gap-matrix.md` — 缺口表（被 PROJECT_STATUS.md 替代）
+- `15-ai-improvement-tasks.md` — 任务 backlog（被 PROJECT_STATUS.md 替代）
+- `16-full-completion-playbook.md` — 收尾手册（被 PROJECT_STATUS.md 替代）

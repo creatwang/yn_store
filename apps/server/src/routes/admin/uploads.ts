@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { existsSync } from "node:fs"
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, writeFile, readdir, unlink } from "node:fs/promises"
 import path from "node:path"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { generateId } from "@my-store/db"
@@ -11,6 +11,15 @@ async function ensureUploadsDir() {
   if (!existsSync(UPLOADS_DIR)) {
     await mkdir(UPLOADS_DIR, { recursive: true })
   }
+}
+
+/** 按文件 ID 查找实际文件（上传时文件名格式为 {name}-{id}{ext}） */
+async function findFileById(id: string): Promise<{ filename: string; url: string } | null> {
+  if (!existsSync(UPLOADS_DIR)) return null
+  const entries = await readdir(UPLOADS_DIR)
+  const match = entries.find((e) => e.includes(`-${id}.`))
+  if (!match) return null
+  return { filename: match, url: `/uploads/${match}` }
 }
 
 /**
@@ -55,8 +64,18 @@ export const adminUploads = new Hono<{ Variables: AuthVariables }>()
   })
   .get("/:id", async (c) => {
     const id = c.req.param("id")
-    return c.json({ file: { id, url: `/uploads/${id}` } })
+    const found = await findFileById(id)
+    if (!found) {
+      return c.json({ file: { id, url: `/uploads/${id}` } })
+    }
+    return c.json({ file: { id, url: found.url } })
   })
   .delete("/:id", async (c) => {
-    return c.json({ id: c.req.param("id"), deleted: true })
+    const id = c.req.param("id")
+    const found = await findFileById(id)
+    if (found) {
+      const filepath = path.join(UPLOADS_DIR, found.filename)
+      try { await unlink(filepath) } catch { /* 文件可能已被删除 */ }
+    }
+    return c.json({ id, object: "file", deleted: true })
   })

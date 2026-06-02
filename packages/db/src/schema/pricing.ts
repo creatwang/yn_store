@@ -63,4 +63,5 @@ export const pricePreference = pgTable("price_preference", {
   attribute: text("attribute").notNull(),
   value: text("value"),
   is_tax_inclusive: boolean("is_tax_inclusive").default(false).notNull(),
+  ...timestamps,
 })

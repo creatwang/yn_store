@@ -60,23 +60,20 @@ find apps/admin/demo/dashboard/src/routes/[feature-path] -type f | sort
 
 ## 项目规划文档（必读）
 
-在做任何功能开发或评估完成度前，**必须先查 docs/ 目录的规划文档**，不要仅凭代码是否存在判断。
+在做任何功能开发或评估完成度前，**必须先查以下文档**，不要仅凭代码是否存在判断。
 
 | 文档 | 用途 | 何时看 |
 |------|------|--------|
-| [docs/14-admin-api-gap-matrix.md](docs/14-admin-api-gap-matrix.md) | **权威缺口表**：Admin ↔ API / client / hooks 对照，P0/P1/P2 优先级，⚠️/🟢 状态标记 | 评估功能完成度 |
-| [docs/15-ai-improvement-tasks.md](docs/15-ai-improvement-tasks.md) | **P2 任务 backlog**：TASK-ID、验收命令、Wave 排期、勾选清单 | 找下一个要做的任务 |
-| [docs/16-full-completion-playbook.md](docs/16-full-completion-playbook.md) | **收尾手册**：Phase 0–6 状态、DoD 检查清单、完成度估算 | 全局进度判断 |
+| [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) | **权威状态**：API 矩阵、测试覆盖、技术债（代码核实） | 评估功能完成度 |
 | [docs/00-agent-handoff.md](docs/00-agent-handoff.md) | **主交接文档**：目标、目录、规则、实现顺序、自检清单 | 了解项目全貌 |
-| [docs/12-testing-plan.mdx](docs/12-testing-plan.mdx) | 自动化测试方案：Vitest + Hono Test Client + Playwright E2E | 写测试前 |
 | [docs/09-stitching-alignment.mdx](docs/09-stitching-alignment.mdx) | 缝合对齐规则：Dashboard ↔ SDK 适配层 ↔ Hono Server | 做 API 对接 |
-| [docs/ecommerce-c-end/full-tech-stack.md](docs/ecommerce-c-end/full-tech-stack.md) | **C 端全栈技术方案**：Astro + Hono 架构、Content Loader、Hybrid 渲染、支付、部署 | 改 C 端前必读 |
-| [docs/ecommerce-c-end/adoption-matrix.md](docs/ecommerce-c-end/adoption-matrix.md) | **功能 × Astro 适配矩阵**：三阶段路线、ROI 评级、转化漏斗 | 评估 C 端功能优先级 |
-| [docs/ecommerce-c-end/implementation-status.md](docs/ecommerce-c-end/implementation-status.md) | **C 端实现状态**：基础设施/数据层/UI/SEO/部署 各模块 ✅🟡❌ | 了解 C 端完成度 |
-| [docs/ecommerce-c-end/storefront-conventions.md](docs/ecommerce-c-end/storefront-conventions.md) | **Storefront 工程约定**：命名、网络调用、状态分层、检查单 | 写 C 端代码时 |
-| [docs/ecommerce-c-end/adapter-deployment.md](docs/ecommerce-c-end/adapter-deployment.md) | **部署方案**：Vercel/Docker/CI/Webhook | 部署 C 端时 |
+| [docs/ecommerce-c-end/full-tech-stack.md](docs/ecommerce-c-end/full-tech-stack.md) | **C 端全栈技术方案**：Astro + Hono 架构 | 改 C 端前必读 |
+| [docs/ecommerce-c-end/implementation-status.md](docs/ecommerce-c-end/implementation-status.md) | **C 端实现状态**：各模块 ✅🟡❌ | 了解 C 端完成度 |
+| [docs/ecommerce-c-end/storefront-conventions.md](docs/ecommerce-c-end/storefront-conventions.md) | Storefront 工程约定：命名、网络调用、状态分层 | 写 C 端代码时 |
+| [docs/ecommerce-c-end/adapter-deployment.md](docs/ecommerce-c-end/adapter-deployment.md) | C 端部署方案：Vercel/Docker/CI/Webhook | 部署 C 端时 |
+| [docs/12-testing-plan.mdx](docs/12-testing-plan.mdx) | 自动化测试方案 | 写测试前 |
 
-**注意**：`docs/11-feature-tracker.mdx` 已归档，缺口以 14 矩阵为准。15 任务 backlog 的 §3 总览表可能与 §4 详情状态不一致，以 16 playbook 代码核实为准。C 端实现状态以 `docs/ecommerce-c-end/implementation-status.md` 为准。
+**注意**：14/15/16 已合并到 [PROJECT_STATUS.md](docs/PROJECT_STATUS.md)，不再单独维护。
 
 ## 运行命令
 

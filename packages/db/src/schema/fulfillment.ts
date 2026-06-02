@@ -101,6 +101,7 @@ export const shippingOptionType = pgTable("shipping_option_type", {
   label: text("label").notNull(),
   description: text("description"),
   code: text("code").notNull(),
+  ...timestamps,
 })
 
 export const shippingProfile = pgTable("shipping_profile", {
