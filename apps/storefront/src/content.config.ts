@@ -1,11 +1,19 @@
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { defineCollection, z } from "astro:content"
+import { loadEnv } from "vite"
 import { honoStoreLoader } from "./loaders/hono-store-loader"
 import { honoCollectionsLoader } from "./loaders/hono-collections-loader"
 import { honoPromotionsLoader } from "./loaders/hono-promotions-loader"
 import { noopLoader } from "./loaders/noop-loader"
 
-/** SSR 模式跳过 Loader 全量同步，页面改走 lib/catalog.ts 按需 fetch */
-const useContentLoader = process.env.ASTRO_OUTPUT !== "server"
+const storefrontRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+const env = loadEnv(process.env.NODE_ENV ?? "development", storefrontRoot, "")
+const astroOutput = process.env.ASTRO_OUTPUT ?? env.ASTRO_OUTPUT ?? "server"
+
+/** 仅产线 static build 跑 Loader；dev 启动绝不打 API */
+const useContentLoader =
+  astroOutput === "static" && process.env.NODE_ENV === "production"
 
 const variantSchema = z.object({
   id: z.string(),

@@ -7,7 +7,7 @@ import tailwind from "@astrojs/tailwind"
 /** node | vercel | cloudflare */
 const deployTarget = process.env.ASTRO_DEPLOY_TARGET || "node"
 const site = process.env.PUBLIC_SITE_URL || "http://localhost:4321"
-/** server = 全 SSR（dev 快）；static = Hybrid SSG（产线 SEO） */
+/** server = 全 SSR（dev 快，默认）；static = Hybrid SSG（产线 SEO） */
 const output = process.env.ASTRO_OUTPUT === "static" ? "static" : "server"
 
 const extraImageDomains =

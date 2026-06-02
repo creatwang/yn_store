@@ -1,8 +1,8 @@
 ---
-import { listCollections } from "../../lib/catalog"
+import { listCollectionSummaries } from "../../lib/catalog"
 import BaseLayout from "../../layouts/BaseLayout.astro"
 
-const collections = await listCollections()
+const collections = await listCollectionSummaries()
 ---
 
 <BaseLayout
@@ -17,13 +17,10 @@ const collections = await listCollections()
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {collections.map((collection) => (
         <a
-          href={`/collections/${collection.handle}`}
+          href={`/collections/${collection.handle || collection.id}`}
           class="block rounded border bg-white p-4 shadow-sm hover:shadow-md"
         >
           <h2 class="font-medium">{collection.title}</h2>
-          <p class="mt-1 text-sm text-gray-500">
-            {collection.products.length} 件商品
-          </p>
         </a>
       ))}
     </div>

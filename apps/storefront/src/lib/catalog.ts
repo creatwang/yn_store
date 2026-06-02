@@ -128,37 +128,30 @@ export async function getProductByHandle(
   }
 }
 
-export async function listCollections(): Promise<CatalogCollection[]> {
-  const list = await fetchAllPaginated<{ id: string; handle: string; title: string }>(
+export async function listCollectionSummaries(): Promise<
+  Array<{ id: string; handle: string; title: string }>
+> {
+  return fetchAllPaginated<{ id: string; handle: string; title: string }>(
     "/store/collections",
     "collections",
   )
+}
 
-  const collections: CatalogCollection[] = []
-  for (const item of list) {
-    const handle = item.handle || item.id
-    try {
-      const detail = await fetchStoreJson<{
-        collection: CatalogCollection
-      }>(`/store/collections/${handle}`)
-      const col = detail.collection
-      collections.push({
-        id: col.id,
-        handle: col.handle,
-        title: col.title,
-        products: (col.products ?? []).map((p) => ({
-          id: p.id,
-          title: p.title,
-          handle: p.handle,
-          thumbnail: p.thumbnail ?? "",
-          subtitle: p.subtitle ?? "",
-        })),
-      })
-    } catch {
-      // skip broken collection
-    }
-  }
-  return collections
+export async function listCollections(): Promise<CatalogCollection[]> {
+  const list = await listCollectionSummaries()
+
+  const collections = await Promise.all(
+    list.map(async (item) => {
+      const handle = item.handle || item.id
+      try {
+        return await getCollectionByHandle(handle)
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  return collections.filter((c): c is CatalogCollection => c != null)
 }
 
 export async function getCollectionByHandle(
