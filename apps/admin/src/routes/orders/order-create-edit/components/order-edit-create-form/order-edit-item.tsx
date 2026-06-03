@@ -23,17 +23,28 @@ import {
 type OrderEditItemProps = {
   item: AdminOrderLinePreview
   currencyCode: string
+  editId: string
   orderId: string
 }
 
-function OrderEditItem({ item, currencyCode, orderId }: OrderEditItemProps) {
+function OrderEditItem({
+  item,
+  currencyCode,
+  editId,
+  orderId,
+}: OrderEditItemProps) {
   const { t } = useTranslation()
 
-  const { mutateAsync: addItems } = useAddOrderEditItems(orderId)
-  const { mutateAsync: updateAddedItem } = useUpdateOrderEditAddedItem(orderId)
-  const { mutateAsync: updateOriginalItem } =
-    useUpdateOrderEditOriginalItem(orderId)
-  const { mutateAsync: undoAction } = useRemoveOrderEditItem(orderId)
+  const { mutateAsync: addItems } = useAddOrderEditItems(editId, orderId)
+  const { mutateAsync: updateAddedItem } = useUpdateOrderEditAddedItem(
+    editId,
+    orderId,
+  )
+  const { mutateAsync: updateOriginalItem } = useUpdateOrderEditOriginalItem(
+    editId,
+    orderId,
+  )
+  const { mutateAsync: undoAction } = useRemoveOrderEditItem(editId, orderId)
 
   const isAddedItem = useMemo(
     () => !!item.actions?.find((a) => a.action === "ITEM_ADD"),

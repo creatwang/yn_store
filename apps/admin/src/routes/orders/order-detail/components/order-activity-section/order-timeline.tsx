@@ -43,10 +43,12 @@ type OrderTimelineProps = {
   order: ExtendedOrder
 }
 
-/**
- * Arbitrary high limit to ensure all notes are fetched
- */
-// const NOTE_LIMIT = 9999
+type AdminOrderNote = {
+  id: string
+  value: string
+  created_at: string
+  created_by?: string
+}
 
 /**
  * Order Changes that are not related to RMA flows
@@ -195,29 +197,22 @@ const useActivityItems = (order: ExtendedOrder): Activity[] => {
 
   const payments = getPaymentsFromOrder(order)
 
-  // This isn't set anywhere
-  const notes: any[] = []
-  const isLoading = false
-  // const { notes, isLoading, isError, error } = useNotes(
-  //   {
-  //     resource_id: order.id,
-  //     limit: NOTE_LIMIT,
-  //     offset: 0,
-  //   },
-  //   {
-  //     keepPreviousData: true,
-  //   }
-  // )
-  //
-  // if (isError) {
-  //   throw error
-  // }
+  const notes = useMemo(() => {
+    const raw = (order.metadata as Record<string, unknown> | null | undefined)
+      ?.admin_notes
+    if (!Array.isArray(raw)) {
+      return [] as AdminOrderNote[]
+    }
+    return raw.filter(
+      (n): n is AdminOrderNote =>
+        typeof n === "object" &&
+        n !== null &&
+        typeof (n as AdminOrderNote).value === "string" &&
+        typeof (n as AdminOrderNote).created_at === "string",
+    )
+  }, [order.metadata])
 
   return useMemo(() => {
-    if (isLoading) {
-      return []
-    }
-
     const items: Activity[] = []
 
     for (const payment of payments) {
@@ -597,13 +592,13 @@ const useActivityItems = (order: ExtendedOrder): Activity[] => {
       }
     }
 
-    // for (const note of notes || []) {
-    //   items.push({
-    //     title: t("orders.activity.events.note.comment"),
-    //     timestamp: note.created_at,
-    //     children: <NoteBody note={note} />,
-    //   })
-    // }
+    for (const note of notes) {
+      items.push({
+        title: t("orders.activity.events.note.comment"),
+        timestamp: note.created_at,
+        children: <NoteBody note={note} />,
+      })
+    }
 
     if (order.canceled_at) {
       items.push({
@@ -641,7 +636,6 @@ const useActivityItems = (order: ExtendedOrder): Activity[] => {
     exchanges,
     orderChanges,
     notes,
-    isLoading,
     itemsMap,
   ])
 }
@@ -777,67 +771,24 @@ const OrderActivityCollapsible = ({
   )
 }
 
-/**
- * TODO: Add once notes are supported.
- */
-// const NoteBody = ({ note }: { note: Note }) => {
-//   const { t } = useTranslation()
-//   const prompt = usePrompt()
+const NoteBody = ({ note }: { note: AdminOrderNote }) => {
+  const { t } = useTranslation()
 
-//   const { first_name, last_name, email } = note.author || {}
-//   const name = [first_name, last_name].filter(Boolean).join(" ")
-
-//   const byLine = t("orders.activity.events.note.byLine", {
-//     author: name || email,
-//   })
-
-//   const { mutateAsync } = {} // useAdminDeleteNote(note.id)
-
-//   const handleDelete = async () => {
-//     const res = await prompt({
-//       title: t("general.areYouSure"),
-//       description: "This action cannot be undone",
-//       confirmText: t("actions.delete"),
-//       cancelText: t("actions.cancel"),
-//     })
-
-//     if (!res) {
-//       return
-//     }
-
-//     await mutateAsync()
-//   }
-
-//   return (
-//     <div className="flex flex-col gap-y-2 pt-2">
-//       <div className="bg-ui-bg-component shadow-borders-base group grid grid-cols-[1fr_20px] items-start gap-x-2 text-pretty rounded-r-2xl rounded-bl-md rounded-tl-xl px-3 py-1.5">
-//         <div className="flex h-full min-h-7 items-center">
-//           <Text size="xsmall" className="text-ui-fg-subtle">
-//             {note.value}
-//           </Text>
-//         </div>
-//         <IconButton
-//           size="small"
-//           variant="transparent"
-//           className="transition-fg invisible opacity-0 group-hover:visible group-hover:opacity-100"
-//           type="button"
-//           onClick={handleDelete}
-//         >
-//           <span className="sr-only">
-//             {t("orders.activity.comment.deleteButtonText")}
-//           </span>
-//           <XMarkMini className="text-ui-fg-muted" />
-//         </IconButton>
-//       </div>
-//       <Link
-//         to={`/settings/users/${note.author_id}`}
-//         className="text-ui-fg-subtle hover:text-ui-fg-base transition-fg w-fit"
-//       >
-//         <Text size="small">{byLine}</Text>
-//       </Link>
-//     </div>
-//   )
-// }
+  return (
+    <div className="flex flex-col gap-y-2 pt-2">
+      <div className="bg-ui-bg-component shadow-borders-base rounded-r-2xl rounded-bl-md rounded-tl-xl px-3 py-1.5">
+        <Text size="xsmall" className="text-ui-fg-subtle">
+          {note.value}
+        </Text>
+      </div>
+      {note.created_by ? (
+        <Text size="small" className="text-ui-fg-subtle">
+          {t("fields.by")} {note.created_by}
+        </Text>
+      ) : null}
+    </div>
+  )
+}
 
 const FulfillmentCreatedBody = ({
   fulfillment,

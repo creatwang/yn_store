@@ -6,6 +6,8 @@ import {
 import { HTTPException } from "hono/http-exception"
 import { eventBus } from "../lib/events"
 import { runInTransaction } from "../lib/transaction"
+import { notificationService } from "./notification.service"
+import { sendOrderUpdatedEmail } from "../lib/mail"
 
 // ── helpers ─────────────────────────────────────────────────
 
@@ -244,21 +246,46 @@ export const orderEditService = {
   // ── Lifecycle ─────────────────────────────────────────────
 
   /** Request confirmation of the edit */
-  async request(editId: string) {
+  async request(
+    editId: string,
+    input?: { internal_note?: string; send_notification?: boolean },
+  ) {
     const db = getDb()
-    const [updated] = await db.update(orderChange).set({
-      status: "requested",
-      requested_at: sql`now()`, requested_by: "admin",
-    }).where(and(
-      eq(orderChange.id, editId),
-      isNull(orderChange.canceled_at),
-    )).returning()
-    if (!updated) throw new HTTPException(404, { message: "Order edit not found" })
+    const [existing] = await db
+      .select()
+      .from(orderChange)
+      .where(and(eq(orderChange.id, editId), isNull(orderChange.canceled_at)))
+      .limit(1)
+    if (!existing) {
+      throw new HTTPException(404, { message: "Order edit not found" })
+    }
+
+    const meta = {
+      ...(((existing.metadata as Record<string, unknown>) ?? {})),
+    }
+    if (input?.send_notification != null) {
+      meta.send_notification = input.send_notification
+    }
+
+    const [updated] = await db
+      .update(orderChange)
+      .set({
+        status: "requested",
+        internal_note: input?.internal_note ?? existing.internal_note,
+        requested_at: sql`now()`,
+        requested_by: "admin",
+        metadata: meta,
+      })
+      .where(eq(orderChange.id, editId))
+      .returning()
+    if (!updated) {
+      throw new HTTPException(404, { message: "Order edit not found" })
+    }
     await eventBus.emit("order-edit.requested", {
       order_edit_id: editId,
       order_id: updated.order_id,
     })
-    return loadEdit(editId).then(r => ({ order_edit: r.order_change }))
+    return loadEdit(editId).then((r) => ({ order_edit: r.order_change }))
   },
 
   /** Confirm & apply all pending actions */
@@ -374,6 +401,39 @@ export const orderEditService = {
       order_edit_id: editId,
       order_id: edit.order_id,
     })
+
+    const meta = (edit.metadata as Record<string, unknown>) ?? {}
+    if (meta.send_notification === true) {
+      const db = getDb()
+      const [ord] = await db
+        .select({ email: order.email, display_id: order.display_id })
+        .from(order)
+        .where(eq(order.id, edit.order_id))
+        .limit(1)
+      if (ord?.email) {
+        const displayId = String(ord.display_id ?? edit.order_id)
+        notificationService.send({
+          to: ord.email,
+          template: "order.updated",
+          data: {
+            display_id: displayId,
+            order_id: edit.order_id,
+            internal_note: edit.internal_note,
+          },
+          trigger_type: "order-edit.confirmed",
+          resource_id: editId,
+          resource_type: "order_change",
+          idempotency_key: `order-edit-confirm-${editId}`,
+          sender: () =>
+            sendOrderUpdatedEmail(
+              ord.email!,
+              displayId,
+              edit.order_id,
+              edit.internal_note,
+            ),
+        })
+      }
+    }
 
     return loadEdit(editId).then((r) => ({ order_edit: r.order_change }))
   },

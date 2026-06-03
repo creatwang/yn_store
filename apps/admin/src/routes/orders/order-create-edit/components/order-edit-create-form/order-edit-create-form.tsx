@@ -36,11 +36,13 @@ export const OrderEditCreateForm = ({
    * MUTATIONS
    */
 
+  const editId = preview.order_change?.id ?? ""
+
   const { mutateAsync: cancelOrderEditRequest, isPending: isCanceling } =
-    useCancelOrderEdit(order.id)
+    useCancelOrderEdit(editId, order.id)
 
   const { mutateAsync: requestOrderEdit, isPending: isRequesting } =
-    useRequestOrderEdit(order.id)
+    useRequestOrderEdit(editId, order.id)
 
   const isRequestRunning = isCanceling || isRequesting
 
@@ -50,8 +52,8 @@ export const OrderEditCreateForm = ({
   const form = useForm<CreateOrderEditSchemaType>({
     defaultValues: () => {
       return Promise.resolve({
-        note: "", // TODO: add note when update edit route is added
-        send_notification: false, // TODO: not supported in the API ATM
+        note: "",
+        send_notification: false,
       })
     },
     resolver: zodResolver(OrderEditCreateSchema),
@@ -59,7 +61,7 @@ export const OrderEditCreateForm = ({
 
   const prompt = usePrompt()
 
-  const handleSubmit = form.handleSubmit(async () => {
+  const handleSubmit = form.handleSubmit(async (values) => {
     try {
       const res = await prompt({
         title: t("general.areYouSure"),
@@ -73,7 +75,10 @@ export const OrderEditCreateForm = ({
         return
       }
 
-      await requestOrderEdit()
+      await requestOrderEdit({
+        internal_note: values.note?.trim() || undefined,
+        send_notification: values.send_notification,
+      })
 
       toast.success(t("orders.edits.createSuccessToast"))
       handleSuccess()

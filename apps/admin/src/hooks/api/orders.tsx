@@ -95,6 +95,27 @@ export const useUpdateOrder = (
   })
 }
 
+export const useAddOrderNote = (
+  orderId: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminOrderResponse,
+    FetchError,
+    { value: string }
+  >
+) => {
+  return useMutation({
+    mutationFn: (payload: { value: string }) =>
+      sdk.admin.order.addNote(orderId, payload),
+    onSuccess: (data: any, variables: any, context: any) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.detail(orderId),
+      })
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
 export const useOrderPreview = (
   id: string,
   query?: HttpTypes.AdminOrderFilters,

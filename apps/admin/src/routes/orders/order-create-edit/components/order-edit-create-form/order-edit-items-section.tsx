@@ -34,7 +34,11 @@ export const OrderEditItemsSection = ({
   /*
    * MUTATIONS
    */
-  const { mutateAsync: addItems, isPending } = useAddOrderEditItems(order.id)
+  const editId = preview.order_change?.id ?? ""
+  const { mutateAsync: addItems, isPending } = useAddOrderEditItems(
+    editId,
+    order.id,
+  )
 
   /**
    * CALLBACKS
@@ -127,6 +131,7 @@ export const OrderEditItemsSection = ({
         <OrderEditItem
           key={item.id}
           item={item}
+          editId={editId}
           orderId={order.id}
           currencyCode={order.currency_code}
         />

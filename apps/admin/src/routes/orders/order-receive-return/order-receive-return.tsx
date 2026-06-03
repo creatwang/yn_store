@@ -28,7 +28,7 @@ export function OrderReceiveReturn() {
   const { order: preview } = useOrderPreview(id!)
   const { return: orderReturn } = useReturn(return_id ?? "", {
     fields: "*items.item,*items.item.variant,*items.item.variant.product",
-  }) // TODO: fix API needs to return 404 if return not exists and not an empty object
+  })
 
   /**
    * MUTATIONS

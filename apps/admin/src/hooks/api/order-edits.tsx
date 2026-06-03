@@ -10,6 +10,21 @@ import { FetchError } from "@medusajs/js-sdk"
 import { reservationItemsQueryKeys } from "./reservations"
 import { inventoryItemsQueryKeys } from "./inventory.tsx"
 
+function invalidateOrderEditQueries(orderId: string) {
+  queryClient.invalidateQueries({
+    queryKey: ordersQueryKeys.details(),
+  })
+  queryClient.invalidateQueries({
+    queryKey: ordersQueryKeys.preview(orderId),
+  })
+  queryClient.invalidateQueries({
+    queryKey: ordersQueryKeys.changes(orderId),
+  })
+  queryClient.invalidateQueries({
+    queryKey: ordersQueryKeys.lineItems(orderId),
+  })
+}
+
 export const useCreateOrderEdit = (
   orderId: string,
   options?: UseMutationOptions<
@@ -22,45 +37,32 @@ export const useCreateOrderEdit = (
     mutationFn: (payload: HttpTypes.AdminInitiateOrderEditRequest) =>
       sdk.admin.orderEdit.initiateRequest(payload),
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.details(),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(orderId),
-      })
+      invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
   })
 }
 
+export type RequestOrderEditInput = {
+  internal_note?: string
+  send_notification?: boolean
+}
+
 export const useRequestOrderEdit = (
-  id: string,
+  editId: string,
+  orderId: string,
   options?: UseMutationOptions<
     HttpTypes.AdminOrderEditPreviewResponse,
     FetchError,
-    void
+    RequestOrderEditInput | void
   >
 ) => {
   return useMutation({
-    mutationFn: () => sdk.admin.orderEdit.request(id),
+    mutationFn: (payload?: RequestOrderEditInput) =>
+      sdk.admin.orderEdit.request(editId, payload ?? {}),
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.details(),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(id),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.changes(id),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.lineItems(id),
-      })
+      invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -68,7 +70,8 @@ export const useRequestOrderEdit = (
 }
 
 export const useConfirmOrderEdit = (
-  id: string,
+  editId: string,
+  orderId: string,
   options?: UseMutationOptions<
     HttpTypes.AdminOrderEditPreviewResponse,
     FetchError,
@@ -76,36 +79,15 @@ export const useConfirmOrderEdit = (
   >
 ) => {
   return useMutation({
-    mutationFn: () => sdk.admin.orderEdit.confirm(id),
+    mutationFn: () => sdk.admin.orderEdit.confirm(editId),
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.details(),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(id),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.changes(id),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.lineItems(id),
-      })
-
+      invalidateOrderEditQueries(orderId)
       queryClient.invalidateQueries({
         queryKey: reservationItemsQueryKeys.lists(),
       })
-
       queryClient.invalidateQueries({
         queryKey: inventoryItemsQueryKeys.lists(),
       })
-
-      queryClient.invalidateQueries({
-        queryKey: inventoryItemsQueryKeys.details(),
-      })
-
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -113,27 +95,14 @@ export const useConfirmOrderEdit = (
 }
 
 export const useCancelOrderEdit = (
+  editId: string,
   orderId: string,
   options?: UseMutationOptions<any, FetchError, void>
 ) => {
   return useMutation({
-    mutationFn: () => sdk.admin.orderEdit.cancelRequest(orderId),
+    mutationFn: () => sdk.admin.orderEdit.cancelRequest(editId),
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.details(),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(orderId),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.changes(orderId),
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.lineItems(orderId),
-      })
+      invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -141,7 +110,8 @@ export const useCancelOrderEdit = (
 }
 
 export const useAddOrderEditItems = (
-  id: string,
+  editId: string,
+  orderId: string,
   options?: UseMutationOptions<
     HttpTypes.AdminOrderEditPreviewResponse,
     FetchError,
@@ -150,11 +120,9 @@ export const useAddOrderEditItems = (
 ) => {
   return useMutation({
     mutationFn: (payload: HttpTypes.AdminAddOrderEditItems) =>
-      sdk.admin.orderEdit.addItems(id, payload),
+      sdk.admin.orderEdit.addItems(editId, payload),
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(id),
-      })
+      invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -165,7 +133,8 @@ export const useAddOrderEditItems = (
  * Update (quantity) of an item that was originally on the order.
  */
 export const useUpdateOrderEditOriginalItem = (
-  id: string,
+  editId: string,
+  orderId: string,
   options?: UseMutationOptions<
     HttpTypes.AdminOrderEditPreviewResponse,
     FetchError,
@@ -177,12 +146,10 @@ export const useUpdateOrderEditOriginalItem = (
       itemId,
       ...payload
     }: HttpTypes.AdminUpdateOrderEditItem & { itemId: string }) => {
-      return sdk.admin.orderEdit.updateOriginalItem(id, itemId, payload)
+      return sdk.admin.orderEdit.updateOriginalItem(editId, itemId, payload)
     },
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(id),
-      })
+      invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -193,7 +160,8 @@ export const useUpdateOrderEditOriginalItem = (
  * Update (quantity) of an item that was added to the order edit.
  */
 export const useUpdateOrderEditAddedItem = (
-  id: string,
+  editId: string,
+  orderId: string,
   options?: UseMutationOptions<
     HttpTypes.AdminOrderEditPreviewResponse,
     FetchError,
@@ -205,12 +173,10 @@ export const useUpdateOrderEditAddedItem = (
       actionId,
       ...payload
     }: HttpTypes.AdminUpdateOrderEditItem & { actionId: string }) => {
-      return sdk.admin.orderEdit.updateAddedItem(id, actionId, payload)
+      return sdk.admin.orderEdit.updateAddedItem(editId, actionId, payload)
     },
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(id),
-      })
+      invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -222,7 +188,8 @@ export const useUpdateOrderEditAddedItem = (
  * To remove an original item on the order, set quantity to 0.
  */
 export const useRemoveOrderEditItem = (
-  id: string,
+  editId: string,
+  orderId: string,
   options?: UseMutationOptions<
     HttpTypes.AdminOrderEditPreviewResponse,
     FetchError,
@@ -231,11 +198,9 @@ export const useRemoveOrderEditItem = (
 ) => {
   return useMutation({
     mutationFn: (actionId: string) =>
-      sdk.admin.orderEdit.removeAddedItem(id, actionId),
+      sdk.admin.orderEdit.removeAddedItem(editId, actionId),
     onSuccess: (data: any, variables: any, context: any) => {
-      queryClient.invalidateQueries({
-        queryKey: ordersQueryKeys.preview(id),
-      })
+      invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },
     ...options,

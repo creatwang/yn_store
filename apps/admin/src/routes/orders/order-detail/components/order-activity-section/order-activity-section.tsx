@@ -2,6 +2,7 @@
 import { Container, Heading } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { OrderTimeline } from "./order-timeline"
+import { OrderNoteForm } from "./order-note-form"
 import { ExtendedOrder } from "../../constants"
 
 type OrderActivityProps = {
@@ -17,8 +18,7 @@ export const OrderActivitySection = ({ order }: OrderActivityProps) => {
         <div className="flex items-center justify-between">
           <Heading level="h2">{t("orders.activity.header")}</Heading>
         </div>
-        {/* TODO: Re-add when we have support for notes */}
-        {/* <OrderNoteForm order={order} /> */}
+        <OrderNoteForm order={order} />
       </div>
       <OrderTimeline order={order} />
     </Container>

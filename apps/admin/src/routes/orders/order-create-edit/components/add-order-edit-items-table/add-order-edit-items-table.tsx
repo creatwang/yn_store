@@ -54,9 +54,13 @@ export const AddOrderEditItemsTable = ({
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
-    enableRowSelection: (_row) => {
-      // TODO: Check inventory here. Check if other validations needs to be made
-      return true
+    enableRowSelection: (row) => {
+      if (!row.original.manage_inventory) {
+        return true
+      }
+      const levels =
+        row.original.inventory_items?.[0]?.inventory?.location_levels ?? []
+      return levels.some((l) => Number(l.available_quantity) > 0)
     },
     rowSelection: {
       state: rowSelection,

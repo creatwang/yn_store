@@ -44,6 +44,8 @@ export const listOrdersSchema = paginationSchema.extend({
     $lt: z.string().optional(),
   }).optional(),
   fields: z.string().optional(),
+  payment_status: z.union([z.string(), z.array(z.string())]).optional(),
+  fulfillment_status: z.union([z.string(), z.array(z.string())]).optional(),
 })
 
 export type ListOrdersQuery = z.infer<typeof listOrdersSchema>

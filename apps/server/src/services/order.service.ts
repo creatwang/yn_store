@@ -47,6 +47,17 @@ const ORDER_EXPORT_HEADERS = [
   "Created At",
 ]
 
+function parseStatusFilter(
+  value: string | string[] | undefined,
+): string[] | undefined {
+  if (value == null || value === "") return undefined
+  const parts = (Array.isArray(value) ? value : [value])
+    .flatMap((v) => String(v).split(","))
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return parts.length ? parts : undefined
+}
+
 export const orderService = {
   async list(query: ListOrdersQuery) {
     const db = getDb()
@@ -75,24 +86,61 @@ export const orderService = {
       )
     }
 
+    const paymentFilters = parseStatusFilter(query.payment_status)
+    const fulfillmentFilters = parseStatusFilter(query.fulfillment_status)
+    const hasAggregateStatusFilter =
+      (paymentFilters?.length ?? 0) > 0 ||
+      (fulfillmentFilters?.length ?? 0) > 0
+
     const where = and(...conditions)
 
-    const [orders, [{ total }]] = await Promise.all([
+    const [orderRows, [{ total: dbTotal }]] = await Promise.all([
       db
         .select()
         .from(order)
         .where(where)
         .orderBy(desc(order.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(hasAggregateStatusFilter ? 10_000 : query.limit)
+        .offset(hasAggregateStatusFilter ? 0 : query.offset),
       db.select({ total: count() }).from(order).where(where),
     ])
 
-    const enriched = await presentAdminOrders(db as any, orders, { fields: query.fields })
+    let enriched = await presentAdminOrders(db as any, orderRows, {
+      fields: query.fields,
+    })
+
+    if (paymentFilters?.length) {
+      enriched = enriched.filter((o) =>
+        paymentFilters.includes(
+          (o as { payment_status?: string }).payment_status ?? "",
+        ),
+      )
+    }
+    if (fulfillmentFilters?.length) {
+      enriched = enriched.filter((o) =>
+        fulfillmentFilters.includes(
+          (o as { fulfillment_status?: string }).fulfillment_status ?? "",
+        ),
+      )
+    }
+
+    if (hasAggregateStatusFilter) {
+      const count = enriched.length
+      const orders = enriched.slice(
+        query.offset,
+        query.offset + query.limit,
+      )
+      return {
+        orders,
+        count,
+        limit: query.limit,
+        offset: query.offset,
+      }
+    }
 
     return {
       orders: enriched,
-      count: Number(total),
+      count: Number(dbTotal),
       limit: query.limit,
       offset: query.offset,
     }

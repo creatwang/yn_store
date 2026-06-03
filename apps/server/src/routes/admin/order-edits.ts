@@ -12,6 +12,16 @@ const updateItemSchema = zValidator("json", z.object({ quantity: z.number().opti
 
 const updateChangeSchema = zValidator("json", z.object({ carry_over_promotions: z.boolean().optional() }).passthrough())
 
+const requestEditSchema = zValidator(
+  "json",
+  z
+    .object({
+      internal_note: z.string().optional(),
+      send_notification: z.boolean().optional(),
+    })
+    .default({}),
+)
+
 export const adminOrderEdits = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
   .post("/", zValidator("json", z.object({ order_id: z.string() })), async (c) => {
@@ -23,8 +33,9 @@ export const adminOrderEdits = new Hono<{ Variables: AuthVariables }>()
     const result = await orderEditService.getById(c.req.param("id"))
     return c.json(result)
   })
-  .post("/:id/request", async (c) => {
-    const result = await orderEditService.request(c.req.param("id"))
+  .post("/:id/request", requestEditSchema, async (c) => {
+    const body = c.req.valid("json") ?? {}
+    const result = await orderEditService.request(c.req.param("id"), body)
     return c.json(result)
   })
   .post("/:id/confirm", async (c) => {

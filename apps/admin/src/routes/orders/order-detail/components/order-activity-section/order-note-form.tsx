@@ -10,6 +10,7 @@ import { AdminOrder } from "@medusajs/types"
 import { useTranslation } from "react-i18next"
 import { Form } from "../../../../../components/common/form"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
+import { useAddOrderNote } from "../../../../../hooks/api/orders"
 
 type OrderNoteFormProps = {
   order: AdminOrder
@@ -30,16 +31,11 @@ export const OrderNoteForm = ({ order }: OrderNoteFormProps) => {
     resolver: zodResolver(OrderNoteSchema),
   })
 
-  const { mutateAsync, isLoading } = {} as {
-    mutateAsync: (vars: any, options?: any) => Promise<void>
-    isLoading: boolean
-  }
+  const { mutateAsync, isPending: isLoading } = useAddOrderNote(order.id)
 
   const handleSubmit = form.handleSubmit(async (values) => {
     mutateAsync(
       {
-        resource_id: order.id,
-        resource_type: "order",
         value: values.value,
       },
       {

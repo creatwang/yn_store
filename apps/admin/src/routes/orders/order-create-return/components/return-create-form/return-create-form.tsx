@@ -114,9 +114,6 @@ export const ReturnCreateForm = ({
   const { shipping_options = [] } = useShippingOptions({
     limit: 999,
     fields: "*prices,+service_zone.fulfillment_set.location.id",
-    /**
-     * TODO: this should accept filter for location_id
-     */
   })
 
   /**
@@ -168,9 +165,6 @@ export const ReturnCreateForm = ({
    */
 
   const form = useForm<ReturnCreateSchemaType>({
-    /**
-     * TODO: reason selection once Return reason settings are added
-     */
     defaultValues: () => {
       const method = preview.shipping_methods.find(
         (s) => !!s.actions?.find((a) => a.action === "SHIPPING_ADD")

@@ -298,6 +298,34 @@ export async function sendShipmentEmail(
   await sendEmail(email, `订单 #${displayId} 已发货`, html, "shipping")
 }
 
+export async function sendOrderUpdatedEmail(
+  email: string,
+  displayId: number | string,
+  orderId: string,
+  internalNote?: string | null,
+): Promise<void> {
+  const detailUrl = storefrontUrl(`/orders/${orderId}`)
+  const noteHtml = internalNote
+    ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#555;">
+        ${internalNote}
+      </p>`
+    : ""
+  const html = emailLayout(`
+    <h2 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1a1a1a;">订单已更新</h2>
+    <p style="margin:0 0 12px;font-size:16px;font-weight:500;color:#333;">
+      订单号：#${displayId}
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#555;">
+      您的订单信息已由商家更新，请查看详情确认变更内容。
+    </p>
+    ${noteHtml}
+    <div style="text-align:center;margin-bottom:24px;">
+      ${buttonHtml("查看订单", detailUrl)}
+    </div>
+  `)
+  await sendEmail(email, `订单 #${displayId} 已更新`, html, "order")
+}
+
 export async function sendOrderDeliveredEmail(
   email: string,
   displayId: number | string,

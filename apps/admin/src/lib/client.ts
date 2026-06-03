@@ -127,6 +127,8 @@ function ordersClient() {
     retrieve: (id: string, query?: Record<string, any>) => rpcGet(rpc[":id"], { id }, query),
     create: (body?: any) => rpcPost(rpc, body),
     update: (id: string, body?: any) => rpcPost(rpc[":id"], body, { id }),
+    addNote: (id: string, body: { value: string }) =>
+      rpcPost(rpc[":id"].notes, body, { id }),
     cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
     archive: (id: string) => rpcPost(rpc[":id"].archive, undefined, { id }),
     complete: (id: string) => rpcPost(rpc[":id"].complete, undefined, { id }),
@@ -393,7 +395,10 @@ function orderEditClient() {
     list: (orderId: string, query?: any) => rpcGet(rpc, undefined, { ...query, order_id: orderId }),
     retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
     create: (body?: any) => rpcPost(rpc, body),
-    request: (id: string) => rpcPost(rpc[":id"].request, undefined, { id }),
+    request: (
+      id: string,
+      body?: { internal_note?: string; send_notification?: boolean },
+    ) => rpcPost(rpc[":id"].request, body ?? {}, { id }),
     confirm: (id: string) => rpcPost(rpc[":id"].confirm, undefined, { id }),
     cancelRequest: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
     addItems: (id: string, body?: any) => rpcPost(rpc[":id"].items, body, { id }),

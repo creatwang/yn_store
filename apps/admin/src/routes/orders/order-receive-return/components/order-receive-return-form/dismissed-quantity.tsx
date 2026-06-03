@@ -70,8 +70,6 @@ function DismissedQuantity({
   }, [item])
 
   const onDismissedQuantityChanged = async (value: number | null) => {
-    // TODO: if out of bounds prevent sending and notify user
-
     const action = item.actions?.find(
       (a) => a.action === "RECEIVE_DAMAGED_RETURN_ITEM"
     )

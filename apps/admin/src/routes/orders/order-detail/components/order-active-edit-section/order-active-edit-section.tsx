@@ -58,8 +58,13 @@ export const OrderActiveEditSection = ({
 
   const { order: orderPreview } = useOrderPreview(order.id)
 
-  const { mutateAsync: cancelOrderEdit } = useCancelOrderEdit(order.id)
-  const { mutateAsync: confirmOrderEdit } = useConfirmOrderEdit(order.id)
+  const editId = orderPreview?.order_change?.id ?? ""
+
+  const { mutateAsync: cancelOrderEdit } = useCancelOrderEdit(editId, order.id)
+  const { mutateAsync: confirmOrderEdit } = useConfirmOrderEdit(
+    editId,
+    order.id,
+  )
 
   const isPending = orderPreview?.order_change?.status === "pending"
 
