@@ -14,6 +14,7 @@ import {
 import { HTTPException } from "hono/http-exception"
 import { parseCsv, rowsToObjects, toCsv } from "../lib/csv"
 import { slugify } from "../lib/slug"
+import { runInTransaction } from "../lib/transaction"
 
 const IMPORT_DIR = path.resolve(process.cwd(), "public/imports")
 const EXPORT_DIR = path.resolve(process.cwd(), "public/exports")
@@ -178,7 +179,8 @@ export const productImportService = {
     }
 
     const stored = JSON.parse(await readFile(filePath, "utf-8")) as StoredImport
-    const db = getDb()
+
+    return runInTransaction(async (db) => {
     const createdProducts: string[] = []
     const updatedProducts: string[] = []
 
@@ -314,6 +316,7 @@ export const productImportService = {
       created_count: createdProducts.length,
       updated_count: updatedProducts.length,
     }
+    })
   },
 }
 

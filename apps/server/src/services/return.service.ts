@@ -15,6 +15,7 @@ import type {
 import { HTTPException } from "hono/http-exception"
 import { eventBus } from "../lib/events"
 import { returnCreateWorkflow } from "../workflows/return-create"
+import { runInTransaction } from "../lib/transaction"
 
 type ReturnItemInput = {
   item_id: string
@@ -77,31 +78,37 @@ export const returnService = {
       order_id: input.order_id, order_version: input.order_version,
       location_id: input.location_id ?? undefined, refund_amount: input.refund_amount,
       items: input.items ?? [],
-    });
-    return this.getById(String(result?.returnId ?? ''));
+    })
+    const returnId = (result as { returnId?: string } | undefined)?.returnId
+    if (!returnId) {
+      throw new HTTPException(500, { message: "Return creation failed" })
+    }
+    return this.getById(String(returnId))
   },
 
   async addReturnItems(returnId: string, orderId: string, items: ReturnItemInput[]) {
-    const db = getDb()
-
-    for (const item of items) {
-      const riId = generateId("retitm")
-      await db.insert(returnItem).values({
-        id: riId,
-        return_id: returnId,
-        item_id: item.item_id,
-        quantity: String(item.quantity),
-        raw_quantity: { amount: item.quantity, precision: 0 },
-        note: item.note ?? null,
-      })
-
-      await db
-        .update(orderItem)
-        .set({
-          return_requested_quantity: sql`COALESCE(return_requested_quantity::numeric, 0) + ${item.quantity}`,
+    await runInTransaction(async (tx) => {
+      for (const item of items) {
+        const riId = generateId("retitm")
+        await tx.insert(returnItem).values({
+          id: riId,
+          return_id: returnId,
+          item_id: item.item_id,
+          quantity: String(item.quantity),
+          raw_quantity: { amount: item.quantity, precision: 0 },
+          note: item.note ?? null,
         })
-        .where(and(eq(orderItem.item_id, item.item_id), eq(orderItem.order_id, orderId)))
-    }
+
+        await tx
+          .update(orderItem)
+          .set({
+            return_requested_quantity: sql`COALESCE(return_requested_quantity::numeric, 0) + ${item.quantity}`,
+          })
+          .where(
+            and(eq(orderItem.item_id, item.item_id), eq(orderItem.order_id, orderId)),
+          )
+      }
+    })
 
     return this.getById(returnId)
   },
@@ -318,40 +325,59 @@ export const returnService = {
   },
 
   async receive(id: string, input: ReceiveReturnInput) {
-    const db = getDb()
     const current = await this.getById(id)
     const ret = current.return
 
-    if (input.items?.length) {
-      for (const item of input.items) {
-        await db
-          .update(returnItem)
-          .set({
-            received_quantity: String(item.received_quantity ?? item.quantity),
-            damaged_quantity: item.damaged_quantity ? String(item.damaged_quantity) : "0",
-          })
-          .where(and(eq(returnItem.return_id, id), eq(returnItem.item_id, item.item_id)))
+    await runInTransaction(async (tx) => {
+      if (input.items?.length) {
+        for (const item of input.items) {
+          await tx
+            .update(returnItem)
+            .set({
+              received_quantity: String(item.received_quantity ?? item.quantity),
+              damaged_quantity: item.damaged_quantity
+                ? String(item.damaged_quantity)
+                : "0",
+            })
+            .where(
+              and(eq(returnItem.return_id, id), eq(returnItem.item_id, item.item_id)),
+            )
 
-        await db
-          .update(orderItem)
-          .set({
-            return_received_quantity: sql`COALESCE(return_received_quantity::numeric, 0) + ${item.received_quantity ?? item.quantity}`,
-          })
-          .where(and(eq(orderItem.item_id, item.item_id), eq(orderItem.order_id, ret.order_id)))
+          await tx
+            .update(orderItem)
+            .set({
+              return_received_quantity: sql`COALESCE(return_received_quantity::numeric, 0) + ${item.received_quantity ?? item.quantity}`,
+            })
+            .where(
+              and(
+                eq(orderItem.item_id, item.item_id),
+                eq(orderItem.order_id, ret.order_id),
+              ),
+            )
+        }
       }
-    }
 
-    const [updated] = await db
-      .update(orderReturn)
-      .set({
-        status: "received",
-        received_at: sql`now()`,
-        updated_at: sql`now()`,
-      })
-      .where(eq(orderReturn.id, id))
-      .returning()
+      const [updated] = await tx
+        .update(orderReturn)
+        .set({
+          status: "received",
+          received_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+        .where(and(eq(orderReturn.id, id), isNull(orderReturn.deleted_at)))
+        .returning()
 
-    return { return: updated }
+      if (!updated) {
+        throw new HTTPException(404, { message: "Return not found" })
+      }
+    })
+
+    await eventBus.emit("return.received", {
+      return_id: id,
+      order_id: ret.order_id,
+    })
+
+    return this.getById(id)
   },
 
   async cancel(id: string) {

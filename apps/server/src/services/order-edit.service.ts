@@ -4,7 +4,8 @@ import {
   orderLineItem, orderItem, orderSummary,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import { dispatchRollbackProcess } from "../lib/rollback"
+import { eventBus } from "../lib/events"
+import { runInTransaction } from "../lib/transaction"
 
 // ── helpers ─────────────────────────────────────────────────
 
@@ -253,6 +254,10 @@ export const orderEditService = {
       isNull(orderChange.canceled_at),
     )).returning()
     if (!updated) throw new HTTPException(404, { message: "Order edit not found" })
+    await eventBus.emit("order-edit.requested", {
+      order_edit_id: editId,
+      order_id: updated.order_id,
+    })
     return loadEdit(editId).then(r => ({ order_edit: r.order_change }))
   },
 
@@ -262,78 +267,149 @@ export const orderEditService = {
     const { edit, actions } = await loadEdit(editId)
     if (actions.length === 0) throw new HTTPException(400, { message: 'No changes to confirm' })
 
-    const appliedLineItemIds: string[] = []
-    await dispatchRollbackProcess(
-      async () => {
-        for (const action of actions) {
-          switch (action.action) {
-            case 'ITEM_ADD': {
-              const details = (action.details ?? {}) as Record<string, unknown>
-              const qty = Number(details.quantity ?? 1)
-              const unitPrice = action.amount ?? null
-              const lineItemId = generateId("olitm")
-              await db.insert(orderLineItem).values({
-                id: lineItemId, title: "", variant_id: action.reference_id ?? null,
-                requires_shipping: true, is_giftcard: false, is_discountable: true, is_tax_inclusive: false,
-                unit_price: unitPrice, raw_unit_price: unitPrice ? { value: unitPrice, precision: 20 } : null,
-                created_at: sql`now()`, updated_at: sql`now()`,
-              })
-              appliedLineItemIds.push(lineItemId)
-              await db.insert(orderItem).values({
-                id: generateId("ordit"), version: edit.version + 1,
-                order_id: edit.order_id, item_id: lineItemId,
-                quantity: String(qty), raw_quantity: { value: String(qty), precision: 20 },
-                unit_price: unitPrice, raw_unit_price: unitPrice ? { value: unitPrice, precision: 20 } : null,
-                fulfilled_quantity: "0", shipped_quantity: "0", delivered_quantity: "0",
-                return_requested_quantity: "0", return_received_quantity: "0",
-                return_dismissed_quantity: "0", written_off_quantity: "0",
-                created_at: sql`now()`, updated_at: sql`now()`,
-              })
-              break
+    await runInTransaction(async (tx) => {
+      for (const action of actions) {
+        switch (action.action) {
+          case "ITEM_ADD": {
+            const details = (action.details ?? {}) as Record<string, unknown>
+            const qty = Number(details.quantity ?? 1)
+            const unitPrice = action.amount ?? null
+            const lineItemId = generateId("olitm")
+            await tx.insert(orderLineItem).values({
+              id: lineItemId,
+              title: "",
+              variant_id: action.reference_id ?? null,
+              requires_shipping: true,
+              is_giftcard: false,
+              is_discountable: true,
+              is_tax_inclusive: false,
+              unit_price: unitPrice,
+              raw_unit_price: unitPrice
+                ? { value: unitPrice, precision: 20 }
+                : null,
+              created_at: sql`now()`,
+              updated_at: sql`now()`,
+            })
+            await tx.insert(orderItem).values({
+              id: generateId("ordit"),
+              version: edit.version + 1,
+              order_id: edit.order_id,
+              item_id: lineItemId,
+              quantity: String(qty),
+              raw_quantity: { value: String(qty), precision: 20 },
+              unit_price: unitPrice,
+              raw_unit_price: unitPrice
+                ? { value: unitPrice, precision: 20 }
+                : null,
+              fulfilled_quantity: "0",
+              shipped_quantity: "0",
+              delivered_quantity: "0",
+              return_requested_quantity: "0",
+              return_received_quantity: "0",
+              return_dismissed_quantity: "0",
+              written_off_quantity: "0",
+            })
+            break
+          }
+          case "ITEM_UPDATE": {
+            const details = (action.details ?? {}) as Record<string, unknown>
+            const setData: Record<string, unknown> = {}
+            if (details.quantity != null) {
+              setData.quantity = String(details.quantity)
+              setData.raw_quantity = {
+                value: String(details.quantity),
+                precision: 20,
+              }
             }
-            case 'ITEM_UPDATE': {
-              const details = (action.details ?? {}) as Record<string, unknown>
-              const setData: Record<string, any> = {}
-              if (details.quantity != null) { setData.quantity = String(details.quantity); setData.raw_quantity = { value: String(details.quantity), precision: 20 } }
-              if (action.amount != null) { setData.unit_price = action.amount; setData.raw_unit_price = { value: action.amount, precision: 20 } }
-              setData.updated_at = sql`now()`
-              await db.update(orderItem).set(setData).where(and(
-                eq(orderItem.order_id, edit.order_id), eq(orderItem.item_id, action.reference_id!),
-              ))
-              break
+            if (action.amount != null) {
+              setData.unit_price = action.amount
+              setData.raw_unit_price = { value: action.amount, precision: 20 }
             }
+            setData.updated_at = sql`now()`
+            await tx
+              .update(orderItem)
+              .set(setData)
+              .where(
+                and(
+                  eq(orderItem.order_id, edit.order_id),
+                  eq(orderItem.item_id, action.reference_id!),
+                ),
+              )
+            break
           }
         }
-        await db.update(orderChange).set({ status: "confirmed", confirmed_at: sql`now()`, confirmed_by: "admin" }).where(eq(orderChange.id, editId))
-        await db.update(order).set({ version: sql`version + 1`, updated_at: sql`now()` }).where(eq(order.id, edit.order_id))
-        const [summary] = await db.select().from(orderSummary).where(eq(orderSummary.order_id, edit.order_id)).limit(1)
-        if (summary) {
-          await db.update(orderSummary).set({ version: sql`version + 1`, totals: { ...(summary.totals as Record<string, unknown> ?? {}), version: edit.version + 1 } }).where(eq(orderSummary.id, summary.id))
-        }
-      },
-      async () => {
-        if (appliedLineItemIds.length > 0) {
-          await db.delete(orderItem).where(and(eq(orderItem.order_id, edit.order_id), inArray(orderItem.item_id, appliedLineItemIds)))
-          for (const lid of appliedLineItemIds) { await db.delete(orderLineItem).where(eq(orderLineItem.id, lid)) }
-        }
-      },
-    )
-    return loadEdit(editId).then(r => ({ order_edit: r.order_change }))
+      }
+      await tx
+        .update(orderChange)
+        .set({
+          status: "confirmed",
+          confirmed_at: sql`now()`,
+          confirmed_by: "admin",
+        })
+        .where(eq(orderChange.id, editId))
+      await tx
+        .update(order)
+        .set({ version: sql`version + 1`, updated_at: sql`now()` })
+        .where(eq(order.id, edit.order_id))
+      const [summary] = await tx
+        .select()
+        .from(orderSummary)
+        .where(eq(orderSummary.order_id, edit.order_id))
+        .limit(1)
+      if (summary) {
+        await tx
+          .update(orderSummary)
+          .set({
+            version: sql`version + 1`,
+            totals: {
+              ...((summary.totals as Record<string, unknown>) ?? {}),
+              version: edit.version + 1,
+            },
+          })
+          .where(eq(orderSummary.id, summary.id))
+      }
+    })
+
+    await eventBus.emit("order-edit.confirmed", {
+      order_edit_id: editId,
+      order_id: edit.order_id,
+    })
+
+    return loadEdit(editId).then((r) => ({ order_edit: r.order_change }))
   },
 
   /** Cancel the edit and revert all pending actions */
   async cancel(editId: string) {
+    const { edit, actions } = await loadEdit(editId)
+
+    await runInTransaction(async (tx) => {
+      await tx
+        .delete(orderChangeAction)
+        .where(eq(orderChangeAction.order_change_id, editId))
+
+      await tx
+        .update(orderChange)
+        .set({
+          status: "canceled",
+          canceled_at: sql`now()`,
+          canceled_by: "admin",
+        })
+        .where(eq(orderChange.id, editId))
+    })
+
+    if (actions.length > 0) {
+      await eventBus.emit("order-edit.canceled", {
+        order_edit_id: editId,
+        order_id: edit.order_id,
+      })
+    }
+
     const db = getDb()
-    const { actions } = await loadEdit(editId)
-
-    // Delete all actions for this edit
-    await db.delete(orderChangeAction)
-      .where(eq(orderChangeAction.order_change_id, editId))
-
-    const [updated] = await db.update(orderChange).set({
-      status: "canceled",
-      canceled_at: sql`now()`, canceled_by: "admin",
-    }).where(eq(orderChange.id, editId)).returning()
+    const [updated] = await db
+      .select()
+      .from(orderChange)
+      .where(eq(orderChange.id, editId))
+      .limit(1)
 
     if (!updated) throw new HTTPException(404, { message: "Order edit not found" })
     return { order_edit: { ...updated, actions: [] } }

@@ -1,0 +1,123 @@
+# 剩余工作与真实状态审计
+
+> **核实日期**：2026-06-02（P0/P1/P3 实施轮）  
+> **已完成能力矩阵** → [PROJECT_STATUS.md](./PROJECT_STATUS.md)
+
+---
+
+## 1. 快速结论
+
+| 问题 | 答案 |
+|------|------|
+| 能否日常运营？ | **能** |
+| 等价 Medusa v2 全功能？ | **约 65%**（P2 支付/i18n 仍缺） |
+| 测试是否全绿？ | **是** — 19 文件 / 159 条（2026-06-02 实跑） |
+| 最大剩余风险？ | **P2 产品化** + 部分 Admin UI 拷贝层 TODO + server `tsc` 历史债 |
+
+---
+
+## 2. 本轮已完成（2026-06-02）
+
+### P0 — 事务与回滚
+
+| 项 | 状态 |
+|----|:----:|
+| `lib/transaction.ts` → `runInTransaction()` | ✅ |
+| `cart.applyPromo` / `removePromo` | ✅ 事务 |
+| `order.create` / `cancel` | ✅ 事务 |
+| `fulfillment.cancel` | ✅ 事务 |
+| `return.addReturnItems` / `receive` | ✅ 事务 |
+| `order-edit.confirm` / `cancel` | ✅ 事务 |
+| `product-import.confirm` | ✅ 事务 |
+| `order.requestTransfer` | ✅ `dispatchRollback` |
+| `order.addLineItem` | ✅ 事务 |
+| Workflow 8 条 | ✅ 已接线（维持） |
+
+### P1 — 业务深度
+
+| 项 | 状态 |
+|----|:----:|
+| `return.receive` 404 + 完整 `getById` 响应 | ✅ |
+| `return.received` 事件 | ✅ |
+| `order-edit.*` 事件 | ✅ requested/confirmed/canceled |
+| 订单导出分页（500/批） | ✅ |
+| `POST /admin/orders/:id/notes` | ✅ metadata.admin_notes |
+| Admin 通知路由 → `notification.service` + resend | ✅ |
+| claim/exchange shipping → action 表 | 🟡 仍部分 metadata（低优先） |
+
+### P3 — fields
+
+| 项 | 状态 |
+|----|:----:|
+| `GET /admin/orders/:id?fields=` | ✅ |
+| `GET /admin/products/:id?fields=` | ✅（原有） |
+
+### C 端（非 P2）
+
+| 项 | 状态 |
+|----|:----:|
+| Vercel / Docker / CI | ✅（前序已落地） |
+
+---
+
+## 3. 仍待办 — 仅 P2 与可选
+
+### P2 — 明确排除本轮（用户要求跳过）
+
+| 项 | 状态 |
+|----|:----:|
+| Stripe / 真实支付 | ❌ |
+| i18n 多语言 | ❌ |
+| `<dialog>` 购物车抽屉 | ❌ |
+| View Transitions | ❌ |
+| Cloudflare adapter | ❌ |
+| All-in-One 静态托管 | ❌ |
+
+### P2 边缘（通知深化，非阻塞）
+
+| 项 | 状态 |
+|----|:----:|
+| SMS / Webhook 通知渠道 | ❌ |
+| Handlebars 模板引擎 | ❌ |
+| RMA 专用邮件模板 | ❌ |
+
+### P3 — 可选质量
+
+| 项 | 状态 |
+|----|:----:|
+| `@ts-nocheck` ~250（admin 拷贝层） | 🟡 |
+| Store API `fields` 支持 | ❌ |
+| `apps/server` 全量 `tsc --noEmit` 零错 | 🟡 有历史 TS 债 |
+| Vitest Loader（storefront） | ❌ 可选 |
+
+### Admin UI（Medusa 拷贝 TODO，API 已通）
+
+- 履约状态筛选、Claim confirm UI、换货 outbound 表单等 — 需逐页改 React，非本轮范围
+
+---
+
+## 4. 勿再使用的过期文档
+
+| 文档 | 改用 |
+|------|------|
+| `11-feature-tracker.mdx` | PROJECT_STATUS |
+| `00-agent-handoff.md` §9 | 本文 |
+| `ecommerce-c-end/adoption-matrix.md` 搜索 ❌ | 已修正为 ✅ |
+
+---
+
+## 5. 维护约定
+
+| 动作 | 更新 |
+|------|------|
+| 新 API | PROJECT_STATUS §API 矩阵 |
+| C 端 | `ecommerce-c-end/implementation-status.md` |
+| 完成 P2 项 | 从本文 §3 删除 |
+
+---
+
+## 6. 相关索引
+
+- [workflow-plan.md](./workflow-plan.md)
+- [13-architecture-conflicts.mdx](./13-architecture-conflicts.mdx)
+- [ecommerce-c-end/implementation-status.md](./ecommerce-c-end/implementation-status.md)

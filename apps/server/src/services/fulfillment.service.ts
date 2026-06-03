@@ -18,9 +18,11 @@ import type {
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 import { sendFulfillmentCreatedEmail, sendShipmentEmail, sendOrderDeliveredEmail } from "../lib/mail"
+import { notificationService } from "./notification.service"
 import { eventBus } from "../lib/events"
 import { fulfillmentCreateWorkflow } from "../workflows/fulfillment-create"
 import { fulfillmentShipWorkflow } from "../workflows/fulfillment-ship"
+import { runInTransaction } from "../lib/transaction"
 
 export const fulfillmentService = {
   async listByOrder(orderId: string, query: ListFulfillmentsQuery = { limit: 50, offset: 0 }) {
@@ -109,34 +111,36 @@ export const fulfillmentService = {
       throw new HTTPException(400, { message: "Cannot cancel a fulfillment that has already been shipped" })
     }
 
-    // Cancel the fulfillment
-    await db
-      .update(fulfillment)
-      .set({
-        canceled_at: sql`now()`,
-        data: f.data,
-      })
-      .where(eq(fulfillment.id, fulfillmentId))
+    await runInTransaction(async (tx) => {
+      await tx
+        .update(fulfillment)
+        .set({
+          canceled_at: sql`now()`,
+          data: f.data,
+        })
+        .where(eq(fulfillment.id, fulfillmentId))
 
-    // Revert fulfilled_quantity on order items
-    const fItems = await db
-      .select()
-      .from(fulfillmentItem)
-      .where(eq(fulfillmentItem.fulfillment_id, fulfillmentId))
+      const fItems = await tx
+        .select()
+        .from(fulfillmentItem)
+        .where(eq(fulfillmentItem.fulfillment_id, fulfillmentId))
 
-    for (const fi of fItems) {
-      if (fi.line_item_id) {
-        await db
-          .update(orderItem)
-          .set({
-            fulfilled_quantity: sql`GREATEST(COALESCE(fulfilled_quantity::numeric, 0) - ${fi.quantity}::numeric, 0)`,
-          })
-          .where(and(
-            eq(orderItem.item_id, fi.line_item_id),
-            eq(orderItem.order_id, orderId),
-          ))
+      for (const fi of fItems) {
+        if (fi.line_item_id) {
+          await tx
+            .update(orderItem)
+            .set({
+              fulfilled_quantity: sql`GREATEST(COALESCE(fulfilled_quantity::numeric, 0) - ${fi.quantity}::numeric, 0)`,
+            })
+            .where(
+              and(
+                eq(orderItem.item_id, fi.line_item_id),
+                eq(orderItem.order_id, orderId),
+              ),
+            )
+        }
       }
-    }
+    })
 
     return { fulfillment: { id: fulfillmentId, canceled_at: new Date().toISOString() } }
   },

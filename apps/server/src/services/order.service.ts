@@ -26,6 +26,7 @@ import type {
 import { HTTPException } from "hono/http-exception"
 import { sendOrderCanceledEmail } from "../lib/mail"
 import { dispatchRollbackProcess } from "../lib/rollback"
+import { runInTransaction } from "../lib/transaction"
 import { notificationService } from "./notification.service"
 import {
   DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
@@ -164,47 +165,68 @@ export const orderService = {
   },
 
   async create(input: CreateOrderInput) {
-    const db = getDb()
     const id = generateId("order")
 
-    // Write addresses to order_address table
-    let shippingAddrId: string | null = null
-    let billingAddrId: string | null = null
-    if (input.shipping_address) {
-      shippingAddrId = generateId("ordaddr")
-      await db.insert(orderAddress).values({
-        id: shippingAddrId,
-        ...input.shipping_address,
-        metadata: input.shipping_address.metadata ?? null,
-      })
-    }
-    if (input.billing_address) {
-      billingAddrId = generateId("ordaddr")
-      await db.insert(orderAddress).values({
-        id: billingAddrId,
-        ...input.billing_address,
-        metadata: input.billing_address.metadata ?? null,
-      })
-    }
+    const created = await runInTransaction(async (tx) => {
+      let shippingAddrId: string | null = null
+      let billingAddrId: string | null = null
+      if (input.shipping_address) {
+        shippingAddrId = generateId("ordaddr")
+        await tx.insert(orderAddress).values({
+          id: shippingAddrId,
+          ...input.shipping_address,
+          metadata: input.shipping_address.metadata ?? null,
+        })
+      }
+      if (input.billing_address) {
+        billingAddrId = generateId("ordaddr")
+        await tx.insert(orderAddress).values({
+          id: billingAddrId,
+          ...input.billing_address,
+          metadata: input.billing_address.metadata ?? null,
+        })
+      }
 
-    const [created] = await db
-      .insert(order)
-      .values({
-        id,
-        region_id: input.region_id ?? null,
-        customer_id: input.customer_id ?? null,
-        sales_channel_id: input.sales_channel_id ?? null,
-        email: input.email ?? null,
-        currency_code: input.currency_code ?? "USD",
-        shipping_address_id: shippingAddrId,
-        billing_address_id: billingAddrId,
-        metadata: input.metadata ?? null,
-        created_at: sql`now()`,
-        updated_at: sql`now()`,
-      })
-      .returning()
+      const [row] = await tx
+        .insert(order)
+        .values({
+          id,
+          region_id: input.region_id ?? null,
+          customer_id: input.customer_id ?? null,
+          sales_channel_id: input.sales_channel_id ?? null,
+          email: input.email ?? null,
+          currency_code: input.currency_code ?? "USD",
+          shipping_address_id: shippingAddrId,
+          billing_address_id: billingAddrId,
+          metadata: input.metadata ?? null,
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+        .returning()
+
+      return row
+    })
 
     return { order: created }
+  },
+
+  async addNote(orderId: string, value: string) {
+    const { order: ord } = await this.getById(orderId)
+    const meta = {
+      ...(((ord as { metadata?: unknown }).metadata as Record<string, unknown>) ??
+        {}),
+    }
+    const notes = Array.isArray(meta.admin_notes)
+      ? [...(meta.admin_notes as object[])]
+      : []
+    notes.push({
+      id: generateId("note"),
+      value,
+      created_at: new Date().toISOString(),
+      created_by: "admin",
+    })
+    meta.admin_notes = notes
+    return this.update(orderId, { metadata: meta })
   },
 
   async update(id: string, input: UpdateOrderInput) {
@@ -265,20 +287,22 @@ export const orderService = {
   },
 
   async cancel(id: string) {
-    const db = getDb()
-    const [updated] = await db
-      .update(order)
-      .set({
-        status: "canceled",
-        canceled_at: sql`now()`,
-        updated_at: sql`now()`,
-      })
-      .where(and(eq(order.id, id), isNull(order.deleted_at)))
-      .returning()
+    const updated = await runInTransaction(async (tx) => {
+      const [row] = await tx
+        .update(order)
+        .set({
+          status: "canceled",
+          canceled_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+        .where(and(eq(order.id, id), isNull(order.deleted_at)))
+        .returning()
 
-    if (!updated) {
-      throw new HTTPException(404, { message: "Order not found" })
-    }
+      if (!row) {
+        throw new HTTPException(404, { message: "Order not found" })
+      }
+      return row
+    })
 
     // Send cancellation email (fire-and-forget)
     if (!updated.no_notification && updated.email) {
@@ -411,28 +435,41 @@ export const orderService = {
       throw new HTTPException(404, { message: "Order not found" })
     }
 
-    // Create an order change with type "transfer"
     const changeId = generateId("ordch")
-    await db
-      .insert(orderChange)
-      .values({
-        id: changeId,
-        order_id: orderId,
-        version: (ord.version ?? 1) + 1,
-        change_type: "transfer",
-        description: input.description ?? `Transfer to customer ${input.customer_id}`,
-        internal_note: input.internal_note ?? null,
-        created_by: "admin",
-      })
+    await dispatchRollbackProcess(
+      async () => {
+        await db.insert(orderChange).values({
+          id: changeId,
+          order_id: orderId,
+          version: (ord.version ?? 1) + 1,
+          change_type: "transfer",
+          description:
+            input.description ??
+            `Transfer to customer ${input.customer_id}`,
+          internal_note: input.internal_note ?? null,
+          created_by: "admin",
+        })
 
-    // Store the target customer in metadata
-    await db
-      .update(order)
-      .set({
-        metadata: { ...(ord.metadata as Record<string, unknown> ?? {}), transfer_customer_id: input.customer_id },
-        updated_at: sql`now()`,
-      })
-      .where(eq(order.id, orderId))
+        const [updated] = await db
+          .update(order)
+          .set({
+            metadata: {
+              ...((ord.metadata as Record<string, unknown>) ?? {}),
+              transfer_customer_id: input.customer_id,
+            },
+            updated_at: sql`now()`,
+          })
+          .where(eq(order.id, orderId))
+          .returning()
+
+        if (!updated) {
+          throw new HTTPException(404, { message: "Order not found" })
+        }
+      },
+      async () => {
+        await db.delete(orderChange).where(eq(orderChange.id, changeId))
+      },
+    )
 
     return this.getById(orderId)
   },
@@ -638,39 +675,44 @@ export const orderService = {
   },
 
   async addLineItem(orderId: string, input: import("@my-store/validators").AddLineItemToOrderInput) {
-    const db = getDb()
     const lineItemId = generateId("olitm")
     const orderItemId = generateId("orditm")
 
-    await db.insert(orderLineItem).values({
-      id: lineItemId,
-      title: "",
-      variant_id: input.variant_id ?? null,
-      product_id: null,
-      requires_shipping: true,
-      is_giftcard: false,
-      is_discountable: true,
-      is_tax_inclusive: false,
-      unit_price: input.unit_price ? String(input.unit_price) : null,
-      raw_unit_price: input.unit_price ? { amount: input.unit_price, precision: 2 } : null,
-    })
+    await runInTransaction(async (tx) => {
+      await tx.insert(orderLineItem).values({
+        id: lineItemId,
+        title: "",
+        variant_id: input.variant_id ?? null,
+        product_id: null,
+        requires_shipping: true,
+        is_giftcard: false,
+        is_discountable: true,
+        is_tax_inclusive: false,
+        unit_price: input.unit_price ? String(input.unit_price) : null,
+        raw_unit_price: input.unit_price
+          ? { amount: input.unit_price, precision: 2 }
+          : null,
+      })
 
-    await db.insert(orderItem).values({
-      id: orderItemId,
-      version: 1,
-      order_id: orderId,
-      item_id: lineItemId,
-      quantity: String(input.quantity),
-      raw_quantity: { amount: input.quantity, precision: 0 },
-      unit_price: input.unit_price ? String(input.unit_price) : null,
-      raw_unit_price: input.unit_price ? { amount: input.unit_price, precision: 2 } : null,
-      fulfilled_quantity: "0",
-      shipped_quantity: "0",
-      delivered_quantity: "0",
-      return_requested_quantity: "0",
-      return_received_quantity: "0",
-      return_dismissed_quantity: "0",
-      written_off_quantity: "0",
+      await tx.insert(orderItem).values({
+        id: orderItemId,
+        version: 1,
+        order_id: orderId,
+        item_id: lineItemId,
+        quantity: String(input.quantity),
+        raw_quantity: { amount: input.quantity, precision: 0 },
+        unit_price: input.unit_price ? String(input.unit_price) : null,
+        raw_unit_price: input.unit_price
+          ? { amount: input.unit_price, precision: 2 }
+          : null,
+        fulfilled_quantity: "0",
+        shipped_quantity: "0",
+        delivered_quantity: "0",
+        return_requested_quantity: "0",
+        return_received_quantity: "0",
+        return_dismissed_quantity: "0",
+        written_off_quantity: "0",
+      })
     })
 
     return { line_item: { id: lineItemId, order_item_id: orderItemId } }
@@ -747,46 +789,68 @@ export const orderService = {
     return { order: { id: orderId, metadata: meta } }
   },
 
-  async exportOrders() {
+  async exportOrders(options?: { page_size?: number }) {
     const db = getDb()
-    const rows = await db
-      .select()
-      .from(order)
-      .where(and(isNull(order.deleted_at), eq(order.is_draft_order, false)))
-      .orderBy(desc(order.created_at))
-      .limit(9999)
-
-    const orderIds = rows.map((r) => r.id)
-    const summaries =
-      orderIds.length > 0
-        ? await db.select().from(orderSummary).where(inArray(orderSummary.order_id, orderIds))
-        : []
-    const summaryByOrder = new Map(summaries.map((s) => [s.order_id, s]))
-
-    const csvRows = rows.map((o) => {
-      const sum = summaryByOrder.get(o.id)
-      const totals = (sum?.totals as Record<string, unknown> | null | undefined) ?? {}
-      const total = totals.total ?? totals.grand_total ?? totals.original_total ?? ""
-      return [
-        o.id,
-        String(o.display_id ?? ""),
-        o.email ?? "",
-        o.status ?? "",
-        o.currency_code ?? "",
-        String(total),
-        o.created_at ? new Date(o.created_at as string | Date).toISOString() : "",
-      ]
-    })
-
-    await mkdir(EXPORT_DIR, { recursive: true })
+    const pageSize = Math.min(Math.max(options?.page_size ?? 500, 50), 1000)
     const transactionId = generateId("oexp")
     const filename = `${transactionId}.csv`
-    await writeFile(path.join(EXPORT_DIR, filename), toCsv(ORDER_EXPORT_HEADERS, csvRows), "utf-8")
+    const csvRows: string[][] = []
+
+    let offset = 0
+    for (;;) {
+      const batch = await db
+        .select()
+        .from(order)
+        .where(and(isNull(order.deleted_at), eq(order.is_draft_order, false)))
+        .orderBy(desc(order.created_at))
+        .limit(pageSize)
+        .offset(offset)
+
+      if (batch.length === 0) break
+
+      const orderIds = batch.map((r) => r.id)
+      const summaries =
+        orderIds.length > 0
+          ? await db
+              .select()
+              .from(orderSummary)
+              .where(inArray(orderSummary.order_id, orderIds))
+          : []
+      const summaryByOrder = new Map(summaries.map((s) => [s.order_id, s]))
+
+      for (const o of batch) {
+        const sum = summaryByOrder.get(o.id)
+        const totals = (sum?.totals as Record<string, unknown> | null | undefined) ?? {}
+        const total = totals.total ?? totals.grand_total ?? totals.original_total ?? ""
+        csvRows.push([
+          o.id,
+          String(o.display_id ?? ""),
+          o.email ?? "",
+          o.status ?? "",
+          o.currency_code ?? "",
+          String(total),
+          o.created_at
+            ? new Date(o.created_at as string | Date).toISOString()
+            : "",
+        ])
+      }
+
+      offset += batch.length
+      if (batch.length < pageSize) break
+    }
+
+    await mkdir(EXPORT_DIR, { recursive: true })
+    await writeFile(
+      path.join(EXPORT_DIR, filename),
+      toCsv(ORDER_EXPORT_HEADERS, csvRows),
+      "utf-8",
+    )
 
     return {
       transaction_id: transactionId,
       url: `/exports/${filename}`,
       count: csvRows.length,
+      page_size: pageSize,
     }
   },
 }

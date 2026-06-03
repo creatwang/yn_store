@@ -45,7 +45,22 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
   .get("/:id", async (c) => {
-    const result = await orderService.getById(c.req.param("id"))
+    const fields = c.req.query("fields")
+    const result = await orderService.getById(
+      c.req.param("id"),
+      false,
+      undefined,
+      fields,
+    )
+    return c.json(result)
+  })
+  .post("/:id/notes", async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    const value = typeof body?.value === "string" ? body.value.trim() : ""
+    if (!value) {
+      return c.json({ message: "备注内容不能为空" }, 400)
+    }
+    const result = await orderService.addNote(c.req.param("id"), value)
     return c.json(result)
   })
   .post("/", zValidator("json", createOrderSchema), async (c) => {

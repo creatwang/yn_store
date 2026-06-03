@@ -7,7 +7,7 @@ import {
   categoryService, collectionService, customerGroupService, priceListService, taxRateService,
   inventoryItemService, reservationService, stockLocationService,
   shippingProfileService, shippingOptionTypeService, currencyService,
-  promotionService, campaignService, apiKeyService, notificationService,
+  promotionService, campaignService, apiKeyService,
   workflowExecutionService, shippingOptionService, pricePreferenceService,
   propertyLabelService,
   paymentCollectionService,
@@ -15,6 +15,7 @@ import {
   fulfillmentProviderService,
 } from "../../services/batch.service"
 import { serviceZoneService } from "../../services/service-zone.service"
+import { notificationService } from "../../services/notification.service"
 
 // 通用路由工厂
 function crudRoutes(entity: string, svc: any) {
@@ -159,6 +160,10 @@ export const adminNotifications = new Hono<{ Variables: AuthVariables }>()
   })
   .get("/:id", async (c) => {
     const result = await notificationService.getById(c.req.param("id"))
+    return c.json(result)
+  })
+  .post("/:id/resend", async (c) => {
+    const result = await notificationService.resend(c.req.param("id"))
     return c.json(result)
   })
 export const adminWorkflowExecutions = new Hono<{ Variables: AuthVariables }>()

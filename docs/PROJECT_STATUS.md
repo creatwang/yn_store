@@ -1,7 +1,8 @@
 # 项目状态 — 单一事实来源
 
-> **代码核实日期**：2026-06-01
+> **代码核实日期**：2026-06-02
 > **切勿信任本文档之外的旧状态**（14/15/16 已合并入本文，勿再看）。
+> **剩余工作与过期文档清单** → [REMAINING-WORK.md](./REMAINING-WORK.md)
 
 ---
 
@@ -21,8 +22,9 @@
 | **订单模块** | ~88% | DTO + 履约 + 退款 + 退货 + 换货 + 索赔 |
 | **产品模块** | ~85% | CRUD + 变体 + 媒体 + 价格 + 库存 + CSV 导入导出 |
 | **库存/仓库** | ~80% | batch level + Locations + service zones |
-| **Storefront** | ~65% | 见 `ecommerce-c-end/implementation-status.md` |
-| **自动化测试** | 16 文件 / 106 条 全绿 | `pnpm --filter=@my-store/server test` |
+| **Storefront** | ~70% | 见 `ecommerce-c-end/implementation-status.md` |
+| **事务/回滚（P0）** | ✅ 核心路径 | `lib/transaction.ts` + 多 service |
+| **自动化测试** | 19 文件 / 159 条 全绿（2026-06-02 实跑） | `pnpm --filter=@my-store/server test` |
 | **client.ts** | 100% 零 noop | 所有 hooks ↔ client 方法对齐 |
 
 ---
@@ -125,7 +127,9 @@
 
 **已实现**：Hybrid SSG/SSR、Content Loader、Image/Picture、Nano Stores、CartBadge、PDP 价/库存注水、购物车+结算+登录/注册、middleware、cookie auth、搜索、sitemap/JSON-LD、Playwright E2E、Docker/Vercel/CI 部署。
 
-**未实现**：Stripe 支付、i18n 多语言、View Transitions、`<dialog>` 购物车抽屉。
+**未实现（P2）**：Stripe 支付、i18n、View Transitions、`<dialog>` 抽屉、Cloudflare adapter。
+
+**本轮 server 增强**：`runInTransaction`、订单 `?fields=`、分页导出、订单备注 API、`return.received` / `order-edit.*` 事件、通知 list/resend 接 `notification.service`。
 
 ---
 

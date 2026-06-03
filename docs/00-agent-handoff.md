@@ -56,6 +56,7 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 |---|------|------|
 | 1 | `docs/00-agent-handoff.md` | 本文件：全局约束与流程 |
 | 2 | `docs/PROJECT_STATUS.md` | **权威状态**：API 矩阵、测试覆盖、完成度 |
+| 2b | `docs/REMAINING-WORK.md` | **剩余工作**：未办项、过期文档、P0~P3 优先级（2026-06-02 审计） |
 | 3 | `docs/01-database-schema.mdx` | 表与字段 |
 | 4 | `docs/02-api-endpoints.mdx` | 全量路由；实现时对齐 **MVP** 节再扩展 |
 | 5 | `docs/03-business-workflows.mdx` | 购物车→订单等流程 |
@@ -163,9 +164,7 @@ pnpm run copy:dashboard-ui
 
 ## 9. 当前已实现 vs 待办（接手时自检）
 
-**已实现（骨架级）**：`GET /api/health`；`POST /api/auth/user/emailpass`、`/api/auth/token/refresh`、`GET /api/auth/session`；`GET|POST /api/admin/products*`；`GET /api/store/products*`；Admin 登录/商品页；Store 首页与详情。
-
-**待办**：其余 `docs/02` 模块；`workflows/`；`packages/db` 全表映射；生产静态托管；Cloudflare `wrangler.toml`（若需要）。
+> **本节已过期（2026-05 骨架期）**。请以 [PROJECT_STATUS.md](./PROJECT_STATUS.md)（已完成）与 [REMAINING-WORK.md](./REMAINING-WORK.md)（未完成 + 过期文档）为准。
 
 ---
 

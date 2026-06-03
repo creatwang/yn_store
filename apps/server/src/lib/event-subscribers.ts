@@ -47,4 +47,28 @@ export function registerSubscribers() {
   eventBus.on("exchange.created", async ({ exchange_id, order_id }) => {
     console.log("[event] exchange.created:", exchange_id, "order:", order_id)
   })
+
+  eventBus.on("return.received", async ({ return_id, order_id }) => {
+    console.log("[event] return.received:", return_id, "order:", order_id)
+  })
+
+  eventBus.on("claim.completed", async ({ claim_id, order_id }) => {
+    console.log("[event] claim.completed:", claim_id, "order:", order_id)
+  })
+
+  eventBus.on("exchange.completed", async ({ exchange_id, order_id }) => {
+    console.log("[event] exchange.completed:", exchange_id, "order:", order_id)
+  })
+
+  eventBus.on("order-edit.requested", async ({ order_edit_id, order_id }) => {
+    console.log("[event] order-edit.requested:", order_edit_id, "order:", order_id)
+  })
+
+  eventBus.on("order-edit.confirmed", async ({ order_edit_id, order_id }) => {
+    console.log("[event] order-edit.confirmed:", order_edit_id, "order:", order_id)
+  })
+
+  eventBus.on("order-edit.canceled", async ({ order_edit_id, order_id }) => {
+    console.log("[event] order-edit.canceled:", order_edit_id, "order:", order_id)
+  })
 }

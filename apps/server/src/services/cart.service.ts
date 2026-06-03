@@ -24,6 +24,7 @@ import { sendOrderConfirmationEmail } from "../lib/mail"
 import { eventBus } from "../lib/events"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
+import { runInTransaction } from "../lib/transaction"
 
 export const cartService = {
   async create(input: CreateCartInput) {
@@ -244,7 +245,9 @@ export const cartService = {
     if (!appMethod || !appMethod.type) {
       const ruleType = String(meta.application_type ?? "percentage")
       const ruleValue = Number(meta.value ?? 10)
-      return this._applyDiscount(db, cartId, promo, items, ruleType, ruleValue)
+      return runInTransaction((tx) =>
+        this._applyDiscount(tx, cartId, promo, items, ruleType, ruleValue),
+      )
     }
 
     const discountType = appMethod.type // "fixed" | "percentage"
@@ -280,7 +283,9 @@ export const cartService = {
       return { promotion: { id: promo.id, code: promo.code, type: promo.type }, discount_total: 0 }
     }
 
-    return this._applyDiscount(db, cartId, promo, items, discountType, discountValue, maxQty, allocation)
+    return runInTransaction((tx) =>
+      this._applyDiscount(tx, cartId, promo, items, discountType, discountValue, maxQty, allocation),
+    )
   },
 
   /** Internal: apply discount amount to cart line items */
@@ -416,24 +421,24 @@ export const cartService = {
 
   /** Remove a promo code from the cart. */
   async removePromo(cartId: string, code: string) {
-    const db = getDb()
-    // Delete adjustments linked to this code and cart
-    const items = await db
-      .select({ id: cartLineItem.id })
-      .from(cartLineItem)
-      .where(and(eq(cartLineItem.cart_id, cartId), isNull(cartLineItem.deleted_at)))
-    const itemIds = items.map((i) => i.id)
+    await runInTransaction(async (tx) => {
+      const items = await tx
+        .select({ id: cartLineItem.id })
+        .from(cartLineItem)
+        .where(and(eq(cartLineItem.cart_id, cartId), isNull(cartLineItem.deleted_at)))
+      const itemIds = items.map((i) => i.id)
 
-    if (itemIds.length > 0) {
-      await db
-        .delete(cartLineItemAdjustment)
-        .where(
-          and(
-            eq(cartLineItemAdjustment.code, code),
-            inArray(cartLineItemAdjustment.item_id, itemIds),
+      if (itemIds.length > 0) {
+        await tx
+          .delete(cartLineItemAdjustment)
+          .where(
+            and(
+              eq(cartLineItemAdjustment.code, code),
+              inArray(cartLineItemAdjustment.item_id, itemIds),
+            ),
           )
-        )
-    }
+      }
+    })
 
     return { success: true }
   },

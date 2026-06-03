@@ -5,6 +5,7 @@
 | 文档 | 说明 |
 |------|------|
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | **项目状态 — 代码核实的单一事实来源**（API 矩阵、测试覆盖、技术债） |
+| [REMAINING-WORK.md](REMAINING-WORK.md) | **剩余工作与缺口审计**（P0~P3、过期文档、测试实跑结果） |
 | [00-agent-handoff.md](00-agent-handoff.md) | 项目目标、目录结构、开发规则、命令 |
 | [QUICKSTART.md](QUICKSTART.md) | **5 分钟快速启动**：clone 后第一步跑什么 |
 

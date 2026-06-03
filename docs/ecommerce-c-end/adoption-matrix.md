@@ -19,8 +19,8 @@
 | 注册 | `/register` | `POST /store/customers/register` | 同上 |
 | 账户/订单 | `/account` | `GET /store/orders` | Bearer + script |
 | Header 角标 | 全站 | cart count | **CartBadge** + **CartCountInit** + nanostores |
-| 搜索 | — | — | ❌ 无 |
-| i18n | — | — | ❌ 硬编码中文 |
+| 搜索 | `/search` | SSR `?q=` | ✅ `search.astro` |
+| i18n | — | — | ❌ 硬编码中文（P2） |
 
 > 详细进度：[implementation-status.md](implementation-status.md)
 
