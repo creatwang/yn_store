@@ -107,8 +107,9 @@ export function formatDbError(err: unknown): string {
         err.message.includes("Connection terminated")))
   ) {
     return (
-      "数据库连接中断或超时（常见于 Supabase 连接池被打满）。请稍后重试；" +
-      "开发环境请保持单实例 server、DB_POOL_MAX≤4，或改用 Transaction pooler URL。"
+      "数据库连接中断或超时（可能被 Supabase 断开，或与 Session 池打满有关）。" +
+      "单例只保证每个 Node 进程一个池，无法跨 dev/vitest/多终端共享限额。" +
+      "请保持单实例 server、勿同时跑 vitest，Session pooler(:5432) 建议 DB_POOL_MAX=2，或改用 :6543 Transaction pooler。"
     )
   }
 

@@ -8,9 +8,49 @@ import { eventBus } from "../lib/events"
 import { runInTransaction } from "../lib/transaction"
 import { notificationService } from "./notification.service"
 import { sendOrderUpdatedEmail } from "../lib/mail"
+import { loadActionsGroupedByChangeId } from "../lib/order-change-actions-batch"
 import { buildAdminOrderPreview } from "./order/admin-order-preview"
+import { variantService } from "./variant.service"
 
 // ── helpers ─────────────────────────────────────────────────
+
+function moneyRaw(amount: number) {
+  return { amount, precision: 2 }
+}
+
+async function variantSnapshotForItemAdd(variantId: string) {
+  let title = "Item"
+  let productId: string | null = null
+  let variantSku: string | null = null
+  let variantTitle: string | null = null
+  let thumbnail: string | null = null
+
+  try {
+    const variant = await variantService.getVariantById(variantId)
+    title = variant.title?.trim() || title
+    productId = variant.product_id ?? null
+    variantSku = variant.sku ?? null
+    variantTitle = variant.title ?? null
+    thumbnail = variant.thumbnail ?? null
+  } catch {
+    /* variant 可能已删，仍写入 variant_id */
+  }
+
+  return { title, productId, variantSku, variantTitle, thumbnail }
+}
+
+function resolveItemUnitPrice(
+  action: typeof orderChangeAction.$inferSelect,
+  details: Record<string, unknown>,
+) {
+  if (action.amount != null && action.amount !== "") {
+    return Number(action.amount)
+  }
+  if (details.unit_price != null && Number.isFinite(Number(details.unit_price))) {
+    return Number(details.unit_price)
+  }
+  return 0
+}
 
 function findAction(editId: string, actionId: string) {
   const db = getDb()
@@ -52,9 +92,13 @@ export const orderEditService = {
       .where(and(eq(orderChange.order_id, orderId), eq(orderChange.change_type, "edit")))
       .orderBy(desc(orderChange.created_at))
 
-    const result = await Promise.all(edits.map(async (edit) => {
-      const actions = await listActions(edit.id)
-      return { ...edit, actions }
+    const actionsByEdit = await loadActionsGroupedByChangeId(
+      db,
+      edits.map((e) => e.id),
+    )
+    const result = edits.map((edit) => ({
+      ...edit,
+      actions: actionsByEdit.get(edit.id) ?? [],
     }))
     return { order_edits: result }
   },
@@ -289,46 +333,88 @@ export const orderEditService = {
     return loadEdit(editId).then((r) => ({ order_edit: r.order_change }))
   },
 
-  /** Confirm & apply all pending actions */
+  /** Confirm & apply all pending actions（对齐官方 confirmOrderEditRequestWorkflow） */
   async confirm(editId: string) {
     const db = getDb()
     const { edit, actions } = await loadEdit(editId)
-    if (actions.length === 0) throw new HTTPException(400, { message: 'No changes to confirm' })
+    if (actions.length === 0) {
+      throw new HTTPException(400, { message: "No changes to confirm" })
+    }
+    if (edit.confirmed_at) {
+      throw new HTTPException(400, { message: "Order edit already confirmed" })
+    }
+
+    const [ord] = await db
+      .select({ version: order.version })
+      .from(order)
+      .where(eq(order.id, edit.order_id))
+      .limit(1)
+    if (!ord) {
+      throw new HTTPException(404, { message: "Order not found" })
+    }
+
+    const currentOrderVersion = ord.version ?? 1
+    const targetOrderVersion = edit.version
+
+    const variantSnapshots = new Map<string, Awaited<ReturnType<typeof variantSnapshotForItemAdd>>>()
+    for (const action of actions) {
+      if (action.action !== "ITEM_ADD" || action.reference === "order_line_item") {
+        continue
+      }
+      const variantId = action.reference_id
+      if (!variantId || variantSnapshots.has(variantId)) continue
+      variantSnapshots.set(variantId, await variantSnapshotForItemAdd(variantId))
+    }
 
     await runInTransaction(async (tx) => {
       for (const action of actions) {
         switch (action.action) {
           case "ITEM_ADD": {
+            if (action.reference === "order_line_item") {
+              break
+            }
+            const variantId = action.reference_id
+            if (!variantId) break
+
             const details = (action.details ?? {}) as Record<string, unknown>
             const qty = Number(details.quantity ?? 1)
-            const unitPrice = action.amount ?? null
+            const unitPrice = resolveItemUnitPrice(action, details)
+            const snap = variantSnapshots.get(variantId) ?? {
+              title: "Item",
+              productId: null,
+              variantSku: null,
+              variantTitle: null,
+              thumbnail: null,
+            }
             const lineItemId = generateId("olitm")
+            const orderItemId = generateId("orditm")
+            const rawUnit = moneyRaw(unitPrice)
+
             await tx.insert(orderLineItem).values({
               id: lineItemId,
-              title: "",
-              variant_id: action.reference_id ?? null,
+              title: snap.title,
+              variant_id: variantId,
+              product_id: snap.productId,
+              variant_sku: snap.variantSku,
+              variant_title: snap.variantTitle,
+              thumbnail: snap.thumbnail,
               requires_shipping: true,
               is_giftcard: false,
               is_discountable: true,
               is_tax_inclusive: false,
-              unit_price: unitPrice,
-              raw_unit_price: unitPrice
-                ? { value: unitPrice, precision: 20 }
-                : null,
-              created_at: sql`now()`,
-              updated_at: sql`now()`,
+              is_custom_price: unitPrice > 0 && details.unit_price != null,
+              unit_price: String(unitPrice),
+              raw_unit_price: rawUnit,
             })
             await tx.insert(orderItem).values({
-              id: generateId("ordit"),
-              version: edit.version + 1,
+              id: orderItemId,
+              version: targetOrderVersion,
               order_id: edit.order_id,
               item_id: lineItemId,
               quantity: String(qty),
-              raw_quantity: { value: String(qty), precision: 20 },
-              unit_price: unitPrice,
-              raw_unit_price: unitPrice
-                ? { value: unitPrice, precision: 20 }
-                : null,
+              raw_quantity: moneyRaw(qty),
+              unit_price: String(unitPrice),
+              raw_unit_price: rawUnit,
               fulfilled_quantity: "0",
               shipped_quantity: "0",
               delivered_quantity: "0",
@@ -343,17 +429,15 @@ export const orderEditService = {
             const details = (action.details ?? {}) as Record<string, unknown>
             const setData: Record<string, unknown> = {}
             if (details.quantity != null) {
-              setData.quantity = String(details.quantity)
-              setData.raw_quantity = {
-                value: String(details.quantity),
-                precision: 20,
-              }
+              const q = Number(details.quantity)
+              setData.quantity = String(q)
+              setData.raw_quantity = moneyRaw(q)
             }
             if (action.amount != null) {
-              setData.unit_price = action.amount
-              setData.raw_unit_price = { value: action.amount, precision: 20 }
+              const p = Number(action.amount)
+              setData.unit_price = String(p)
+              setData.raw_unit_price = moneyRaw(p)
             }
-            setData.updated_at = sql`now()`
             await tx
               .update(orderItem)
               .set(setData)
@@ -361,10 +445,13 @@ export const orderEditService = {
                 and(
                   eq(orderItem.order_id, edit.order_id),
                   eq(orderItem.item_id, action.reference_id!),
+                  eq(orderItem.version, currentOrderVersion),
                 ),
               )
             break
           }
+          default:
+            break
         }
       }
       await tx
@@ -377,7 +464,7 @@ export const orderEditService = {
         .where(eq(orderChange.id, editId))
       await tx
         .update(order)
-        .set({ version: sql`version + 1`, updated_at: sql`now()` })
+        .set({ version: targetOrderVersion, updated_at: sql`now()` })
         .where(eq(order.id, edit.order_id))
       const [summary] = await tx
         .select()
@@ -388,10 +475,10 @@ export const orderEditService = {
         await tx
           .update(orderSummary)
           .set({
-            version: sql`version + 1`,
+            version: targetOrderVersion,
             totals: {
               ...((summary.totals as Record<string, unknown>) ?? {}),
-              version: edit.version + 1,
+              version: targetOrderVersion,
             },
           })
           .where(eq(orderSummary.id, summary.id))
@@ -436,7 +523,7 @@ export const orderEditService = {
       }
     }
 
-    return loadEdit(editId).then((r) => ({ order_edit: r.order_change }))
+    return buildAdminOrderPreview(edit.order_id)
   },
 
   /** Cancel the edit and revert all pending actions */

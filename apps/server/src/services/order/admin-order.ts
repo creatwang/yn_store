@@ -766,25 +766,24 @@ async function loadRelations(
     ? [...new Set(orders.map((o) => o.sales_channel_id).filter((id): id is string => !!id))]
     : []
 
-  const [
-    paymentCollectionsByOrder,
-    fulfillmentsByOrder,
-    summariesByOrder,
-    itemsByOrder,
-    customers,
-    salesChannels,
-  ] = await Promise.all([
-    loadPaymentCollections(db, orderIds),
-    loadFulfillments(db, orderIds),
-    loadSummaries(db, orderIds),
-    loadStatusItems(db, orderIds),
-    customerIds.length
-      ? db.select().from(customer).where(and(inArray(customer.id, customerIds), isNull(customer.deleted_at)))
-      : Promise.resolve([]),
-    salesChannelIds.length
-      ? db.select().from(salesChannel).where(and(inArray(salesChannel.id, salesChannelIds), isNull(salesChannel.deleted_at)))
-      : Promise.resolve([]),
-  ])
+  const paymentCollectionsByOrder = await loadPaymentCollections(db, orderIds)
+  const fulfillmentsByOrder = await loadFulfillments(db, orderIds)
+  const summariesByOrder = await loadSummaries(db, orderIds)
+  const itemsByOrder = await loadStatusItems(db, orderIds)
+  const customers = customerIds.length
+    ? await db
+        .select()
+        .from(customer)
+        .where(and(inArray(customer.id, customerIds), isNull(customer.deleted_at)))
+    : []
+  const salesChannels = salesChannelIds.length
+    ? await db
+        .select()
+        .from(salesChannel)
+        .where(
+          and(inArray(salesChannel.id, salesChannelIds), isNull(salesChannel.deleted_at)),
+        )
+    : []
 
   return {
     paymentCollectionsByOrder,
@@ -982,40 +981,37 @@ async function loadPresentedAdminOrderDetail(
   orderRow: OrderRow,
   fieldConfig: OrderFieldsConfig,
 ) {
-  const [bundle, lineItemRows, shippingRows, shippingAddress, billingAddress, creditLines, promotions, orderRegion] = await Promise.all([
-    loadRelations(db, [orderRow], fieldConfig),
-    loadDetailLineItems(db, orderRow.id),
-    loadDetailShipping(db, orderRow.id),
-    orderRow.shipping_address_id
-      ? db.select().from(orderAddress).where(eq(orderAddress.id, orderRow.shipping_address_id)).limit(1).then(r => r[0] ?? null)
-      : Promise.resolve(null),
-    orderRow.billing_address_id
-      ? db.select().from(orderAddress).where(eq(orderAddress.id, orderRow.billing_address_id)).limit(1).then(r => r[0] ?? null)
-      : Promise.resolve(null),
-    db.select().from(orderCreditLine).where(eq(orderCreditLine.order_id, orderRow.id)),
-    db.execute(sql`
+  const bundle = await loadRelations(db, [orderRow], fieldConfig)
+  const lineItemRows = await loadDetailLineItems(db, orderRow.id)
+  const shippingRows = await loadDetailShipping(db, orderRow.id)
+  const shippingAddress = orderRow.shipping_address_id
+    ? (await db.select().from(orderAddress).where(eq(orderAddress.id, orderRow.shipping_address_id)).limit(1))[0] ?? null
+    : null
+  const billingAddress = orderRow.billing_address_id
+    ? (await db.select().from(orderAddress).where(eq(orderAddress.id, orderRow.billing_address_id)).limit(1))[0] ?? null
+    : null
+  const creditLines = await db
+    .select()
+    .from(orderCreditLine)
+    .where(eq(orderCreditLine.order_id, orderRow.id))
+  const promotionsResult = await db.execute(sql`
       SELECT p.id, p.code, p.type, p.status, p.is_automatic, p.is_tax_inclusive, p.limit, p.used, p.campaign_id, p.metadata
       FROM order_promotion op
       INNER JOIN promotion p ON p.id = op.promotion_id
       WHERE op.order_id = ${orderRow.id} AND op.deleted_at IS NULL AND p.deleted_at IS NULL
-    `).then(r => (r.rows ?? r) as any[]),
-    orderRow.region_id ? db.select().from(region).where(eq(region.id, orderRow.region_id)).limit(1).then(r => r[0] ?? null) : Promise.resolve(null),
-  ])
+    `)
+  const promotions = (promotionsResult.rows ?? promotionsResult) as any[]
+  const orderRegion = orderRow.region_id
+    ? (await db.select().from(region).where(eq(region.id, orderRow.region_id)).limit(1))[0] ?? null
+    : null
 
   const lineItemIds = lineItemRows.map((r) => r.lineItem.id)
   const shippingIds = shippingRows.map((r) => r.shippingMethod.id)
 
-  const [
-    taxLinesByLineItemId,
-    adjustmentsByLineItemId,
-    shippingTaxByMethodId,
-    shippingAdjByMethodId,
-  ] = await Promise.all([
-    loadLineItemTaxLines(db, lineItemIds),
-    loadLineItemAdjustments(db, lineItemIds),
-    loadShippingTaxLines(db, shippingIds),
-    loadShippingAdjustments(db, shippingIds),
-  ])
+  const taxLinesByLineItemId = await loadLineItemTaxLines(db, lineItemIds)
+  const adjustmentsByLineItemId = await loadLineItemAdjustments(db, lineItemIds)
+  const shippingTaxByMethodId = await loadShippingTaxLines(db, shippingIds)
+  const shippingAdjByMethodId = await loadShippingAdjustments(db, shippingIds)
 
   const variantIds = [...new Set(lineItemRows.map(r => r.variant?.id).filter(Boolean) as string[])]
   const inventoryItemsByVariant = new Map<string, any[]>()

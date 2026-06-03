@@ -102,11 +102,9 @@ export async function presentAdminOrderDetail(
     fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
   )
 
-  const [bundle, lineItemRows, shippingMethodRows] = await Promise.all([
-    loadOrderRelations(db, [orderRow], fieldConfig),
-    loadOrderDetailLineItems(db, orderRow.id),
-    loadOrderDetailShippingMethods(db, orderRow.id),
-  ])
+  const bundle = await loadOrderRelations(db, [orderRow], fieldConfig)
+  const lineItemRows = await loadOrderDetailLineItems(db, orderRow.id)
+  const shippingMethodRows = await loadOrderDetailShippingMethods(db, orderRow.id)
 
   const taxLinesByLineItemId = await loadOrderLineItemTaxLinesByLineItemIds(
     db,

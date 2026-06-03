@@ -25,6 +25,7 @@ import type {
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 import { sendOrderCanceledEmail } from "../lib/mail"
+import { loadActionsGroupedByChangeId } from "../lib/order-change-actions-batch"
 import { dispatchRollbackProcess } from "../lib/rollback"
 import { runInTransaction } from "../lib/transaction"
 import { notificationService } from "./notification.service"
@@ -426,17 +427,14 @@ export const orderService = {
       db.select({ total: count() }).from(orderChange).where(and(...conditions)),
     ])
 
-    // Load actions for each change
-    const changesWithActions = await Promise.all(
-      changes.map(async (change) => {
-        const actions = await db
-          .select()
-          .from(orderChangeAction)
-          .where(eq(orderChangeAction.order_change_id, change.id))
-          .orderBy(orderChangeAction.ordering)
-        return { ...change, actions }
-      })
+    const actionsByChange = await loadActionsGroupedByChangeId(
+      db,
+      changes.map((c) => c.id),
     )
+    const changesWithActions = changes.map((change) => ({
+      ...change,
+      actions: actionsByChange.get(change.id) ?? [],
+    }))
 
     return { order_changes: changesWithActions, count: Number(total) }
   },

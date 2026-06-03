@@ -1,5 +1,6 @@
 import { loadEnv, maskDatabaseUrl } from "./load-env"
 import { serve } from "@hono/node-server"
+import { closeDb, describeDbPool } from "@my-store/db"
 import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
 import { app, appMount } from "./src/app"
 import { logServerStartup } from "./src/lib/log-startup"
@@ -10,9 +11,22 @@ loadEnv()
 const dbUrl = process.env.DATABASE_URL
 if (dbUrl) {
   console.log(`📦 DATABASE_URL → ${maskDatabaseUrl(dbUrl)}`)
+  const pool = describeDbPool(dbUrl)
+  console.log(
+    `📦 DB pool: max=${pool.max} (${pool.mode}), ${pool.singleton}`,
+  )
+  if (pool.hint) {
+    console.log(`   ${pool.hint}`)
+  }
+  if (pool.mode === "session-pooler:5432") {
+    console.warn(
+      "⚠️  :5432 占用 Postgres 直连名额（约十余条）。第 5 个进程/僵尸 idle 易被踢断。" +
+        "开发请改 DATABASE_URL 为 pooler :6543（Transaction mode）。",
+    )
+  }
   if (dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1")) {
     console.warn(
-      "⚠️  当前连接指向本机 PostgreSQL。若使用 Supabase，请检查 apps/server/.env 并完整重启 dev。"
+      "⚠️  当前连接指向本机 PostgreSQL。若使用 Supabase，请检查 apps/server/.env 并完整重启 dev。",
     )
   }
 }
@@ -44,3 +58,16 @@ server.on("error", (err: NodeJS.ErrnoException) => {
 })
 
 logServerStartup(port, appMount)
+
+let isShuttingDown = false
+async function gracefulShutdown(signal: string) {
+  if (isShuttingDown) return
+  isShuttingDown = true
+  console.log(`\n${signal}: closing DB pool…`)
+  await closeDb()
+  server.close(() => process.exit(0))
+  setTimeout(() => process.exit(0), 3000).unref()
+}
+
+process.on("SIGINT", () => void gracefulShutdown("SIGINT"))
+process.on("SIGTERM", () => void gracefulShutdown("SIGTERM"))

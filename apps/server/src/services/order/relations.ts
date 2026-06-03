@@ -149,31 +149,27 @@ export async function loadOrderRelations(
     ? [...new Set(orders.map((o) => o.sales_channel_id).filter((id): id is string => !!id))]
     : []
 
-  const [
-    paymentCollectionsByOrder,
-    fulfillmentsByOrder,
-    summariesByOrder,
-    itemsByOrder,
-    customers,
-    salesChannels,
-  ] = await Promise.all([
-    loadPaymentCollectionsByOrderIds(db, orderIds),
-    loadFulfillmentsByOrderIds(db, orderIds),
-    loadSummariesByOrderIds(db, orderIds),
-    loadOrderItemsByOrderIds(db, orderIds),
-    customerIds.length
-      ? db
-          .select()
-          .from(customer)
-          .where(and(inArray(customer.id, customerIds), isNull(customer.deleted_at)))
-      : Promise.resolve([]),
-    salesChannelIds.length
-      ? db
-          .select()
-          .from(salesChannel)
-          .where(and(inArray(salesChannel.id, salesChannelIds), isNull(salesChannel.deleted_at)))
-      : Promise.resolve([]),
-  ])
+  const paymentCollectionsByOrder = await loadPaymentCollectionsByOrderIds(
+    db,
+    orderIds,
+  )
+  const fulfillmentsByOrder = await loadFulfillmentsByOrderIds(db, orderIds)
+  const summariesByOrder = await loadSummariesByOrderIds(db, orderIds)
+  const itemsByOrder = await loadOrderItemsByOrderIds(db, orderIds)
+  const customers = customerIds.length
+    ? await db
+        .select()
+        .from(customer)
+        .where(and(inArray(customer.id, customerIds), isNull(customer.deleted_at)))
+    : []
+  const salesChannels = salesChannelIds.length
+    ? await db
+        .select()
+        .from(salesChannel)
+        .where(
+          and(inArray(salesChannel.id, salesChannelIds), isNull(salesChannel.deleted_at)),
+        )
+    : []
 
   return {
     paymentCollectionsByOrder,

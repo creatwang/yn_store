@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
+import { metadataSchema } from "@my-store/validators"
 import { orderEditService } from "../../services/order-edit.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
@@ -62,11 +63,11 @@ export const adminOrderEdits = new Hono<{ Variables: AuthVariables }>()
     const result = await orderEditService.removeAddedItem(c.req.param("id"), c.req.param("itemId"))
     return c.json(result)
   })
-  .post("/:id/shipping-method", zValidator("json", z.record(z.unknown())), async (c) => {
+  .post("/:id/shipping-method", zValidator("json", metadataSchema), async (c) => {
     const result = await orderEditService.addShippingMethod(c.req.param("id"), c.req.valid("json") as any)
     return c.json(result)
   })
-  .post("/:id/shipping-method/:actionId", zValidator("json", z.record(z.unknown())), async (c) => {
+  .post("/:id/shipping-method/:actionId", zValidator("json", metadataSchema), async (c) => {
     const result = await orderEditService.updateShippingMethod(
       c.req.param("id"),
       c.req.param("actionId"),

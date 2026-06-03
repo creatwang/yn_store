@@ -15,6 +15,7 @@ import {
   priceRule,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import { enrichShippingOptionsBatch } from "../lib/shipping-option-enrich-batch"
 
 function sqlRows(result: unknown): Record<string, unknown>[] {
   return (Array.isArray(result) ? result : ((result as { rows?: Record<string, unknown>[] }).rows ?? [])) as Record<string, unknown>[]
@@ -24,13 +25,18 @@ function sqlRows(result: unknown): Record<string, unknown>[] {
 const SHIPPING_OPTION_COLS =
   "id, name, price_type, data, metadata, service_zone_id, provider_id, shipping_profile_id, shipping_option_type_id, created_at, updated_at, deleted_at"
 
-async function loadShippingOptionsForZone(zoneId: string) {
+async function loadShippingOptionsForZones(zoneIds: string[]) {
+  if (zoneIds.length === 0) return []
   const db = getDb()
   return sqlRows(
     await db.execute(sql`
       SELECT ${sql.raw(SHIPPING_OPTION_COLS)}
       FROM shipping_option
-      WHERE deleted_at IS NULL AND service_zone_id = ${zoneId}
+      WHERE deleted_at IS NULL
+        AND service_zone_id IN (${sql.join(
+          zoneIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})
     `),
   )
 }
@@ -93,28 +99,6 @@ function ruleValue(value: unknown) {
   return value
 }
 
-async function loadPricesForShippingOption(shippingOptionId: string) {
-  const db = getDb()
-  const links = sqlRows(
-    await db.execute(sql`
-      SELECT price_set_id
-      FROM shipping_option_price_set
-      WHERE shipping_option_id = ${shippingOptionId}
-    `),
-  )
-
-  const prices = []
-  for (const link of links) {
-    const priceSetId = String(link.price_set_id)
-    const priceRows = await db.select().from(price).where(and(eq(price.price_set_id, priceSetId), isNull(price.deleted_at)))
-    for (const row of priceRows) {
-      const price_rules = await db.select().from(priceRule).where(eq(priceRule.price_id, row.id))
-      prices.push({ ...row, price_rules })
-    }
-  }
-  return prices
-}
-
 function metaIds(metadata: unknown, ...keys: string[]) {
   const meta = (metadata ?? {}) as Record<string, unknown>
   for (const key of keys) {
@@ -126,88 +110,8 @@ function metaIds(metadata: unknown, ...keys: string[]) {
 
 export async function enrichShippingOptionRow(option: Record<string, unknown>) {
   const db = getDb()
-  const meta = (option.metadata ?? {}) as Record<string, unknown>
-  const typeId =
-    (option.shipping_option_type_id as string | undefined) ??
-    (option.type_id as string | undefined) ??
-    (meta.type_id as string | undefined)
-
-  const [zone] = await db
-    .select()
-    .from(serviceZone)
-    .where(eq(serviceZone.id, String(option.service_zone_id)))
-    .limit(1)
-
-  if (!zone) return { ...option, service_zone: null }
-
-  const [fs] = await db
-    .select()
-    .from(fulfillmentSet)
-    .where(eq(fulfillmentSet.id, zone.fulfillment_set_id))
-    .limit(1)
-
-  let shipping_profile = null
-  if (option.shipping_profile_id) {
-    const [profile] = await db
-      .select()
-      .from(shippingProfile)
-      .where(eq(shippingProfile.id, String(option.shipping_profile_id)))
-      .limit(1)
-    shipping_profile = profile ?? null
-  }
-
-  let type = null
-  if (typeId) {
-    const [row] = await db
-      .select()
-      .from(shippingOptionType)
-      .where(eq(shippingOptionType.id, typeId))
-      .limit(1)
-    type = row ?? { id: typeId, label: "", code: "" }
-  }
-
-  const rules = await db
-    .select()
-    .from(shippingOptionRule)
-    .where(eq(shippingOptionRule.shipping_option_id, String(option.id)))
-
-  const prices = await loadPricesForShippingOption(String(option.id))
-  const price_type =
-    (option.price_type as string | undefined) ?? (meta.price_type as string | undefined) ?? "flat"
-
-  return {
-    ...option,
-    type_id: typeId,
-    type,
-    price_type,
-    rules,
-    prices,
-    shipping_profile,
-    service_zone: {
-      ...zone,
-      fulfillment_set: fs ?? null,
-    },
-  }
-}
-
-async function loadServiceZonesForSet(fulfillmentSetId: string, full: boolean) {
-  const db = getDb()
-  const zones = await db
-    .select()
-    .from(serviceZone)
-    .where(eq(serviceZone.fulfillment_set_id, fulfillmentSetId))
-
-  return Promise.all(
-    zones.map(async (zone) => {
-      const geo_zones = await db.select().from(geoZone).where(eq(geoZone.service_zone_id, zone.id))
-      if (!full) {
-        return { ...zone, geo_zones, shipping_options: [] }
-      }
-      const options = await loadShippingOptionsForZone(zone.id)
-      const shipping_options = await Promise.all(options.map((o) => enrichShippingOptionRow(o)))
-      return { ...zone, geo_zones, shipping_options }
-    }),
-  )
+  const [enriched] = await enrichShippingOptionsBatch(db, [option])
+  return enriched ?? { ...option, service_zone: null }
 }
 
 async function loadFulfillmentSetsForLocation(locationId: string, full: boolean) {
@@ -217,12 +121,59 @@ async function loadFulfillmentSetsForLocation(locationId: string, full: boolean)
     .from(fulfillmentSet)
     .where(sql`${fulfillmentSet.metadata}->>'location_id' = ${locationId}`)
 
-  return Promise.all(
-    sets.map(async (fs) => ({
-      ...fs,
-      service_zones: await loadServiceZonesForSet(fs.id, full),
+  if (sets.length === 0) return []
+
+  const setIds = sets.map((s) => s.id)
+  const zones = await db
+    .select()
+    .from(serviceZone)
+    .where(inArray(serviceZone.fulfillment_set_id, setIds))
+
+  const zoneIds = zones.map((z) => z.id)
+  const geoRows =
+    zoneIds.length > 0
+      ? await db
+          .select()
+          .from(geoZone)
+          .where(inArray(geoZone.service_zone_id, zoneIds))
+      : []
+
+  const geoByZoneId = new Map<string, typeof geoRows>()
+  for (const row of geoRows) {
+    const list = geoByZoneId.get(row.service_zone_id) ?? []
+    list.push(row)
+    geoByZoneId.set(row.service_zone_id, list)
+  }
+
+  let enrichedOptionsByZoneId = new Map<string, Record<string, unknown>[]>()
+  if (full && zoneIds.length > 0) {
+    const rawOptions = await loadShippingOptionsForZones(zoneIds)
+    const enriched = await enrichShippingOptionsBatch(db, rawOptions)
+    for (const opt of enriched) {
+      const zoneId = String(opt.service_zone_id)
+      const list = enrichedOptionsByZoneId.get(zoneId) ?? []
+      list.push(opt)
+      enrichedOptionsByZoneId.set(zoneId, list)
+    }
+  }
+
+  const zonesBySetId = new Map<string, typeof zones>()
+  for (const zone of zones) {
+    const list = zonesBySetId.get(zone.fulfillment_set_id) ?? []
+    list.push(zone)
+    zonesBySetId.set(zone.fulfillment_set_id, list)
+  }
+
+  return sets.map((fs) => ({
+    ...fs,
+    service_zones: (zonesBySetId.get(fs.id) ?? []).map((zone) => ({
+      ...zone,
+      geo_zones: geoByZoneId.get(zone.id) ?? [],
+      shipping_options: full
+        ? (enrichedOptionsByZoneId.get(zone.id) ?? [])
+        : [],
     })),
-  )
+  }))
 }
 
 async function loadSalesChannels(metadata: unknown) {
@@ -278,10 +229,8 @@ async function updateLocationMetadataIds(
 }
 
 async function enrichStockLocation(loc: typeof stockLocation.$inferSelect, full: boolean) {
-  const [fulfillment_sets, sales_channels] = await Promise.all([
-    loadFulfillmentSetsForLocation(loc.id, full),
-    loadSalesChannels(loc.metadata),
-  ])
+  const fulfillment_sets = await loadFulfillmentSetsForLocation(loc.id, full)
+  const sales_channels = await loadSalesChannels(loc.metadata)
   const fulfillment_providers = await loadFulfillmentProviders(loc.metadata)
   return {
     ...loc,
@@ -386,7 +335,7 @@ export const shippingOptionService = {
       `),
     )
     const total = await countShippingOptions()
-    const shipping_options = await Promise.all(rows.map((o) => enrichShippingOptionRow(o)))
+    const shipping_options = await enrichShippingOptionsBatch(db, rows)
     return { shipping_options, count: total, limit: query.limit, offset: query.offset }
   },
 

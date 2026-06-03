@@ -5,6 +5,7 @@ import {
   listReturnsSchema,
   createReturnSchema,
   receiveReturnSchema,
+  metadataSchema,
 } from "@my-store/validators"
 import { returnService } from "../../services/return.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
@@ -31,9 +32,9 @@ const returnItemUpdateSchema = zValidator(
   }).passthrough(),
 )
 
-const returnUpdateSchema = zValidator("json", z.record(z.unknown()))
+const returnUpdateSchema = zValidator("json", metadataSchema)
 
-const shippingSchema = zValidator("json", z.record(z.unknown()))
+const shippingSchema = zValidator("json", metadataSchema)
 
 export const adminReturns = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)

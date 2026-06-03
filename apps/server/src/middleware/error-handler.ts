@@ -55,7 +55,16 @@ export const errorHandler: ErrorHandler = (err, c) => {
 
   if (isDbConnectivityError(err)) {
     const message = getUnknownErrorMessage(err)
-    return c.json({ message, type: "database_unavailable" }, 503)
+    const code =
+      err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined
+    return c.json(
+      {
+        message,
+        type: "database_unavailable",
+        ...(isDev() && code ? { code } : {}),
+      },
+      503,
+    )
   }
 
   const message = isDev() ? getUnknownErrorMessage(err) : "Internal Server Error"

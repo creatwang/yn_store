@@ -19,6 +19,7 @@ import type {
   UpdateProductInput,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { attachOptionValues } from "../lib/product-option-values-batch"
 import { slugify } from "../lib/slug"
 import { variantService } from "./variant.service"
 
@@ -183,12 +184,7 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
     ).catch(() => [])
 
     if (wants("options.values")) {
-      result.options = await Promise.all(opts.map(async (opt: any) => {
-        const values = await db.select().from(productOptionValue)
-          .where(eq(productOptionValue.option_id, opt.id))
-          .catch(() => [])
-        return { ...opt, values }
-      }))
+      result.options = await attachOptionValues(db, opts).catch(() => [])
     } else {
       result.options = opts
     }

@@ -31,10 +31,60 @@ function writeSingleton(entry: DbSingleton | undefined) {
   }
 }
 
-function resolvePoolMax() {
+function isSupabaseSessionPooler(connectionString: string) {
+  return (
+    connectionString.includes("pooler.supabase.com") &&
+    /:5432(\/|$)/.test(connectionString)
+  )
+}
+
+function isSupabaseTransactionPooler(connectionString: string) {
+  return (
+    connectionString.includes("pooler.supabase.com") &&
+    /:6543(\/|$)/.test(connectionString)
+  )
+}
+
+/**
+ * :5432 Session pooler — 贴近 Postgres 直连名额（全项目约十余条），僵尸 idle 易顶满。
+ * :6543 Transaction pooler — 云端池化，可承载远高于直连的客户端并发；需 prepare: false。
+ */
+function resolvePoolMax(connectionString: string) {
   if (process.env.DB_POOL_MAX) return Number(process.env.DB_POOL_MAX)
-  if (process.env.VITEST) return 3
+  if (process.env.VITEST) return 2
+  if (isSupabaseSessionPooler(connectionString)) return 2
+  if (isSupabaseTransactionPooler(connectionString)) return 10
   return 4
+}
+
+function postgresClientOptions(connectionString: string) {
+  const sessionPooler = isSupabaseSessionPooler(connectionString)
+  const options: Parameters<typeof postgres>[1] = {
+    max: resolvePoolMax(connectionString),
+    idle_timeout: sessionPooler ? 10 : 20,
+    max_lifetime: 60 * 10,
+    connect_timeout: 15,
+  }
+  if (isSupabaseTransactionPooler(connectionString)) {
+    options.prepare = false
+  }
+  return options
+}
+
+export function describeDbPool(connectionString: string) {
+  const max = resolvePoolMax(connectionString)
+  const mode = isSupabaseTransactionPooler(connectionString)
+    ? "transaction-pooler:6543"
+    : isSupabaseSessionPooler(connectionString)
+      ? "session-pooler:5432"
+      : "direct/other"
+  const hint =
+    mode === "transaction-pooler:6543"
+      ? "云端池化，本地 max=10 通常安全；可按需 DB_POOL_MAX=20"
+      : mode === "session-pooler:5432"
+        ? "共享直连名额约 ~15，建议改 :6543 或 DB_POOL_MAX=2"
+        : undefined
+  return { max, mode, singleton: "globalThis per process", hint }
 }
 
 function createDrizzleInstance(sql: Sql) {
@@ -53,10 +103,7 @@ function attachSingleton(connectionString: string): Database {
     void existing.sql.end({ timeout: 5 }).catch(() => {})
   }
 
-  const sql = postgres(connectionString, {
-    max: resolvePoolMax(),
-    idle_timeout: 20,
-  })
+  const sql = postgres(connectionString, postgresClientOptions(connectionString))
 
   const entry: DbSingleton = {
     sql,

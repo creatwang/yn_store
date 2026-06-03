@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, productOption, productOptionValue } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import { attachOptionValues } from "../lib/product-option-values-batch"
 
 export const optionService = {
   async listOptions(productId: string) {
@@ -12,15 +13,7 @@ export const optionService = {
         isNull(productOption.deleted_at)
       ))
 
-    // Fetch values for each option
-    const result = await Promise.all(options.map(async (opt) => {
-      const values = await db.select()
-        .from(productOptionValue)
-        .where(eq(productOptionValue.option_id, opt.id))
-      return { ...opt, values }
-    }))
-
-    return { options: result }
+    return { options: await attachOptionValues(db, options) }
   },
 
   async getOption(productId: string, optionId: string) {
