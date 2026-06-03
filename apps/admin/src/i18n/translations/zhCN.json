@@ -1609,6 +1609,32 @@
         "heading": "未找到结果"
       },
       "noRecordsMessage": "未找到草稿订单"
+    },
+    "items": {
+      "editTitle": "编辑商品",
+      "editDescription": "编辑草稿订单中的商品",
+      "loadingDescription": "正在加载草稿订单数据，请稍候…",
+      "sectionHint": "从产品目录中选择商品。",
+      "searchPlaceholder": "搜索商品",
+      "columnItem": "商品",
+      "emptyTitle": "此订单中暂无商品",
+      "emptyHint": "添加商品以开始编辑。",
+      "noResultsTitle": "未找到商品",
+      "noResultsHint": "未找到与「{{query}}」匹配的商品。",
+      "itemCount_one": "{{count}} 件商品",
+      "itemCount_other": "{{count}} 件商品",
+      "updateItems": "更新商品",
+      "variantsTitle": "产品变体",
+      "variantsDescription": "选择要添加到订单的产品变体。",
+      "customItemTitle": "添加自定义商品",
+      "customItemDescription": "向订单添加自定义商品。这将添加一行与现有产品无关的新明细。",
+      "customItemTitleLabel": "标题",
+      "customItemTitleHint": "输入商品标题",
+      "customItemUnitPriceHint": "输入商品单价",
+      "customItemQuantityHint": "输入商品数量",
+      "addItem": "添加商品",
+      "requestEditError": "请求订单编辑失败：{{message}}",
+      "confirmEditError": "确认订单编辑失败：{{message}}"
     }
   },
   "stockLocations": {

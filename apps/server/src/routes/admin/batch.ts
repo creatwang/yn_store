@@ -60,7 +60,12 @@ export const adminInventoryItemsFull = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
   .get("/", async (c) => {
     const q = c.req.query()
-    const result = await inventoryItemService.list({ limit: Number(q.limit) || 50, offset: Number(q.offset) || 0 })
+    const result = await inventoryItemService.list({
+      limit: Number(q.limit) || 50,
+      offset: Number(q.offset) || 0,
+      q: q.q,
+      location_id: q.location_id,
+    })
     return c.json(result)
   })
   .get("/:id", async (c) => {

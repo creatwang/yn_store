@@ -18,8 +18,15 @@ async function rpcPost(rpc: any, body?: any, params?: Record<string, any>, query
   return parseJsonResponse(res)
 }
 
-async function rpcDelete(rpc: any, params?: Record<string, any>) {
-  const res = await rpc.$delete({ param: params })
+async function rpcDelete(
+  rpc: any,
+  params?: Record<string, any>,
+  body?: Record<string, unknown>,
+) {
+  const res = await rpc.$delete({
+    param: params,
+    ...(body != null ? { json: body } : {}),
+  })
   return parseJsonResponse(res)
 }
 
@@ -355,37 +362,40 @@ function draftOrderClient() {
     confirmEdit: (id: string) => rpcPost(rpc[":id"].edit.confirm, undefined, { id }),
     // ── Items ──
     addItems: (id: string, body?: any) => rpcPost(rpc[":id"].edit.items, body, { id }),
-    updateItem: (id: string, actionId: string, body?: any) => rpcPost(rpc[":id"].edit.items[":actionId"], body, { id, actionId }),
+    updateItem: (id: string, itemId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit.items.item[":itemId"], body, { id, itemId }),
+    updateActionItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit.items[":actionId"], body, { id, actionId }),
     removeItem: (id: string, actionId: string) =>
       rpcDelete(rpc[":id"].edit.items[":actionId"], { id, actionId }),
     removeActionItem: (id: string, actionId: string) =>
       rpcDelete(rpc[":id"].edit.items[":actionId"], { id, actionId }),
-    updateActionItem: (id: string, actionId: string, body?: any) =>
-      rpcPost(rpc[":id"].edit.items[":actionId"], body, { id, actionId }),
     // ── Shipping ──
     addShippingMethod: (id: string, body?: any) => rpcPost(rpc[":id"].edit["shipping-methods"], body, { id }),
-    updateShippingMethod: (id: string, actionId: string, body?: any) => rpcPost(rpc[":id"].edit["shipping-methods"][":actionId"], body, { id, actionId }),
-    removeShippingMethod: (id: string, actionId: string) =>
-      rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
-    removeActionShippingMethod: (id: string, actionId: string) =>
-      rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
+    updateShippingMethod: (id: string, methodId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit["shipping-methods"].method[":methodId"], body, {
+        id,
+        methodId,
+      }),
     updateActionShippingMethod: (id: string, actionId: string, body?: any) =>
       rpcPost(rpc[":id"].edit["shipping-methods"][":actionId"], body, {
         id,
         actionId,
       }),
-    // ── Promotions ──
-    addPromotions: (id: string, body?: any) => rpcPost(rpc[":id"].edit.promotions, body, { id }),
-    removePromotions: (id: string, actionOrBody?: any) => {
-      const actionId =
-        typeof actionOrBody === "string"
-          ? actionOrBody
-          : actionOrBody?.action_id ?? actionOrBody?.promotion_id
-      return rpcDelete(rpc[":id"].edit.promotions[":actionId"], {
+    removeShippingMethod: (id: string, methodId: string) =>
+      rpcDelete(rpc[":id"].edit["shipping-methods"].method[":methodId"], {
+        id,
+        methodId,
+      }),
+    removeActionShippingMethod: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], {
         id,
         actionId,
-      })
-    },
+      }),
+    // ── Promotions ──
+    addPromotions: (id: string, body?: any) => rpcPost(rpc[":id"].edit.promotions, body, { id }),
+    removePromotions: (id: string, body?: { promo_codes: string[] }) =>
+      rpcDelete(rpc[":id"].edit.promotions, { id }, body),
     // ── Aliases for compatibility ──
     addItemsAction: (id: string, body?: any) => rpcPost(rpc[":id"].edit.items, body, { id }),
     updateItemAction: (id: string, actionId: string, body?: any) =>
@@ -405,8 +415,10 @@ function draftOrderClient() {
       rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
     addPromotionAction: (id: string, body?: any) =>
       rpcPost(rpc[":id"].edit.promotions, body, { id }),
-    removePromotionAction: (id: string, actionId: string) =>
-      rpcDelete(rpc[":id"].edit.promotions[":actionId"], { id, actionId }),
+    removePromotionAction: (
+      id: string,
+      body: { promo_codes: string[] },
+    ) => rpcDelete(rpc[":id"].edit.promotions, { id }, body),
   }
 }
 

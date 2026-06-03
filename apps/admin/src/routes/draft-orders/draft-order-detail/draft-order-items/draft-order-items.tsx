@@ -21,12 +21,13 @@ import {
 import { keepPreviousData } from "@tanstack/react-query"
 import { matchSorter } from "match-sorter"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import type { AdminOrderPreviewLineItem } from "../../../../types/draft-order/entity"
-import { DataTable } from "../../../../components/data-table/data-table"
+import { DataTable } from "../../../../components/data-table"
 import { Form } from "../../../../components/common/form"
-import { KeyboundForm } from "../../../../components/common/keybound-form"
+import { KeyboundForm } from "../../../../components/utilities/keybound-form"
 import { Thumbnail } from "../../../../components/common/thumbnail"
 import { NumberInput } from "../../../../components/inputs/number-input"
 import {
@@ -46,8 +47,8 @@ import {
 } from "../../../../hooks/api/draft-orders"
 import { useOrderPreview } from "../../../../hooks/api/orders"
 import { useProductVariants } from "../../../../hooks/api/product-variants"
-import { useDebouncedSearch } from "../../../../hooks/common/use-debounced-search"
-import { useQueryParams } from "../../../../hooks/common/use-query-params"
+import { useDebouncedSearch } from "../../../../hooks/use-debounced-search"
+import { useQueryParams } from "../../../../hooks/use-query-params"
 import { useCancelOrderEdit } from "../../../../hooks/order-edits/use-cancel-order-edit"
 import { useInitiateOrderEdit } from "../../../../hooks/order-edits/use-initiate-order-edit"
 import {
@@ -61,6 +62,7 @@ import { convertNumber } from "../../../../lib/utils/number-utils"
 const STACKED_MODAL_ID = "items_stacked_modal"
 
 export const Items = () => {
+  const { t } = useTranslation()
   const { id } = useParams()
 
   const {
@@ -80,7 +82,7 @@ export const Items = () => {
       fields: "currency_code",
     },
     {
-      enabled: !!id,
+      enabled: !!id && !!preview,
     }
   )
 
@@ -103,11 +105,11 @@ export const Items = () => {
       ) : (
         <div>
           <RouteFocusModal.Title asChild>
-            <span className="sr-only">Edit Items</span>
+            <span className="sr-only">{t("draftOrders.items.editTitle")}</span>
           </RouteFocusModal.Title>
           <RouteFocusModal.Description asChild>
             <span className="sr-only">
-              Loading data for the draft order, please wait...
+              {t("draftOrders.items.loadingDescription")}
             </span>
           </RouteFocusModal.Description>
         </div>
@@ -122,6 +124,7 @@ interface ItemsFormProps {
 }
 
 const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
+  const { t } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalContent, setModalContent] = useState<StackedModalContent | null>(
     null
@@ -149,7 +152,9 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
 
     await requestOrderEdit(undefined, {
       onError: (e) => {
-        toast.error(`Failed to request order edit: ${e.message}`)
+        toast.error(
+          t("draftOrders.items.requestEditError", { message: e.message })
+        )
       },
       onSuccess: () => {
         requestSucceeded = true
@@ -163,7 +168,9 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
 
     await confirmOrderEdit(undefined, {
       onError: (e) => {
-        toast.error(`Failed to confirm order edit: ${e.message}`)
+        toast.error(
+          t("draftOrders.items.confirmEditError", { message: e.message })
+        )
       },
       onSuccess: () => {
         handleSuccess()
@@ -212,11 +219,11 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
             <div className="flex w-full max-w-[720px] flex-col gap-y-6 px-6 py-16">
               <div>
                 <RouteFocusModal.Title asChild>
-                  <Heading>Edit Items</Heading>
+                  <Heading>{t("draftOrders.items.editTitle")}</Heading>
                 </RouteFocusModal.Title>
                 <RouteFocusModal.Description asChild>
                   <Text size="small" className="text-ui-fg-subtle">
-                    Edit the items in the draft order
+                    {t("draftOrders.items.editDescription")}
                   </Text>
                 </RouteFocusModal.Description>
               </div>
@@ -225,17 +232,17 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
                 <div className="grid grid-cols-2 items-center gap-3">
                   <div className="flex flex-col">
                     <Text size="small" weight="plus" leading="compact">
-                      Items
+                      {t("fields.items")}
                     </Text>
                     <Text size="small" className="text-ui-fg-subtle">
-                      Choose items from the product catalog.
+                      {t("draftOrders.items.sectionHint")}
                     </Text>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
                       <Input
                         type="search"
-                        placeholder="Search items"
+                        placeholder={t("draftOrders.items.searchPlaceholder")}
                         value={searchValue}
                         onChange={(e) => onSearchValueChange(e.target.value)}
                       />
@@ -264,17 +271,17 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
                     <div className="text-ui-fg-muted grid grid-cols-[2fr_1fr_2fr_28px] gap-3 px-4 py-2">
                       <div>
                         <Text size="small" weight="plus">
-                          Item
+                          {t("draftOrders.items.columnItem")}
                         </Text>
                       </div>
                       <div>
                         <Text size="small" weight="plus">
-                          Quantity
+                          {t("fields.quantity")}
                         </Text>
                       </div>
                       <div className="text-right">
                         <Text size="small" weight="plus">
-                          Price
+                          {t("fields.price")}
                         </Text>
                       </div>
                       <div />
@@ -284,10 +291,10 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
                     {itemCount <= 0 ? (
                       <div className="bg-ui-bg-base shadow-elevation-card-rest flex flex-col items-center justify-center gap-1 gap-x-3 rounded-lg p-4">
                         <Text size="small" weight="plus" leading="compact">
-                          There are no items in this order
+                          {t("draftOrders.items.emptyTitle")}
                         </Text>
                         <Text size="small" className="text-ui-fg-subtle">
-                          Add items to the order to get started.
+                          {t("draftOrders.items.emptyHint")}
                         </Text>
                       </div>
                     ) : matches.length > 0 ? (
@@ -302,10 +309,10 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
                     ) : (
                       <div className="bg-ui-bg-base shadow-elevation-card-rest flex flex-col items-center justify-center gap-1 gap-x-3 rounded-lg p-4">
                         <Text size="small" weight="plus" leading="compact">
-                          No items found
+                          {t("draftOrders.items.noResultsTitle")}
                         </Text>
                         <Text size="small" className="text-ui-fg-subtle">
-                          No items found for "{query}".
+                          {t("draftOrders.items.noResultsHint", { query })}
                         </Text>
                       </div>
                     )}
@@ -316,7 +323,7 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
               <div className="grid grid-cols-[1fr_0.5fr_0.5fr] gap-3">
                 <div>
                   <Text size="small" weight="plus" leading="compact">
-                    Subtotal
+                    {t("fields.subtotal")}
                   </Text>
                 </div>
                 <div>
@@ -325,7 +332,7 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
                     leading="compact"
                     className="text-ui-fg-subtle"
                   >
-                    {itemCount} {itemCount === 1 ? "item" : "items"}
+                    {t("draftOrders.items.itemCount", { count: itemCount })}
                   </Text>
                 </div>
                 <div className="text-right">
@@ -351,7 +358,7 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
         <div className="flex items-center justify-end gap-x-2">
           <RouteFocusModal.Close asChild>
             <Button size="small" variant="secondary" type="button">
-              Cancel
+              {t("actions.cancel")}
             </Button>
           </RouteFocusModal.Close>
           <Button
@@ -360,7 +367,7 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
             onClick={onSubmit}
             isLoading={isSubmitting}
           >
-            Save
+            {t("actions.save")}
           </Button>
         </div>
       </RouteFocusModal.Footer>
@@ -553,6 +560,7 @@ const VariantItem = ({ item, preview, currencyCode }: ItemProps) => {
                   }
             }
             disabled={isPending}
+            isLoading={editing && isPending}
           >
             {editing ? <Check /> : <PencilSquare />}
           </IconButton>
@@ -601,7 +609,8 @@ const CustomItem = ({ item, preview, currencyCode }: ItemProps) => {
   const { mutateAsync: updateOriginalItem, isPending: isUpdatingOriginalItem } =
     useDraftOrderUpdateItem(preview.id)
 
-  const isPending = isUpdatingActionItem || isUpdatingOriginalItem
+  const isPending =
+    isUpdatingActionItem || isUpdatingOriginalItem || isRemovingActionItem
 
   const onSubmit = form.handleSubmit(async (data) => {
     /**
@@ -754,6 +763,7 @@ const CustomItem = ({ item, preview, currencyCode }: ItemProps) => {
                   }
             }
             disabled={isPending}
+            isLoading={editing && isPending}
           >
             {editing ? <Check /> : <PencilSquare />}
           </IconButton>
@@ -777,6 +787,7 @@ const StackedModalTrigger = ({
   type,
   setModalContent,
 }: StackedModalTriggerProps) => {
+  const { t } = useTranslation()
   const { setIsOpen } = useStackedModal()
 
   const onClick = useCallback(() => {
@@ -788,8 +799,8 @@ const StackedModalTrigger = ({
     <StackedFocusModal.Trigger asChild>
       <DropdownMenu.Item onClick={onClick}>
         {type === StackedModalContent.ADD_ITEMS
-          ? "Add items"
-          : "Add custom item"}
+          ? t("draftOrders.create.addExistingItemsAction")
+          : t("draftOrders.create.addCustomItemAction")}
       </DropdownMenu.Item>
     </StackedFocusModal.Trigger>
   )
@@ -804,6 +815,7 @@ interface ExistingItemsFormProps {
 }
 
 const ExistingItemsForm = ({ orderId, items }: ExistingItemsFormProps) => {
+  const { t } = useTranslation()
   const { setIsOpen } = useStackedModal()
   const [rowSelection, setRowSelection] = useState<DataTableRowSelectionState>(
     items.reduce((acc, item) => {
@@ -843,7 +855,7 @@ const ExistingItemsForm = ({ orderId, items }: ExistingItemsFormProps) => {
 
   const columns = useColumns()
 
-  const { mutateAsync } = useDraftOrderAddItems(orderId)
+  const { mutateAsync, isPending: isAddingItems } = useDraftOrderAddItems(orderId)
 
   const onSubmit = async () => {
     const ids = Object.keys(rowSelection).filter(
@@ -889,11 +901,13 @@ const ExistingItemsForm = ({ orderId, items }: ExistingItemsFormProps) => {
     >
       <StackedFocusModal.Header>
         <StackedFocusModal.Title asChild>
-          <span className="sr-only">Product Variants</span>
+          <span className="sr-only">
+            {t("draftOrders.items.variantsTitle")}
+          </span>
         </StackedFocusModal.Title>
         <StackedFocusModal.Description asChild>
           <span className="sr-only">
-            Choose product variants to add to the order.
+            {t("draftOrders.items.variantsDescription")}
           </span>
         </StackedFocusModal.Description>
       </StackedFocusModal.Header>
@@ -920,11 +934,16 @@ const ExistingItemsForm = ({ orderId, items }: ExistingItemsFormProps) => {
         <div className="flex items-center justify-end gap-x-2">
           <StackedFocusModal.Close asChild>
             <Button size="small" variant="secondary" type="button">
-              Cancel
+              {t("actions.cancel")}
             </Button>
           </StackedFocusModal.Close>
-          <Button size="small" type="button" onClick={onSubmit}>
-            Update items
+          <Button
+            size="small"
+            type="button"
+            onClick={onSubmit}
+            isLoading={isAddingItems}
+          >
+            {t("draftOrders.items.updateItems")}
           </Button>
         </div>
       </StackedFocusModal.Footer>
@@ -936,11 +955,13 @@ const columnHelper =
   createDataTableColumnHelper<HttpTypes.AdminProductVariant>()
 
 const useColumns = () => {
+  const { t } = useTranslation()
+
   return useMemo(() => {
     return [
       columnHelper.select(),
       columnHelper.accessor("product.title", {
-        header: "Product",
+        header: t("fields.product"),
         cell: ({ row }) => {
           return (
             <div className="flex items-center gap-x-2">
@@ -955,18 +976,18 @@ const useColumns = () => {
         enableSorting: true,
       }),
       columnHelper.accessor("title", {
-        header: "Variant",
+        header: t("fields.variant"),
         enableSorting: true,
       }),
       columnHelper.accessor("sku", {
-        header: "SKU",
+        header: t("fields.sku"),
         cell: ({ getValue }) => {
           return getValue() ?? "-"
         },
         enableSorting: true,
       }),
       columnHelper.accessor("updated_at", {
-        header: "Updated",
+        header: t("fields.updatedAt"),
         cell: ({ getValue }) => {
           return (
             <Tooltip
@@ -977,11 +998,11 @@ const useColumns = () => {
           )
         },
         enableSorting: true,
-        sortAscLabel: "Oldest first",
-        sortDescLabel: "Newest first",
+        sortAscLabel: t("general.sorting.dateDesc"),
+        sortDescLabel: t("general.sorting.dateAsc"),
       }),
       columnHelper.accessor("created_at", {
-        header: "Created",
+        header: t("fields.createdAt"),
         cell: ({ getValue }) => {
           return (
             <Tooltip
@@ -992,11 +1013,11 @@ const useColumns = () => {
           )
         },
         enableSorting: true,
-        sortAscLabel: "Oldest first",
-        sortDescLabel: "Newest first",
+        sortAscLabel: t("general.sorting.dateDesc"),
+        sortDescLabel: t("general.sorting.dateAsc"),
       }),
     ]
-  }, [])
+  }, [t])
 }
 
 interface CustomItemFormProps {
@@ -1005,8 +1026,10 @@ interface CustomItemFormProps {
 }
 
 const CustomItemForm = ({ orderId, currencyCode }: CustomItemFormProps) => {
+  const { t } = useTranslation()
   const { setIsOpen } = useStackedModal()
-  const { mutateAsync: addItems } = useDraftOrderAddItems(orderId)
+  const { mutateAsync: addItems, isPending: isAddingItem } =
+    useDraftOrderAddItems(orderId)
 
   const form = useForm<z.infer<typeof customItemSchema>>({
     defaultValues: {
@@ -1049,12 +1072,11 @@ const CustomItemForm = ({ orderId, currencyCode }: CustomItemFormProps) => {
               <div className="flex w-full max-w-[720px] flex-col gap-y-6 px-2 py-16">
                 <div>
                   <StackedFocusModal.Title asChild>
-                    <Heading>Add custom item</Heading>
+                    <Heading>{t("draftOrders.items.customItemTitle")}</Heading>
                   </StackedFocusModal.Title>
                   <StackedFocusModal.Description asChild>
                     <Text size="small" className="text-ui-fg-subtle">
-                      Add a custom item to the order. This will add a new line
-                      item that is not associated with an existing product.
+                      {t("draftOrders.items.customItemDescription")}
                     </Text>
                   </StackedFocusModal.Description>
                 </div>
@@ -1066,8 +1088,12 @@ const CustomItemForm = ({ orderId, currencyCode }: CustomItemFormProps) => {
                     <Form.Item>
                       <div className="grid grid-cols-2 gap-x-3">
                         <div>
-                          <Form.Label>Title</Form.Label>
-                          <Form.Hint>Enter the title of the item</Form.Hint>
+                          <Form.Label>
+                            {t("draftOrders.items.customItemTitleLabel")}
+                          </Form.Label>
+                          <Form.Hint>
+                            {t("draftOrders.items.customItemTitleHint")}
+                          </Form.Hint>
                         </div>
                         <div>
                           <Form.Control>
@@ -1087,9 +1113,9 @@ const CustomItemForm = ({ orderId, currencyCode }: CustomItemFormProps) => {
                     <Form.Item>
                       <div className="grid grid-cols-2 gap-x-3">
                         <div>
-                          <Form.Label>Unit price</Form.Label>
+                          <Form.Label>{t("fields.unitPrice")}</Form.Label>
                           <Form.Hint>
-                            Enter the unit price of the item
+                            {t("draftOrders.items.customItemUnitPriceHint")}
                           </Form.Hint>
                         </div>
                         <div>
@@ -1117,8 +1143,10 @@ const CustomItemForm = ({ orderId, currencyCode }: CustomItemFormProps) => {
                     <Form.Item>
                       <div className="grid grid-cols-2 gap-x-3">
                         <div>
-                          <Form.Label>Quantity</Form.Label>
-                          <Form.Hint>Enter the quantity of the item</Form.Hint>
+                          <Form.Label>{t("fields.quantity")}</Form.Label>
+                          <Form.Hint>
+                            {t("draftOrders.items.customItemQuantityHint")}
+                          </Form.Hint>
                         </div>
                         <div className="w-full flex-1">
                           <Form.Control>
@@ -1139,11 +1167,16 @@ const CustomItemForm = ({ orderId, currencyCode }: CustomItemFormProps) => {
             <div className="flex items-center justify-end gap-x-2">
               <StackedFocusModal.Close asChild>
                 <Button size="small" variant="secondary" type="button">
-                  Cancel
+                  {t("actions.cancel")}
                 </Button>
               </StackedFocusModal.Close>
-              <Button size="small" type="button" onClick={onSubmit}>
-                Add item
+              <Button
+                size="small"
+                type="button"
+                onClick={onSubmit}
+                isLoading={isAddingItem}
+              >
+                {t("draftOrders.items.addItem")}
               </Button>
             </div>
           </StackedFocusModal.Footer>

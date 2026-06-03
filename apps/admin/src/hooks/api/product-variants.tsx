@@ -38,6 +38,9 @@ export const useVariants = (
   return { ...data, ...rest }
 }
 
+/** 官方 draft-orders items 页：全局 variant 列表 */
+export const useProductVariants = useVariants
+
 export const useInfiniteVariants = (
   query?: Omit<HttpTypes.AdminProductVariantParams, "offset" | "limit"> & {
     limit?: number

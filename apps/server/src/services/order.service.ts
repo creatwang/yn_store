@@ -442,7 +442,10 @@ export const orderService = {
   },
 
   async getPreview(id: string) {
-    return buildAdminOrderPreview(id)
+    const { buildOrderPreviewForDraftOrRma } = await import(
+      "./order/draft-order-edit-preview"
+    )
+    return buildOrderPreviewForDraftOrRma(id)
   },
 
   // ── Credit Lines ──────────────────────────────────────

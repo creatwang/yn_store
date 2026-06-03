@@ -54,6 +54,7 @@ find apps/admin/demo/dashboard/src/routes/[feature-path] -type f | sort
 - 产品组织 → `demo/dashboard/src/routes/products/product-organization/components/`
 - 产品属性 → `demo/dashboard/src/routes/products/product-attributes/components/`
 - 产品媒体 → `demo/dashboard/src/routes/products/product-media/components/`
+- 草稿订单（独立插件，非 dashboard）→ `demo/draft-order-plugin/`（`pnpm sync:draft-order-plugin` 从官方 v2.15.3 拉取）；落地说明见 `docs/DRAFT-ORDERS-1TO1.md`
 - 销售渠道 → `demo/dashboard/src/routes/products/product-sales-channels/components/`
 - 库存套件 → `demo/dashboard/src/routes/products/product-create-variant/components/`
 - 公共组件 → `demo/dashboard/src/routes/products/common/components/`

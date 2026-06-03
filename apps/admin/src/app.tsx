@@ -164,7 +164,88 @@ const router = createBrowserRouter(
             <Route
               path=":id"
               lazy={() => import("./routes/draft-orders/draft-order-detail")}
-            />
+            >
+              <Route
+                path="items"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-items"
+                  )
+                }
+              />
+              <Route
+                path="custom-items"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-custom-items"
+                  )
+                }
+              />
+              <Route
+                path="promotions"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-promotions"
+                  )
+                }
+              />
+              <Route
+                path="shipping"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-shipping"
+                  )
+                }
+              />
+              <Route
+                path="shipping-address"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-shipping-address"
+                  )
+                }
+              />
+              <Route
+                path="billing-address"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-billing-address"
+                  )
+                }
+              />
+              <Route
+                path="email"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-email"
+                  )
+                }
+              />
+              <Route
+                path="sales-channel"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-sales-channel"
+                  )
+                }
+              />
+              <Route
+                path="metadata"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-metadata"
+                  )
+                }
+              />
+              <Route
+                path="transfer-ownership"
+                lazy={() =>
+                  import(
+                    "./routes/draft-orders/draft-order-detail/draft-order-transfer-ownership"
+                  )
+                }
+              />
+            </Route>
           </Route>
 
           {/* Customers */}

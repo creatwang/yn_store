@@ -10,9 +10,9 @@ let _client: Sql | null = null
 
 function resolvePoolMax() {
   if (process.env.DB_POOL_MAX) return Number(process.env.DB_POOL_MAX)
-  // Supabase session pooler 默认 pool_size=15；Vitest 并行 worker 会各自建池
+  // Supabase Session 模式 pool_size=15，且多进程/并行 HTTP 会叠加占用
   if (process.env.VITEST) return 3
-  return 10
+  return 4
 }
 
 export function createDb(connectionString: string) {

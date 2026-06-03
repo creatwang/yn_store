@@ -12,11 +12,8 @@ const SRC = path.join(REPO, "apps", "admin", "src")
 function transformContent(text, depthDelta = 0) {
   let s = text
   if (depthDelta > 0) {
-    const up = "../".repeat(depthDelta)
-    s = s.replaceAll("../../components/", `${up}components/`)
-    s = s.replaceAll("../../hooks/", `${up}hooks/`)
-    s = s.replaceAll("../../lib/", `${up}lib/`)
-    s = s.replaceAll("../../providers/", `${up}providers/`)
+    const extra = "../".repeat(depthDelta)
+    s = s.replace(/from "\.\.\/\.\.\//g, `from "${extra}../`)
   }
   s = s
     .replaceAll("../../lib/queries/sdk", "../../lib/client")
@@ -27,15 +24,35 @@ function transformContent(text, depthDelta = 0) {
     .replaceAll("../../../../lib/data/currencies", "../../../../lib/money-amount-helpers")
     .replaceAll(
       "../../../../components/common/data-table",
-      "../../../../components/data-table/data-table",
+      "../../../../components/data-table",
+    )
+    .replaceAll(
+      "../../../components/common/data-table",
+      "../../../components/data-table",
     )
     .replaceAll(
       "../../components/common/data-table",
-      "../../components/data-table/data-table",
+      "../../components/data-table",
     )
     .replaceAll(
       "../../../components/common/page-skeleton",
       "../../../components/common/skeleton",
+    )
+    .replaceAll(
+      /from "(\.\.\/)+hooks\/common\/use-data-table-date-filters"/g,
+      'from "../../../components/data-table/helpers/general/use-data-table-date-filters"',
+    )
+    .replaceAll(
+      /from "(\.\.\/)+hooks\/common\/use-query-params"/g,
+      'from "../../../hooks/use-query-params"',
+    )
+    .replaceAll(
+      /from "(\.\.\/)+hooks\/common\/use-combobox-data"/g,
+      'from "../../../hooks/use-combobox-data"',
+    )
+    .replaceAll(
+      /from "(\.\.\/)+hooks\/common\/use-debounced-search"/g,
+      'from "../../../hooks/use-debounced-search"',
     )
     .replaceAll("PageSkeleton", "TwoColumnPageSkeleton")
     .replaceAll(
@@ -88,7 +105,7 @@ if (!hooks.startsWith("// @ts-nocheck")) {
 await fs.writeFile(hooksPath, hooks, "utf8")
 
 // lib utils
-for (const f of ["order-utils.ts", "string-utils.ts"]) {
+for (const f of ["order-utils.ts", "string-utils.ts", "number-utils.ts"]) {
   const raw = await fs.readFile(path.join(DEMO, "lib/utils", f), "utf8")
   await fs.mkdir(path.join(SRC, "lib/utils"), { recursive: true })
   await fs.writeFile(path.join(SRC, "lib/utils", f), raw, "utf8")
@@ -125,26 +142,12 @@ await fs.writeFile(
   "utf8",
 )
 
-// list (+1 depth)
+// list (+1 depth) — 再跑 fix-draft-order-list-imports.mjs
 await writeFromDemo(
   "routes/draft-orders/page.tsx",
   "routes/draft-orders/draft-order-list/draft-order-list.tsx",
   1,
 )
-let list = await fs.readFile(
-  path.join(SRC, "routes/draft-orders/draft-order-list/draft-order-list.tsx"),
-  "utf8",
-)
-list = list.replace(/export const config[\s\S]*?\n\n/, "")
-list = list.replace(/defineRouteConfig[^;]+;\n/, "")
-list = list.replace(/\bconst List = /, "export const DraftOrderList = ")
-list = list.replace(/export default List\s*/, "")
-await fs.writeFile(
-  path.join(SRC, "routes/draft-orders/draft-order-list/draft-order-list.tsx"),
-  list,
-  "utf8",
-)
-
 // create
 await writeFromDemo(
   "routes/draft-orders/@create/page.tsx",
@@ -200,6 +203,17 @@ for (const [official, folder] of CHILD_ROUTES) {
     `// @ts-nocheck\nexport { ${mainName} as Component } from "./${folder}"\n`,
     "utf8",
   )
+}
+
+const { execSync } = await import("node:child_process")
+for (const script of [
+  "fix-draft-order-list-imports.mjs",
+  "fix-draft-order-create-imports.mjs",
+  "fix-draft-order-child-route-imports.mjs",
+  "fix-draft-order-imports.mjs",
+  "check-draft-order-imports.mjs",
+]) {
+  execSync(`node scripts/${script}`, { cwd: REPO, stdio: "inherit" })
 }
 
 console.log("\nPort complete.")

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   ArrowDownMini,
@@ -21,8 +22,8 @@ import { z } from "zod"
 import { useParams } from "react-router-dom"
 import { ConditionalTooltip } from "../../../../components/common/conditional-tooltip"
 import { Form } from "../../../../components/common/form"
-import { InlineTip } from "../../../../components/common/inline-tip"
-import { KeyboundForm } from "../../../../components/common/keybound-form"
+import { InlineTip } from "@medusajs/ui"
+import { KeyboundForm } from "../../../../components/utilities/keybound-form"
 import { RouteDrawer, useRouteModal } from "../../../../components/modals"
 import { useUpdateDraftOrder } from "../../../../hooks/api/draft-orders"
 import { useOrder } from "../../../../hooks/api/orders"

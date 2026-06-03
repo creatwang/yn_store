@@ -1,4 +1,4 @@
-import { defineRouteConfig } from "@medusajs/admin-sdk_DISABLED"
+// @ts-nocheck
 import type { HttpTypes } from "@medusajs/types"
 import {
   Container,
@@ -10,14 +10,14 @@ import { keepPreviousData } from "@tanstack/react-query"
 import { Fragment, useMemo } from "react"
 import { Outlet } from "react-router-dom"
 
-import { DataTable } from "../components/common/data-table"
-import { useCustomers } from "../hooks/api/customers"
-import { useDraftOrders } from "../hooks/api/draft-orders"
-import { useRegions } from "../hooks/api/regions"
-import { useSalesChannels } from "../hooks/api/sales-channels"
-import { useDataTableDateFilters } from "../hooks/common/use-data-table-date-filters"
-import { useQueryParams } from "../hooks/common/use-query-params"
-import { getFullDate } from "../lib/utils/date-utils"
+import { DataTable } from "../../../components/data-table"
+import { useCustomers } from "../../../hooks/api/customers"
+import { useDraftOrders } from "../../../hooks/api/draft-orders"
+import { useRegions } from "../../../hooks/api/regions"
+import { useSalesChannels } from "../../../hooks/api/sales-channels"
+import { useDataTableDateFilters } from "../../../components/data-table/helpers/general/use-data-table-date-filters"
+import { useQueryParams } from "../../../hooks/use-query-params"
+import { getFullDate } from "../../../lib/utils/date-utils"
 import { useTranslation } from "react-i18next"
 
 const PAGE_SIZE = 20

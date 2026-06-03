@@ -1,9 +1,9 @@
 import { z } from "zod"
 import { metadataSchema } from "./common"
+import { createFindParams } from "./helpers/validators"
 
-export const listInventoryItemsSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
+export const listInventoryItemsSchema = createFindParams({ limit: 50 }).extend({
+  q: z.string().optional(),
   location_id: z.string().optional(),
 })
 

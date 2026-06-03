@@ -1,2 +1,5 @@
 // @ts-nocheck
-export { DraftOrderList as Component } from "./draft-order-list"
+export {
+  DraftOrderList as Component,
+  useDraftOrderTableQuery,
+} from "./draft-order-list"

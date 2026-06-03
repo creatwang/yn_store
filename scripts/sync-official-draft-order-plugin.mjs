@@ -44,6 +44,8 @@ const FILES = [
   "components/draft-orders/summary-section.tsx",
   "lib/utils/order-utils.ts",
   "lib/utils/string-utils.ts",
+  "lib/utils/date-utils.ts",
+  "lib/utils/address-utils.ts",
 ]
 
 function toRawUrl(rel) {

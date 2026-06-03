@@ -98,6 +98,31 @@ export function formatDbError(err: unknown): string {
     )
   }
 
+  if (
+    code === "ECONNRESET" ||
+    code === "ETIMEDOUT" ||
+    (err instanceof Error &&
+      (err.message.includes("ECONNRESET") ||
+        err.message.includes("ETIMEDOUT") ||
+        err.message.includes("Connection terminated")))
+  ) {
+    return (
+      "数据库连接中断或超时（常见于 Supabase 连接池被打满）。请稍后重试；" +
+      "开发环境请保持单实例 server、DB_POOL_MAX≤4，或改用 Transaction pooler URL。"
+    )
+  }
+
+  if (
+    err instanceof Error &&
+    (err.message.includes("EMAXCONNSESSION") ||
+      err.message.includes("max clients reached"))
+  ) {
+    return (
+      "数据库 Session 连接池已满（Supabase 默认上限 15）。请关闭多余 dev/test 进程、" +
+      "勿同时跑 Vitest 与 pnpm dev，并确认 apps/server/.env 使用 pooler 且 DB_POOL_MAX≤4。"
+    )
+  }
+
   if (err instanceof Error) {
     return err.message
   }

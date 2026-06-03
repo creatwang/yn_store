@@ -71,6 +71,33 @@ export function resolveOrderFieldsConfig(fieldsParam?: string): OrderFieldsConfi
   }
 }
 
+/** 仅标量 fields（如 currency_code）时跳过行项/关联大查询 */
+export function needsFullOrderDetailLoad(config: OrderFieldsConfig): boolean {
+  for (const field of config.fields) {
+    if (field.startsWith("*")) return true
+    if (field.includes(".")) return true
+    if (field === "summary" || field === "total") return true
+    if (
+      [
+        "items",
+        "customer",
+        "sales_channel",
+        "payment_collections",
+        "fulfillments",
+        "shipping_address",
+        "billing_address",
+        "shipping_methods",
+        "promotions",
+        "region",
+        "order_change",
+      ].includes(field)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 export function applyOrderFieldMask<
   T extends Record<string, unknown>,
 >(order: T, config: OrderFieldsConfig): T {

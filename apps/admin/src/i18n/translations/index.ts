@@ -107,7 +107,13 @@ const translations: I18nExtension = {
   zhCN: {
     translation: zhCN,
   },
+  zh: {
+    translation: zhCN,
+  },
   "zh-CN": {
+    translation: zhCN,
+  },
+  "zh-Hans": {
     translation: zhCN,
   },
   fa: {

@@ -305,8 +305,13 @@ export const stockLocationService = {
         .offset(query.offset),
       db.select({ total: count() }).from(stockLocation).where(where),
     ])
-    const stock_locations = await Promise.all(rows.map((r) => enrichStockLocation(r, false)))
-    return { stock_locations, count: Number(total), limit: query.limit, offset: query.offset }
+    // 对齐官方 list：不展开 fulfillment_sets（详情页再 enrich）
+    return {
+      stock_locations: rows,
+      count: Number(total),
+      limit: query.limit,
+      offset: query.offset,
+    }
   },
 
   async getById(id: string) {

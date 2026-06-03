@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
 import { generateId, getDb, region, salesChannel } from "@my-store/db"
 import type {
   CreateRegionInput,
@@ -109,6 +109,16 @@ export const regionService = {
   async listSalesChannels(query: ListSalesChannelsQuery) {
     const db = getDb()
     const conditions = [isNull(salesChannel.deleted_at)]
+
+    if (query.q?.trim()) {
+      const term = `%${query.q.trim()}%`
+      conditions.push(
+        or(
+          ilike(salesChannel.name, term),
+          ilike(salesChannel.description, term),
+        )!,
+      )
+    }
 
     const where = and(...conditions)
 

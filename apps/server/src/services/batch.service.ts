@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
 import {
   generateId,
   getDb,
@@ -172,7 +172,44 @@ export const taxRateService = {
 
 // ── Inventory Items ─────────────────────────────────────────
 export const inventoryItemService = {
-  list: mkl(inventoryItem, "inventory_items"),
+  async list(query: {
+    limit: number
+    offset: number
+    q?: string
+    location_id?: string
+  }) {
+    const db = getDb()
+    const conditions = [isNull(inventoryItem.deleted_at)]
+
+    if (query.q?.trim()) {
+      const term = `%${query.q.trim()}%`
+      conditions.push(
+        or(
+          ilike(inventoryItem.title, term),
+          ilike(inventoryItem.sku, term),
+          ilike(inventoryItem.description, term),
+        )!,
+      )
+    }
+
+    const where = and(...conditions)
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select()
+        .from(inventoryItem)
+        .where(where)
+        .orderBy(desc(inventoryItem.created_at))
+        .limit(query.limit)
+        .offset(query.offset),
+      db.select({ total: count() }).from(inventoryItem).where(where),
+    ])
+    return {
+      inventory_items: rows,
+      count: Number(total),
+      limit: query.limit,
+      offset: query.offset,
+    }
+  },
   getById: mkg(inventoryItem, "inventory_items"),
   create: mkc(inventoryItem, "iitem", "inventory_items"),
   update: mku(inventoryItem, "inventory_items"),

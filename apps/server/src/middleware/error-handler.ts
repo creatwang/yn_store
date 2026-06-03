@@ -11,13 +11,36 @@ function getUnknownErrorMessage(err: unknown): string {
     return getUnknownErrorMessage(err.errors[0])
   }
   const dbMsg = formatDbError(err)
-  if (dbMsg.includes("无法连接数据库") || dbMsg.includes("ECONNREFUSED")) {
+  if (
+    dbMsg.includes("无法连接数据库") ||
+    dbMsg.includes("ECONNREFUSED") ||
+    dbMsg.includes("Session 连接池已满") ||
+    dbMsg.includes("连接池被打满")
+  ) {
     return dbMsg
   }
   if (err instanceof Error && err.message) {
     return err.message
   }
   return "Internal Server Error"
+}
+
+function isDbConnectivityError(err: unknown): boolean {
+  const code =
+    err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined
+  const msg = err instanceof Error ? err.message : ""
+  return (
+    code === "ECONNRESET" ||
+    code === "ETIMEDOUT" ||
+    code === "ECONNREFUSED" ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("Connection terminated") ||
+    msg.includes("EMAXCONNSESSION") ||
+    msg.includes("max clients reached") ||
+    msg.includes("无法连接数据库") ||
+    msg.includes("Session 连接池已满")
+  )
 }
 
 export const errorHandler: ErrorHandler = (err, c) => {
@@ -29,6 +52,11 @@ export const errorHandler: ErrorHandler = (err, c) => {
   }
 
   console.error(err)
+
+  if (isDbConnectivityError(err)) {
+    const message = getUnknownErrorMessage(err)
+    return c.json({ message, type: "database_unavailable" }, 503)
+  }
 
   const message = isDev() ? getUnknownErrorMessage(err) : "Internal Server Error"
 

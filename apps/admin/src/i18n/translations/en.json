@@ -1609,6 +1609,32 @@
       "shippingRequired": "Shipping address is required",
       "billingRequired": "Billing address is required",
       "formInvalid": "Please fix the errors in the form."
+    },
+    "items": {
+      "editTitle": "Edit Items",
+      "editDescription": "Edit the items in the draft order",
+      "loadingDescription": "Loading data for the draft order, please wait...",
+      "sectionHint": "Choose items from the product catalog.",
+      "searchPlaceholder": "Search items",
+      "columnItem": "Item",
+      "emptyTitle": "There are no items in this order",
+      "emptyHint": "Add items to the order to get started.",
+      "noResultsTitle": "No items found",
+      "noResultsHint": "No items found for \"{{query}}\".",
+      "itemCount_one": "{{count}} item",
+      "itemCount_other": "{{count}} items",
+      "updateItems": "Update items",
+      "variantsTitle": "Product Variants",
+      "variantsDescription": "Choose product variants to add to the order.",
+      "customItemTitle": "Add custom item",
+      "customItemDescription": "Add a custom item to the order. This will add a new line item that is not associated with an existing product.",
+      "customItemTitleLabel": "Title",
+      "customItemTitleHint": "Enter the title of the item",
+      "customItemUnitPriceHint": "Enter the unit price of the item",
+      "customItemQuantityHint": "Enter the quantity of the item",
+      "addItem": "Add item",
+      "requestEditError": "Failed to request order edit: {{message}}",
+      "confirmEditError": "Failed to confirm order edit: {{message}}"
     }
   },
   "stockLocations": {

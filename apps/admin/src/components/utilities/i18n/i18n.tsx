@@ -9,6 +9,7 @@ import { useExtension } from "../../../providers/extension-provider"
 const normalizeLanguageCode = (detected: string = "") => {
   const normalized = detected.trim().toLowerCase()
   const alias: Record<string, string> = {
+    zh: "zhCN",
     "zh-cn": "zhCN",
     "zh-hans": "zhCN",
     "zh-tw": "zhTW",

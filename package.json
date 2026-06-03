@@ -21,6 +21,7 @@
     "typecheck": "turbo typecheck",
     "init": "powershell -ExecutionPolicy Bypass -File ./scripts/init.ps1",
     "check:db": "powershell -ExecutionPolicy Bypass -File ./scripts/check-db.ps1",
+    "check:runtime-db": "node scripts/check-runtime-db.mjs",
     "seed:admin": "pnpm --filter @my-store/server seed:admin",
     "sync:handoff": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-handoff-from-old.ps1",
     "migrate": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-from-legacy.ps1",

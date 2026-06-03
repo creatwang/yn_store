@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { zodResolver } from "@hookform/resolvers/zod"
 import { HttpTypes } from "@medusajs/types"
 import { Button, Heading, Hint, Label, Select, toast } from "@medusajs/ui"
@@ -5,14 +6,14 @@ import { Control, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 import { z } from "zod"
 import { Form } from "../../../../components/common/form"
-import { KeyboundForm } from "../../../../components/common/keybound-form"
+import { KeyboundForm } from "../../../../components/utilities/keybound-form"
 import { Combobox } from "../../../../components/inputs/combobox"
 import { RouteDrawer, useRouteModal } from "../../../../components/modals"
 import {
   useDraftOrder,
   useUpdateDraftOrder,
 } from "../../../../hooks/api/draft-orders"
-import { useComboboxData } from "../../../../hooks/common/use-combobox-data"
+import { useComboboxData } from "../../../../hooks/use-combobox-data"
 import { sdk } from "../../../../lib/client"
 
 export const TransferOwnership = () => {

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { createFindParams } from "./helpers/validators"
 
 // ── Product Tags ──────────────────────────────────────────────
 export const listProductTagsSchema = z.object({
@@ -43,11 +44,8 @@ export const updateProductTypeSchema = createProductTypeSchema.partial()
 export type UpdateProductTypeInput = z.infer<typeof updateProductTypeSchema>
 
 // ── Tax Regions ───────────────────────────────────────────────
-export const listTaxRegionsSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
+export const listTaxRegionsSchema = createFindParams({ limit: 50 }).extend({
   q: z.string().optional(),
-  order: z.string().optional(),
 })
 
 export type ListTaxRegionsQuery = z.infer<typeof listTaxRegionsSchema>

@@ -32,6 +32,7 @@ import { getCurrencyEpsilon, toAmount } from "../../lib/big-number"
 import {
   applyOrderFieldMask,
   DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
+  needsFullOrderDetailLoad,
   resolveOrderFieldsConfig,
   type OrderFieldsConfig,
 } from "./fields"
@@ -959,14 +960,25 @@ export async function presentAdminOrders(
   })
 }
 
-/** 详情 */
-export async function presentAdminOrderDetail(
+function presentAdminOrderDetailScalars(
+  orderRow: OrderRow,
+  fieldConfig: OrderFieldsConfig,
+) {
+  const out: Record<string, unknown> = { id: orderRow.id }
+  for (const field of fieldConfig.fields) {
+    const key = field.startsWith("+") ? field.slice(1) : field
+    if (key in orderRow) {
+      out[key] = (orderRow as Record<string, unknown>)[key]
+    }
+  }
+  return applyOrderFieldMask(out, fieldConfig)
+}
+
+async function loadPresentedAdminOrderDetail(
   db: Db,
   orderRow: OrderRow,
-  fields?: string,
+  fieldConfig: OrderFieldsConfig,
 ) {
-  const fieldConfig = resolveOrderFieldsConfig(fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS)
-
   const [bundle, lineItemRows, shippingRows, shippingAddress, billingAddress, creditLines, promotions, orderRegion] = await Promise.all([
     loadRelations(db, [orderRow], fieldConfig),
     loadDetailLineItems(db, orderRow.id),
@@ -1002,7 +1014,6 @@ export async function presentAdminOrderDetail(
     loadShippingAdjustments(db, shippingIds),
   ])
 
-  // 加载行项库存（inventory_items）
   const variantIds = [...new Set(lineItemRows.map(r => r.variant?.id).filter(Boolean) as string[])]
   const inventoryItemsByVariant = new Map<string, any[]>()
   if (variantIds.length > 0) {
@@ -1047,6 +1058,23 @@ export async function presentAdminOrderDetail(
   }
 
   return applyOrderFieldMask(dtoWithRelations, fieldConfig)
+}
+
+/** 详情 */
+export async function presentAdminOrderDetail(
+  db: Db,
+  orderRow: OrderRow,
+  fields?: string,
+) {
+  const fieldConfig = resolveOrderFieldsConfig(fields ?? DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS)
+
+  if (!needsFullOrderDetailLoad(fieldConfig)) {
+    return presentAdminOrderDetailScalars(orderRow, fieldConfig)
+  }
+
+  return db.transaction((tx) =>
+    loadPresentedAdminOrderDetail(tx as Db, orderRow, fieldConfig),
+  )
 }
 
 // 单测用导出

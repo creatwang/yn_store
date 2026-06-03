@@ -105,10 +105,14 @@ export async function apiPostRetry(path: string, body?: any, retries = 2) {
 }
 
 /** DELETE 请求 */
-export async function apiDelete(path: string) {
+export async function apiDelete(path: string, body?: unknown) {
   const req = new Request(`http://localhost/api${path}`, {
     method: "DELETE",
-    headers: await authHeaders(),
+    headers: {
+      ...(await authHeaders()),
+      ...(body != null ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body != null ? JSON.stringify(body) : undefined,
   })
   return app.fetch(req)
 }
