@@ -9,7 +9,7 @@ my-medusa-store-hono/
 │   │   ├── src/        ← 业务代码：routes, components, hooks, providers
 │   │   └── demo/       ← @medusajs/dashboard 源码，实现新组件时先到这里找参考
 │   │       └── dashboard/src/routes/    ← 所有页面的完整/空壳实现
-│   ├── server/         ← Hono API 后端 (localhost:9000)，挂载 /app 静态文件
+│   ├── server/         ← Hono API 后端 (localhost:7000)，挂载 /app 静态文件
 │   └── storefront/     ← 前端商店
 ├── packages/
 │   ├── config/         ← 品牌全局配置（BRAND、EMAIL_DOMAIN 等）
@@ -80,8 +80,8 @@ find apps/admin/demo/dashboard/src/routes/[feature-path] -type f | sort
 
 ```bash
 pnpm dev              # 启动 server + admin + storefront
-pnpm dev:admin        # 仅 admin (localhost:5173，proxy /api → localhost:9000)
-pnpm dev:server       # 仅 server (localhost:9000)
+pnpm dev:admin        # 仅 admin (localhost:5173，proxy /api → localhost:7000)
+pnpm dev:server       # 仅 server (localhost:7000)
 pnpm build:admin      # 构建 admin → apps/server/public/app/
 ```
 

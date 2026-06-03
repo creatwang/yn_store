@@ -59,7 +59,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          PORT: 9000
+          PORT: 7000
           NODE_ENV: test
           SERVE_ADMIN: "1"
         run: |
@@ -75,7 +75,7 @@ jobs:
 
           # Wait for health check
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:9000/api/health > /dev/null; then
+            if curl -sf http://localhost:7000/api/health > /dev/null; then
               echo "Server ready"
               break
             fi
@@ -84,13 +84,13 @@ jobs:
           done
 
           # Verify server health
-          curl -s http://localhost:9000/api/health | head -c 500
+          curl -s http://localhost:7000/api/health | head -c 500
 
           # Run Playwright against the built-in server
           cd ../admin
           PLAYWRIGHT_SKIP_WEBSERVER=1 \
-          PLAYWRIGHT_BASE_URL=http://localhost:9000/app/ \
-          PLAYWRIGHT_API_URL=http://localhost:9000 \
+          PLAYWRIGHT_BASE_URL=http://localhost:7000/app/ \
+          PLAYWRIGHT_API_URL=http://localhost:7000 \
           ADMIN_E2E_EMAIL=admin@medusa-test.com \
           ADMIN_E2E_PASSWORD="${ADMIN_E2E_PASSWORD:-supersecret}" \
           CI=true \

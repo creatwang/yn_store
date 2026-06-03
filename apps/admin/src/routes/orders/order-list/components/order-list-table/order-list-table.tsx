@@ -52,9 +52,16 @@ export const OrderListTable = () => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <Heading>{t("orders.domain")}</Heading>
-        <Button size="small" variant="secondary" asChild>
-          <Link to={`export${location.search}`}>{t("actions.export")}</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button size="small" variant="secondary" asChild>
+            <Link to="/draft-orders/create">
+              {t("draftOrders.create.createDraftOrder")}
+            </Link>
+          </Button>
+          <Button size="small" variant="secondary" asChild>
+            <Link to={`export${location.search}`}>{t("actions.export")}</Link>
+          </Button>
+        </div>
       </div>
       <_DataTable
         columns={columns}

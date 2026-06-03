@@ -62,7 +62,7 @@ jobs:
 
           if [ -n "${DATABASE_URL:-}" ]; then
             export JWT_SECRET="${JWT_SECRET:-ci-storefront-build-secret-32chars-min}"
-            export PUBLIC_API_URL=http://localhost:9000
+            export PUBLIC_API_URL=http://localhost:7000
             export PUBLIC_SITE_URL=http://localhost:4321
             export ASTRO_DEPLOY_TARGET=node
 
@@ -70,7 +70,7 @@ jobs:
             npx tsx entry.node.ts &
             SERVER_PID=$!
             for i in $(seq 1 30); do
-              curl -sf http://localhost:9000/api/health > /dev/null && break
+              curl -sf http://localhost:7000/api/health > /dev/null && break
               sleep 2
             done
             cd ../..
@@ -97,7 +97,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           set -euo pipefail
-          export PUBLIC_API_URL="${STAGING_API_URL:-http://localhost:9000}"
+          export PUBLIC_API_URL="${STAGING_API_URL:-http://localhost:7000}"
           export PUBLIC_SITE_URL=http://localhost:4321
           SERVER_PID=""
 
@@ -107,7 +107,7 @@ jobs:
             npx tsx entry.node.ts &
             SERVER_PID=$!
             for i in $(seq 1 30); do
-              curl -sf http://localhost:9000/api/health > /dev/null && break
+              curl -sf http://localhost:7000/api/health > /dev/null && break
               sleep 2
             done
             cd ../..

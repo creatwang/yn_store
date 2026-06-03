@@ -86,7 +86,7 @@ Copy-Item apps/storefront/.env.example apps/storefront/.env
 ```env
 DATABASE_URL=postgresql://postgres:password@localhost:5432/medusa
 JWT_SECRET=change-me-to-a-secure-secret-at-least-32-chars
-PORT=9000
+PORT=7000
 NODE_ENV=development
 ```
 
@@ -100,7 +100,7 @@ NODE_ENV=development
 pnpm dev
 ```
 这会同时启动：
-- `@my-store/server`（后端，端口 9000）
+- `@my-store/server`（后端，端口 7000）
 - `@my-store/admin`（Admin 前端，端口 5173）
 - `@my-store/storefront`（Store 前端，端口 4321）
 
@@ -119,7 +119,7 @@ cd apps/server
 pnpm dev:node
 ```
 
-**端口：** http://localhost:9000  
+**端口：** http://localhost:7000  
 **API 基础路径：** `/api`
 
 **Server 命令说明：**

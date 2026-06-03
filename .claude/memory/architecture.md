@@ -39,7 +39,7 @@ price 表**没有 variant_id 列**，只能通过 price_set_id 关联。
 ## Playwright
 
 - baseURL 必须有尾部 `/`（如 `http://localhost:5174/app/`），否则 `page.goto("login")` 丢路径
-- CI 下 admin 由 server 内置静态服务（SERVE_ADMIN=1，端口 9000）
+- CI 下 admin 由 server 内置静态服务（SERVE_ADMIN=1，端口 7000）
 - `webServer` 配置为 undefined，CI 手动起服务
 
 ## 测试连接

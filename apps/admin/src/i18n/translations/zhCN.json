@@ -1581,12 +1581,23 @@
       "shippingPriceOverrideLabel": "配送价格覆盖",
       "shippingPriceOverrideHint": "覆盖草稿订单的配送价格。",
       "sendNotificationLabel": "发送通知",
-      "sendNotificationHint": "在创建草稿订单时通知客户。"
+      "sendNotificationHint": "在创建草稿订单时通知客户。",
+      "emailOrderHint": "输入用于关联订单的邮箱",
+      "savedAddressesLabel": "已保存地址",
+      "savedAddressesHint": "选择客户已保存的地址之一。",
+      "addressUsedForShipping": "用于配送的地址",
+      "addressUsedForBilling": "用于账单的地址",
+      "sameAsShippingHint": "账单地址与配送地址相同",
+      "customerEmailDisabledHint": "已选择客户时无法修改邮箱",
+      "chooseSalesChannelHint": "选择销售渠道"
     },
     "validation": {
       "requiredEmailOrCustomer": "必须填写邮箱或客户信息。",
       "requiredItems": "至少需要一个商品。",
-      "invalidEmail": "邮箱地址必须有效。"
+      "invalidEmail": "邮箱地址必须有效。",
+      "shippingRequired": "必须填写配送地址",
+      "billingRequired": "必须填写账单地址",
+      "formInvalid": "请修正表单中的错误。"
     },
     "list": {
       "description": "创建新草稿订单开始。",

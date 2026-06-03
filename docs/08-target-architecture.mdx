@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart LR
-  subgraph port9000 [server_单进程]
+  subgraph port7000 [server_单进程]
     API["/api/*"]
     UI["/app/* 静态SPA"]
   end
@@ -33,8 +33,8 @@ flowchart LR
 | 模式 | 命令 | 要不要 `build:admin` | 访问 Admin |
 |------|------|----------------------|------------|
 | 日常开发 | `pnpm dev` | **不要** | `http://localhost:5173/app/`（Vite HMR） |
-| 一体联调 / 对齐生产 | `pnpm dev:admin-on-server` | **要**（脚本内会 build） | `http://localhost:9000/app/` |
-| 生产 / Docker / 仅起 server | `pnpm build:backend` 后启动 server | **要** | `http://localhost:9000/app/` |
+| 一体联调 / 对齐生产 | `pnpm dev:admin-on-server` | **要**（脚本内会 build） | `http://localhost:7000/app/` |
+| 生产 / Docker / 仅起 server | `pnpm build:backend` 后启动 server | **要** | `http://localhost:7000/app/` |
 
 | 脚本 | 说明 |
 |------|------|
@@ -42,7 +42,7 @@ flowchart LR
 | `pnpm build:backend` | build:admin + server typecheck |
 | `pnpm build:release` | build:backend + `pnpm compile`（需本机 Bun） |
 
-**API 地址（始终）**：`http://localhost:9000/api/*`（与 Admin 用哪个端口无关）
+**API 地址（始终）**：`http://localhost:7000/api/*`（与 Admin 用哪个端口无关）
 
 ---
 
@@ -89,18 +89,18 @@ mount-app.ts  把  GET /app/*  映射到这些文件
 
 ```text
 开发 pnpm dev:
-  :9000  server     →  /api/*
+  :7000  server     →  /api/*
   :5173  admin Vite →  /app/*  （源码 + HMR，无需 build）
   :4321  storefront  →  商城（独立）
 
 生产 / 联调:
-  :9000  server     →  /api/*  +  /app/*（public/app 静态）
+  :7000  server     →  /api/*  +  /app/*（public/app 静态）
 ```
 
 ### 未采用：开发期单端口 + server 内嵌 Vite
 
 ```text
-仅 :9000 一个进程
+仅 :7000 一个进程
   /api/*  →  Hono
   /app/*  →  Vite middleware 现场编译 admin 源码（开发可不 build）
 ```
@@ -110,7 +110,7 @@ mount-app.ts  把  GET /app/*  映射到这些文件
 | 日常要不要 build | **不要** | **不要** |
 | 生产要不要 build | **要** | **要** |
 | 开发 HMR | 官方 Vite，稳 | 需自维护 Hono+Vite 合体 |
-| 与线上一致 | 主机不同（5173 vs 9000），路径同为 `/app` | 开发即 9000/app |
+| 与线上一致 | 主机不同（5173 vs 7000），路径同为 `/app` | 开发即 7000/app |
 
 **结论**：「Admin 进 server」指的是 **生产（及联调）用 build 产物 + mount-app**；**不等于**开发期每次都要打包，也 **不等于**在 server 里嵌 Vite。
 
@@ -125,7 +125,7 @@ mount-app.ts  把  GET /app/*  映射到这些文件
 | 生产 Admin | 常单独部署静态或另开端口 | **与 API 同一 server**：`/app` |
 | server 职责 | 多半只有 `/api` | `/api` + `/app`（有 build 时） |
 
-日常写页面体验变化不大；变化在 **发布物一个进程、一个端口（9000）带后台 UI**。
+日常写页面体验变化不大；变化在 **发布物一个进程、一个端口（7000）带后台 UI**。
 
 ---
 

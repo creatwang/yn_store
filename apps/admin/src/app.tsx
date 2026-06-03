@@ -1,6 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query"
 import { Toaster, TooltipProvider } from "@medusajs/ui"
 import { Spinner } from "@medusajs/icons"
+import i18n from "i18next"
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from "react-router-dom"
 import { HelmetProvider } from "react-helmet-async"
 import { ErrorBoundary } from "./components/utilities/error-boundary/error-boundary"
@@ -74,7 +75,96 @@ const router = createBrowserRouter(
           {/* Orders */}
           <Route path="orders">
             <Route index lazy={() => import("./routes/orders/order-list")} />
-            <Route path=":id" lazy={() => import("./routes/orders/order-detail")} />
+            <Route
+              path="export"
+              lazy={() => import("./routes/orders/order-export")}
+            />
+            <Route
+              path=":id"
+              lazy={() => import("./routes/orders/order-detail")}
+            >
+              <Route
+                path="edits"
+                lazy={() => import("./routes/orders/order-create-edit")}
+              />
+              <Route
+                path="returns"
+                lazy={() => import("./routes/orders/order-create-return")}
+              />
+              <Route
+                path="returns/:return_id/receive"
+                lazy={() => import("./routes/orders/order-receive-return")}
+              />
+              <Route
+                path="exchanges"
+                lazy={() => import("./routes/orders/order-create-exchange")}
+              />
+              <Route
+                path="claims"
+                lazy={() => import("./routes/orders/order-create-claim")}
+              />
+              <Route
+                path="allocate-items"
+                lazy={() => import("./routes/orders/order-allocate-items")}
+              />
+              <Route
+                path="refund"
+                lazy={() => import("./routes/orders/order-create-refund")}
+              />
+              <Route
+                path="fulfillment"
+                lazy={() => import("./routes/orders/order-create-fulfillment")}
+              />
+              <Route
+                path=":fulfillmentId/create-shipment"
+                lazy={() => import("./routes/orders/order-create-shipment")}
+              />
+              <Route
+                path="transfer"
+                lazy={() => import("./routes/orders/order-request-transfer")}
+              />
+              <Route
+                path="shipping-address"
+                lazy={() =>
+                  import("./routes/orders/order-edit-shipping-address")
+                }
+              />
+              <Route
+                path="billing-address"
+                lazy={() =>
+                  import("./routes/orders/order-edit-billing-address")
+                }
+              />
+              <Route
+                path="email"
+                lazy={() => import("./routes/orders/order-edit-email")}
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() => import("./routes/orders/order-metadata")}
+              />
+            </Route>
+          </Route>
+
+          {/* Draft Orders */}
+          <Route
+            path="draft-orders"
+            handle={{
+              breadcrumb: () => i18n.t("draftOrders.domain"),
+            }}
+          >
+            <Route
+              index
+              lazy={() => import("./routes/draft-orders/draft-order-list")}
+            />
+            <Route
+              path="create"
+              lazy={() => import("./routes/draft-orders/draft-order-create")}
+            />
+            <Route
+              path=":id"
+              lazy={() => import("./routes/draft-orders/draft-order-detail")}
+            />
           </Route>
 
           {/* Customers */}

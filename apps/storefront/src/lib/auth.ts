@@ -52,7 +52,7 @@ export async function clearSessionCookie() {
 }
 
 export async function loginCustomer(email: string, password: string) {
-  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:7000"
   const res = await fetch(`${apiUrl}/api/auth/customer/emailpass`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -73,7 +73,7 @@ export async function registerCustomer(payload: {
   first_name?: string
   last_name?: string
 }) {
-  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:7000"
   const res = await fetch(`${apiUrl}/api/store/customers/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

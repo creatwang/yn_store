@@ -24,7 +24,7 @@
 ```
 浏览器
   ├─ :4321  Astro storefront（adapter 提供 SSR + 静态 dist/client）
-  └─ :9000  Hono server（/api/store/* 交易大脑）
+  └─ :7000  Hono server（/api/store/* 交易大脑）
 ```
 
 - Storefront adapter **只负责 Astro 页面**，不替代 Hono API。
@@ -102,7 +102,7 @@ docker build -f apps/storefront/Dockerfile \
 docker run -p 4321:4321 -e PUBLIC_API_URL=https://api.example.com my-store-storefront
 ```
 
-Build 阶段需 Store API 可达（Content Loader）。`host.docker.internal:9000` 可用于本机 API。
+Build 阶段需 Store API 可达（Content Loader）。`host.docker.internal:7000` 可用于本机 API。
 
 ---
 

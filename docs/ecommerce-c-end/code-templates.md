@@ -12,7 +12,7 @@
 // src/loaders/hono-store-loader.ts
 import type { Loader } from "astro/loaders"
 
-const API = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+const API = import.meta.env.PUBLIC_API_URL || "http://localhost:7000"
 
 type RawProduct = {
   id: string
@@ -175,7 +175,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props
 const { data: product } = entry
-const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:7000"
 ---
 
 <BaseLayout title={product.title} description={product.description}>

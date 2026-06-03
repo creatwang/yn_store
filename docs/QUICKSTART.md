@@ -20,7 +20,7 @@ pnpm install
 # apps/server/.env
 DATABASE_URL=postgresql://user:password@localhost:5432/medusa
 JWT_SECRET=your-secret-at-least-32-characters
-PORT=9000
+PORT=7000
 ```
 
 ## 3. 启动开发环境
@@ -33,7 +33,7 @@ pnpm dev
 
 | 进程 | 地址 | 说明 |
 |------|------|------|
-| **Server** | `http://localhost:9000/api` | Hono API 后端 |
+| **Server** | `http://localhost:7000/api` | Hono API 后端 |
 | **Admin** | `http://localhost:5173/app` | Vite HMR 管理后台 |
 | **Storefront** | `http://localhost:4321` | Astro C 端商城 |
 
@@ -55,7 +55,7 @@ pnpm --filter=@my-store/server test
 
 **数据库连接失败**：确认 `DATABASE_URL` 正确，数据库包含 Medusa 表结构。
 
-**Admin 接口报 404**：确认 Server 在 `:9000` 启动成功，Admin Vite proxy 配置指向正确端口。
+**Admin 接口报 404**：确认 Server 在 `:7000` 启动成功，Admin Vite proxy 配置指向正确端口。
 
 ## 生产构建
 
@@ -63,7 +63,7 @@ pnpm --filter=@my-store/server test
 pnpm build:admin    # Admin → apps/server/public/app/
 ```
 
-之后可以仅起 server 单进程：`http://localhost:9000/app/` + `http://localhost:9000/api`
+之后可以仅起 server 单进程：`http://localhost:7000/app/` + `http://localhost:7000/api`
 
 ## 更多
 

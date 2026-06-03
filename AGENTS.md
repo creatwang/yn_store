@@ -25,7 +25,7 @@ packages/validators/ # 共享 Zod schema
 docs/                # 蓝图（08-target-architecture.mdx）
 ```
 
-**本地地址**：API `http://localhost:9000/api`；Admin 挂载后 `http://localhost:9000/app/`；Vite dev `http://localhost:5173/app/`
+**本地地址**：API `http://localhost:7000/api`；Admin 挂载后 `http://localhost:7000/app/`；Vite dev `http://localhost:5173/app/`
 
 **开发是否 build**：日常 `pnpm dev` **不需要** build；只有 server 提供 `/app` 时才 `pnpm build:admin`。见 [`docs/08-target-architecture.mdx`](docs/08-target-architecture.mdx)。
 
@@ -75,7 +75,7 @@ docs/                # 蓝图（08-target-architecture.mdx）
 ## API 基础 URL
 
 ```
-开发: http://localhost:9000/api
+开发: http://localhost:7000/api
 Admin API:  /api/admin/*
 Store API:  /api/store/*
 Auth:       POST /api/auth/user/emailpass

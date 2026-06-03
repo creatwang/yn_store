@@ -94,7 +94,7 @@ pages/components <script>
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `PUBLIC_API_URL` | 是 | 如 `http://localhost:9000` |
+| `PUBLIC_API_URL` | 是 | 如 `http://localhost:7000` |
 | `PUBLIC_IMAGE_DOMAINS` | 否 | 逗号分隔 CDN 域名 |
 | `ADAPTER` | 否 | `cloudflare` 时启用 passthroughImageService |
 

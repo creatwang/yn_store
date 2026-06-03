@@ -25,7 +25,7 @@ async function loginViaUI(page: Parameters<Parameters<typeof test>[1]>[0]["page"
 
 /** Create a minimal order via Admin API using the JWT token. Returns the order ID. */
 async function createOrderViaAPI(token: string): Promise<string> {
-  const apiBase = process.env.PLAYWRIGHT_API_URL || "http://localhost:9000"
+  const apiBase = process.env.PLAYWRIGHT_API_URL || "http://localhost:7000"
 
   // 1. Create order
   const createRes = await fetch(`${apiBase}/api/admin/orders`, {

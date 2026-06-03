@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect("/login?error=google_csrf")
   }
 
-  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:7000"
   const res = await fetch(`${apiUrl}/api/auth/customer/google/callback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

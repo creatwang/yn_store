@@ -1,6 +1,6 @@
-# 释放本地开发常用端口（9000 API / 5173 Admin / 4321 Store）
+# 释放本地开发常用端口（7000 API / 5173 Admin / 4321 Store）
 $ErrorActionPreference = "SilentlyContinue"
-$ports = @(9000, 5173, 4321)
+$ports = @(7000, 5173, 4321)
 
 foreach ($port in $ports) {
   Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue |

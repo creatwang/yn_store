@@ -118,11 +118,11 @@ Write-Host @"
 
 Next:
   1. Configure apps/server/.env (DATABASE_URL, JWT_SECRET)
-  2. Start dev (会先释放 9000/5173/4321 端口):
+  2. Start dev (会先释放 7000/5173/4321 端口):
        pnpm dev
      若端口占用: pnpm predev
      Or separately:
-       pnpm dev:server   # http://localhost:9000/api/health
+       pnpm dev:server   # http://localhost:7000/api/health
        pnpm dev:admin    # http://localhost:5173/admin
        pnpm dev:store    # http://localhost:4321
   3. Read before coding:

@@ -1,5 +1,14 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, order, orderChange, orderLineItem, orderItem } from "@my-store/db"
+import {
+  generateId,
+  getDb,
+  order,
+  orderAddress,
+  orderChange,
+  orderLineItem,
+  orderItem,
+} from "@my-store/db"
+import { runInTransaction } from "../lib/transaction"
 import type { CreateOrderInput, UpdateOrderInput } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
 
@@ -20,7 +29,17 @@ export const draftOrderService = {
       .limit(query.limit ?? 50)
       .offset(query.offset ?? 0)
 
-    return { draft_orders: orders }
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(order)
+      .where(and(...conditions))
+
+    return {
+      draft_orders: orders,
+      count: Number(total),
+      limit: query.limit ?? 50,
+      offset: query.offset ?? 0,
+    }
   },
 
   async getById(id: string) {
@@ -29,25 +48,94 @@ export const draftOrderService = {
       .where(and(eq(order.id, id), eq(order.is_draft_order, true), isNull(order.deleted_at)))
       .limit(1)
     if (!item) throw new HTTPException(404, { message: "Draft order not found" })
-    return { draft_order: item }
+
+    const lineRows = await db
+      .select()
+      .from(orderLineItem)
+      .innerJoin(orderItem, eq(orderLineItem.id, orderItem.item_id))
+      .where(eq(orderItem.order_id, id))
+      .orderBy(desc(orderLineItem.created_at))
+
+    const [change] = await db.select().from(orderChange).where(and(
+      eq(orderChange.order_id, id),
+      eq(orderChange.change_type, "draft_edit"),
+      isNull(orderChange.canceled_at),
+    )).limit(1)
+
+    const meta = (change?.metadata as Record<string, unknown>) ?? {}
+    const addedItems = (meta.added_items as Record<string, unknown>[]) ?? []
+
+    const items = lineRows.map((row) => {
+      const li = row.order_line_item
+      const oi = row.order_item
+      const action = addedItems.find(
+        (a) => a.line_item_id === li.id || a.order_item_id === oi.id,
+      )
+      return {
+        id: oi.id,
+        line_item_id: li.id,
+        title: li.title,
+        variant_id: li.variant_id,
+        quantity: Number(oi.quantity ?? 1),
+        unit_price: oi.unit_price ? Number(oi.unit_price) : null,
+        edit_action_id: action?.id ?? null,
+      }
+    })
+
+    return {
+      draft_order: {
+        ...item,
+        items,
+        draft_shipping_methods: meta.shipping_methods ?? [],
+        draft_promotions: meta.promotions ?? [],
+        order_change_id: change?.id ?? null,
+      },
+    }
   },
 
-  async create(input: CreateOrderInput & { region_id?: string; email?: string; currency_code?: string }) {
-    const db = getDb()
+  async create(input: CreateOrderInput) {
     const id = generateId("order")
-    const [created] = await db.insert(order).values({
-      id,
-      region_id: input.region_id ?? null,
-      customer_id: input.customer_id ?? null,
-      sales_channel_id: input.sales_channel_id ?? null,
-      email: input.email ?? null,
-      currency_code: input.currency_code ?? "USD",
-      status: "draft",
-      is_draft_order: true,
-      metadata: input.metadata ?? null,
-      created_at: sql`now()`,
-      updated_at: sql`now()`,
-    }).returning()
+
+    const created = await runInTransaction(async (tx) => {
+      let shippingAddrId: string | null = null
+      let billingAddrId: string | null = null
+
+      if (input.shipping_address) {
+        shippingAddrId = generateId("ordaddr")
+        await tx.insert(orderAddress).values({
+          id: shippingAddrId,
+          ...input.shipping_address,
+          metadata: input.shipping_address.metadata ?? null,
+        })
+      }
+      if (input.billing_address) {
+        billingAddrId = generateId("ordaddr")
+        await tx.insert(orderAddress).values({
+          id: billingAddrId,
+          ...input.billing_address,
+          metadata: input.billing_address.metadata ?? null,
+        })
+      }
+
+      const [row] = await tx.insert(order).values({
+        id,
+        region_id: input.region_id ?? null,
+        customer_id: input.customer_id ?? null,
+        sales_channel_id: input.sales_channel_id ?? null,
+        email: input.email ?? null,
+        currency_code: input.currency_code ?? "USD",
+        status: "draft",
+        is_draft_order: true,
+        shipping_address_id: shippingAddrId,
+        billing_address_id: billingAddrId,
+        metadata: input.metadata ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      }).returning()
+
+      return row
+    })
+
     return { draft_order: created }
   },
 
@@ -161,6 +249,17 @@ export const draftOrderService = {
 
   async addItems(id: string, items: { variant_id?: string; quantity: number; unit_price?: number; title?: string }[]) {
     const db = getDb()
+    const [activeEdit] = await db.select().from(orderChange).where(and(
+      eq(orderChange.order_id, id),
+      eq(orderChange.change_type, "draft_edit"),
+      isNull(orderChange.canceled_at),
+      isNull(orderChange.confirmed_at),
+    )).limit(1)
+
+    if (!activeEdit) {
+      await this.beginEdit(id)
+    }
+
     const meta = await this._getEditMeta(id)
 
     const actions = []
@@ -225,6 +324,18 @@ export const draftOrderService = {
   // ── Shipping methods ─────────────────────────────────
 
   async addShippingMethod(id: string, data: { shipping_option_id: string; amount?: number }) {
+    const db = getDb()
+    const [activeEdit] = await db.select().from(orderChange).where(and(
+      eq(orderChange.order_id, id),
+      eq(orderChange.change_type, "draft_edit"),
+      isNull(orderChange.canceled_at),
+      isNull(orderChange.confirmed_at),
+    )).limit(1)
+
+    if (!activeEdit) {
+      await this.beginEdit(id)
+    }
+
     const meta = await this._getEditMeta(id)
     const actionId = generateId("act")
     meta.shipping_methods = [...(meta.shipping_methods ?? []), { id: actionId, ...data }]

@@ -144,7 +144,7 @@ POST /repos/{owner}/{repo}/dispatches
 
 | 服务 | 端口 |
 |------|------|
-| server | 9000 |
+| server | 7000 |
 | admin dev | 5173 |
 | storefront | 4321 |
 

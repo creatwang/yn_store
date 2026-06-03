@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { z } from "zod"
+import { createOrderSchema } from "@my-store/validators"
 import { draftOrderService } from "../../services/draft-order.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
@@ -11,14 +12,7 @@ const listQuerySchema = z.object({
   status: z.string().optional(),
 })
 
-const createSchema = z.object({
-  region_id: z.string().optional(),
-  customer_id: z.string().optional(),
-  sales_channel_id: z.string().optional(),
-  email: z.string().email().optional(),
-  currency_code: z.string().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-})
+const createSchema = createOrderSchema
 
 const updateSchema = createSchema.partial()
 

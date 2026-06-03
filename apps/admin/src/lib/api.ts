@@ -4,7 +4,7 @@ import { authStorage } from "./auth-storage"
 
 /**
  * 留空 = 与页面同源（Hono 挂 /app 静态时请求 /api）。
- * 独立 Vite :5173 时可设 VITE_API_URL=http://localhost:9000，或依赖 vite proxy /api
+ * 独立 Vite :5173 时可设 VITE_API_URL=http://localhost:7000，或依赖 vite proxy /api
  */
 const baseUrl = import.meta.env.VITE_API_URL || ""
 

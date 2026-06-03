@@ -78,7 +78,7 @@ description: >-
 ## 项目硬边界
 
 ```
-storefront ──REST──► server:9000/api/store/*
+storefront ──REST──► server:7000/api/store/*
 ```
 
 - ✅ `lib/cart.ts` / `lib/auth.ts`、`PUBLIC_API_URL`、`<Image />`、nanostores  

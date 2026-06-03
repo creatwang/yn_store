@@ -16,6 +16,10 @@ export const ConfigurableOrderListTable = () => {
         adapter={adapter}
         heading={t("orders.domain")}
         actions={[
+          {
+            label: t("draftOrders.create.createDraftOrder"),
+            to: "/draft-orders/create",
+          },
           { label: t("actions.export"), to: `export${location.search}` },
         ]}
       />

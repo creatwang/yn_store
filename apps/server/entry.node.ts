@@ -26,7 +26,7 @@ void getHealthStatus().then(({ payload }) => {
   }
 })
 
-const port = Number(process.env.PORT) || 9000
+const port = Number(process.env.PORT) || 7000
 
 const server = serve({
   fetch: app.fetch,

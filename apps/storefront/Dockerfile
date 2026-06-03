@@ -17,7 +17,7 @@ COPY apps/storefront/package.json apps/storefront/
 RUN pnpm install --frozen-lockfile --filter @my-store/storefront...
 
 FROM deps AS build
-ARG PUBLIC_API_URL=http://host.docker.internal:9000
+ARG PUBLIC_API_URL=http://host.docker.internal:7000
 ARG PUBLIC_SITE_URL=http://localhost:4321
 ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 ENV PUBLIC_SITE_URL=${PUBLIC_SITE_URL}

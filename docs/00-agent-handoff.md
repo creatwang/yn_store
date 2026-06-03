@@ -120,7 +120,7 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 
 - `apps/server/.env.example` → `apps/server/.env`：`DATABASE_URL`、`JWT_SECRET`、`PORT`
 - `apps/admin/.env.example`：开发可 `VITE_API_URL=` 空串，走 Vite `proxy` 的 `/api`
-- `apps/storefront/.env.example`：`PUBLIC_API_URL=http://localhost:9000`
+- `apps/storefront/.env.example`：`PUBLIC_API_URL=http://localhost:7000`
 
 ---
 
@@ -131,9 +131,9 @@ pnpm install
 
 # 开发（三进程，改 Admin 无需 build）
 pnpm dev
-# 或分别：server :9000 /api  |  admin :5173 /app  |  store :4321
+# 或分别：server :7000 /api  |  admin :5173 /app  |  store :4321
 
-# 与生产一致：先 build Admin 静态，仅起 server（:9000/app + :9000/api）
+# 与生产一致：先 build Admin 静态，仅起 server（:7000/app + :7000/api）
 pnpm dev:admin-on-server
 
 # 生产静态与 Docker

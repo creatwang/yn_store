@@ -177,6 +177,17 @@ S1 备注 + 列表筛选（地基）
 
 ---
 
+## 建单与路由补全（2026-06-01）✅
+
+| 项 | 说明 |
+|----|------|
+| 草稿订单 | 侧栏 **草稿订单**；列表 / 创建 / 详情（地区、客户/邮箱、搜商品加行、自定义行、配送方式、摘要、转正式单） |
+| 订单子路由 | `app.tsx` 注册 `edits` / `returns` / `exchanges` / `claims` / `allocate-items` 等（RMA 手测不再 404） |
+| 订单列表 | **创建草稿订单** 快捷入口 |
+| 测试 | `apps/server/tests/admin/draft-orders.test.ts` |
+
+---
+
 ## 迭代 02（ backlog，本期不做）
 
 - Claim/Exchange shipping option **服务端 boolean 筛选**  

@@ -20,7 +20,7 @@ RUN pnpm build:backend
 
 FROM base AS runtime
 ENV NODE_ENV=production
-ENV PORT=9000
+ENV PORT=7000
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/apps/server ./apps/server
@@ -28,5 +28,5 @@ COPY --from=build /app/packages ./packages
 COPY package.json pnpm-workspace.yaml ./
 
 WORKDIR /app/apps/server
-EXPOSE 9000
+EXPOSE 7000
 CMD ["npx", "tsx", "entry.ts"]

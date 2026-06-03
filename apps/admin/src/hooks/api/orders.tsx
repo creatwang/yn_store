@@ -203,6 +203,32 @@ export const useOrderChanges = (
   return { ...data, ...rest }
 }
 
+export const useAddOrderLineItem = (
+  orderId: string,
+  options?: UseMutationOptions<
+    Record<string, unknown>,
+    FetchError,
+    { variant_id?: string; quantity: number; unit_price?: number }
+  >
+) => {
+  return useMutation({
+    mutationFn: (payload) => sdk.admin.order.addItems(orderId, payload),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.detail(orderId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.lineItems(orderId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(orderId),
+      })
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
 export const useOrderLineItems = (
   id: string,
   query?: HttpTypes.AdminOrderItemsFilters,

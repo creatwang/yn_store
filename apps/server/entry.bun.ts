@@ -6,7 +6,7 @@ import { logServerStartup } from "./src/lib/log-startup"
 // Bun 会自动读 .env；显式调用以便与 Node 入口行为一致，且不覆盖已有 env
 loadEnv()
 
-const port = Number(process.env.PORT) || 9000
+const port = Number(process.env.PORT) || 7000
 
 const dbUrl = process.env.DATABASE_URL
 if (dbUrl) {

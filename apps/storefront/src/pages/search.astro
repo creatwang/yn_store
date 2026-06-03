@@ -16,7 +16,7 @@ let products: Array<{
 let error: string | null = null
 
 if (q) {
-  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:9000"
+  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:7000"
   try {
     const res = await fetch(
       `${apiUrl}/api/store/products?q=${encodeURIComponent(q)}&limit=48`,

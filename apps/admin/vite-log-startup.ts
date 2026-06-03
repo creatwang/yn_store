@@ -10,7 +10,7 @@ export function devStartupLogPlugin(): Plugin {
         const port =
           typeof addr === "object" && addr && "port" in addr ? addr.port : 5173
         const localUrl = `http://localhost:${port}/app/`
-        const apiPort = process.env.SERVER_PORT || "9000"
+        const apiPort = process.env.SERVER_PORT || "7000"
 
         console.log("")
         console.log(`   Admin dev (Vite): ${localUrl}`)

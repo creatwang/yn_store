@@ -1,7 +1,7 @@
 const API_BASE =
   (typeof process !== "undefined" ? process.env.PUBLIC_API_URL : undefined) ||
   import.meta.env.PUBLIC_API_URL ||
-  "http://localhost:9000"
+  "http://localhost:7000"
 
 export function storeApiUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`

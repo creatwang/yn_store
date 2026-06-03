@@ -244,20 +244,28 @@ export const useListCustomerAddresses = (
 }
 
 export const useCustomerAddress = (
-  id: string,
+  customerId: string,
   addressId: string,
-  options?: UseQueryOptions<
-    HttpTypes.AdminCustomerResponse,
-    FetchError,
-    HttpTypes.AdminCustomerResponse,
-    QueryKey
-  >
+  options?: Omit<
+    UseQueryOptions<
+      { address: HttpTypes.AdminCustomerAddress },
+      FetchError,
+      { address: HttpTypes.AdminCustomerAddress },
+      QueryKey
+    >,
+    "queryFn" | "queryKey"
+  >,
 ) => {
   const { data, ...rest } = useQuery({
-    queryFn: () => sdk.admin.customer.retrieveAddress(id, addressId),
-    queryKey: customerAddressesQueryKeys.detail(id),
+    queryFn: () => sdk.admin.customer.retrieveAddress(customerId, addressId),
+    queryKey: [
+      ...customerAddressesQueryKeys.list(customerId),
+      "detail",
+      addressId,
+    ],
+    enabled: Boolean(customerId && addressId),
     ...options,
   })
 
-  return { ...data, ...rest }
+  return { address: data?.address, ...rest }
 }

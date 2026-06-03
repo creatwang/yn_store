@@ -99,7 +99,7 @@
 | S3 Claim 全流程 | ✅ |
 | S4 Exchange + 分配库存 UX | ✅ |
 
-详见 [ADMIN-UI-ITERATION-01.md](./ADMIN-UI-ITERATION-01.md)。剩余：shipping options API 级 boolean 筛选、bulk allocate 端点（迭代 02）。
+详见 [ADMIN-UI-ITERATION-01.md](./ADMIN-UI-ITERATION-01.md)。**Admin 建单**：草稿订单 UI + 订单子路由已接（2026-06-01）。剩余：shipping options API 级 boolean 筛选、bulk allocate 端点（迭代 02）。
 
 ---
 

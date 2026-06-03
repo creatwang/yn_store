@@ -747,23 +747,23 @@
 
 ```bash
 # 1. 管理员登录获取 Token
-curl -X POST http://localhost:9000/auth/user/emailpass \
+curl -X POST http://localhost:7000/auth/user/emailpass \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@example.com", "password": "supersecret"}'
 
 # 返回: { "token": "eyJhbGciOiJIUzI1NiIs..." }
 
 # 2. 使用 Token 调用 Admin API
-curl http://localhost:9000/admin/products \
+curl http://localhost:7000/admin/products \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
 
 # 3. 客户登录
-curl -X POST http://localhost:9000/auth/customer/emailpass \
+curl -X POST http://localhost:7000/auth/customer/emailpass \
   -H "Content-Type: application/json" \
   -d '{"email": "customer@example.com", "password": "password123"}'
 
 # 4. 使用 Token + Publishable API Key 调用 Store API
-curl http://localhost:9000/store/products \
+curl http://localhost:7000/store/products \
   -H "Authorization: Bearer <customer_token>" \
   -H "x-publishable-api-key: <your_publishable_key>"
 ```
