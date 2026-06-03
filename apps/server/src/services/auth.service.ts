@@ -345,7 +345,6 @@ export const authService = {
   ) {
     const db = getDb()
     const isAdmin = actorType === "user"
-    const actorTable = isAdmin ? user : customer
     const prefix = isAdmin ? "user" : "cus"
 
     const [existing] = await db
@@ -370,11 +369,26 @@ export const authService = {
       if (!actorId) throw new HTTPException(401, { message: "Auth identity corrupted" })
     } else {
       actorId = generateId(prefix)
-      const values: Record<string, any> = { id: actorId, email, created_at: sql`now()`, updated_at: sql`now()` }
-      if (profile.first_name) values.first_name = profile.first_name
-      if (profile.last_name) values.last_name = profile.last_name
-      if (!isAdmin) values.has_account = true
-      await db.insert(actorTable).values(values)
+      if (isAdmin) {
+        await db.insert(user).values({
+          id: actorId,
+          email,
+          ...(profile.first_name ? { first_name: profile.first_name } : {}),
+          ...(profile.last_name ? { last_name: profile.last_name } : {}),
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+      } else {
+        await db.insert(customer).values({
+          id: actorId,
+          email,
+          has_account: true,
+          ...(profile.first_name ? { first_name: profile.first_name } : {}),
+          ...(profile.last_name ? { last_name: profile.last_name } : {}),
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+      }
 
       authIdentityId = generateId("authid")
       await db.insert(authIdentity).values({
@@ -392,7 +406,9 @@ export const authService = {
       sub: authIdentityId!, actor_id: actorId,
       actor_type: isAdmin ? "user" : "customer", email,
     })
-    const [record] = await db.select().from(actorTable).where(eq(actorTable.id, actorId)).limit(1)
+    const record = isAdmin
+      ? (await db.select().from(user).where(eq(user.id, actorId)).limit(1))[0]
+      : (await db.select().from(customer).where(eq(customer.id, actorId)).limit(1))[0]
     return { token, [isAdmin ? "user" : "customer"]: record }
   },
 
@@ -463,17 +479,28 @@ export const authService = {
  * Verify a Google ID token and return user info.
  * Uses Google's tokeninfo endpoint (no API key required).
  */
-async function verifyGoogleIdToken(idToken: string): Promise<{
+type GoogleTokenInfo = {
   email?: string
   given_name?: string
   family_name?: string
   sub: string
-}> {
+}
+
+async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenInfo> {
   const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
   const res = await fetch(url)
   if (!res.ok) {
     const err = await res.text()
     throw new HTTPException(401, { message: `Google token verification failed: ${err}` })
   }
-  return res.json()
+  const data = (await res.json()) as Partial<GoogleTokenInfo>
+  if (!data.sub) {
+    throw new HTTPException(401, { message: "Google token verification failed: missing sub" })
+  }
+  return {
+    sub: data.sub,
+    email: data.email,
+    given_name: data.given_name,
+    family_name: data.family_name,
+  }
 }

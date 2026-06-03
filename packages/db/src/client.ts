@@ -63,7 +63,7 @@ function postgresClientOptions(connectionString: string) {
     max: resolvePoolMax(connectionString),
     idle_timeout: sessionPooler ? 10 : 20,
     max_lifetime: 60 * 10,
-    connect_timeout: 15,
+    connect_timeout: 15
   }
   if (isSupabaseTransactionPooler(connectionString)) {
     options.prepare = false
