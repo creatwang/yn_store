@@ -1,4 +1,4 @@
-﻿# 开工入口（本目录 = 新项目根）
+# 开工入口（本目录 = 新项目根）
 
 **路径**：`D:\webstormProject\my-medusa-store-hono`
 

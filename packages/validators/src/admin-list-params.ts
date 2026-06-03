@@ -67,7 +67,9 @@ export {
 } from "./medusa/admin/tax-rates/validators"
 
 export {
+  AdminBulkCreateReservations,
   AdminGetReservationsParams,
+  type AdminBulkCreateReservationsType,
   type AdminGetReservationsParamsType,
 } from "./medusa/admin/reservations/validators"
 

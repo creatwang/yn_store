@@ -591,7 +591,20 @@ export const sdk = {
         return parseJsonResponse(res)
       },
     },
-    reservation: entityClient("reservations"),
+    reservation: {
+      ...entityClient("reservations"),
+      batchAllocate: async (body: {
+        location_id: string
+        items: Array<{
+          line_item_id: string
+          inventory_item_id: string
+          quantity: number
+        }>
+      }) => {
+        const res = await (api as any).admin.reservations.batch.$post({ json: body })
+        return parseJsonResponse(res)
+      },
+    },
 
     // ── Pricing ────────────────────────────────────────────────
     priceList: {

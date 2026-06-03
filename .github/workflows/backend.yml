@@ -24,6 +24,12 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck server
+        run: pnpm --filter @my-store/server typecheck
+
+      - name: Typecheck admin
+        run: pnpm --filter @my-store/admin typecheck
+
       - name: Build backend
         run: pnpm build:backend
 

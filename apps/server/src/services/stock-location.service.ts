@@ -59,16 +59,6 @@ async function loadShippingOptionById(id: string) {
   return rows[0] ?? null
 }
 
-async function countShippingOptions() {
-  const db = getDb()
-  const rows = sqlRows(
-    await db.execute(sql`
-      SELECT COUNT(*)::int AS total FROM shipping_option WHERE deleted_at IS NULL
-    `),
-  )
-  return Number(rows[0]?.total ?? 0)
-}
-
 async function insertShippingOptionRow(values: {
   id: string
   name: string

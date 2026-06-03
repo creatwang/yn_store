@@ -19,7 +19,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { ordersQueryKeys } from "../../../../../hooks/api/orders"
-import { useCreateReservationItem } from "../../../../../hooks/api/reservations"
+import { useBulkAllocateReservationItems } from "../../../../../hooks/api/reservations"
 import { useStockLocations } from "../../../../../hooks/api/stock-locations"
 import { queryClient } from "../../../../../lib/query-client"
 import { AllocateItemsSchema } from "./constants"
@@ -48,8 +48,8 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
   const [disableSubmit, setDisableSubmit] = useState(false)
   const [filterTerm, setFilterTerm] = useState("")
 
-  const { mutateAsync: allocateItems, isPending: isMutating } =
-    useCreateReservationItem()
+  const { mutateAsync: bulkAllocateItems, isPending: isMutating } =
+    useBulkAllocateReservationItems()
 
   const itemsToAllocate = useMemo(
     () =>
@@ -97,41 +97,21 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
         return
       }
 
-      const promises = payload.map(([itemId, inventoryId, quantity]) =>
-        allocateItems({
-          location_id: data.location_id,
-          inventory_item_id: inventoryId as string,
+      await bulkAllocateItems({
+        location_id: data.location_id,
+        items: payload.map(([itemId, inventoryId, quantity]) => ({
           line_item_id: itemId as string,
+          inventory_item_id: inventoryId as string,
           quantity: Number(quantity),
-        })
-          .then(() => ({ success: true, inventory_item_id: inventoryId }))
-          .catch(() => ({ success: false, inventory_item_id: inventoryId }))
-      )
+        })),
+      })
 
-      /**
-       * TODO: we should have bulk endpoint for this so this is executed in a workflow and can be reverted
-       */
-      const results = await Promise.all(promises)
-
-      // invalidate order details so we get new item.variant.inventory items
       await queryClient.invalidateQueries({
         queryKey: ordersQueryKeys.details(),
       })
 
       handleSuccess(`/orders/${order.id}`)
-
-      if (results.some((r) => !r.success)) {
-        const failedItems = results
-          .filter((r) => !r.success)
-          .map((r) => r.inventory_item_id)
-          .join(", ")
-
-        toast.error(t("general.error"), {
-          description: t("orders.allocateItems.toast.error", {
-            items: failedItems,
-          }),
-        })
-      }
+      toast.success(t("orders.allocateItems.toast.created"))
     } catch (e) {
       toast.error(t("general.error"), {
         description:

@@ -8,6 +8,7 @@ type UseShippingOptionTableQueryProps = {
 }
 
 export const useShippingOptionTableQuery = ({
+  isReturn,
   pageSize = 10,
   prefix,
 }: UseShippingOptionTableQueryProps) => {
@@ -29,8 +30,8 @@ export const useShippingOptionTableQuery = ({
     offset,
     order,
     q,
-    // admin_only,
-    // is_return,
+    admin_only,
+    is_return,
     created_at,
     updated_at,
     stock_location_id,
@@ -39,12 +40,15 @@ export const useShippingOptionTableQuery = ({
   const searchParams: HttpTypes.AdminShippingOptionListParams = {
     limit: pageSize,
     offset: offset ? Number(offset) : 0,
-    // TODO: We don't allow region_id in the API yet
-    // region_id: regionId,
-
-    // TODO: not supported
-    // is_return: is_return ? is_return === "true" : undefined,
-    // admin_only: admin_only ? admin_only === "true" : undefined,
+    is_return:
+      isReturn != null
+        ? isReturn
+        : is_return === "true"
+          ? true
+          : is_return === "false"
+            ? false
+            : undefined,
+    admin_only: admin_only === "true" ? true : admin_only === "false" ? false : undefined,
     q,
     order,
     stock_location_id,

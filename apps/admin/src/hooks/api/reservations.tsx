@@ -14,6 +14,7 @@ import {
   inventoryItemLevelsQueryKeys,
   inventoryItemsQueryKeys,
 } from "./inventory.tsx"
+import { ordersQueryKeys } from "./orders"
 import { FetchError } from "@medusajs/js-sdk"
 
 const RESERVATION_ITEMS_QUERY_KEY = "reservation_items" as const
@@ -87,6 +88,35 @@ export const useUpdateReservationItem = (
       })
       queryClient.invalidateQueries({
         queryKey: inventoryItemLevelsQueryKeys.details(),
+      })
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useBulkAllocateReservationItems = (
+  options?: UseMutationOptions<
+    { reservations: unknown[]; count: number },
+    FetchError,
+    {
+      location_id: string
+      items: Array<{
+        line_item_id: string
+        inventory_item_id: string
+        quantity: number
+      }>
+    }
+  >
+) => {
+  return useMutation({
+    mutationFn: (payload) => sdk.admin.reservation.batchAllocate(payload),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: reservationItemsQueryKeys.lists(),
+      })
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.details(),
       })
       options?.onSuccess?.(data, variables, context)
     },
