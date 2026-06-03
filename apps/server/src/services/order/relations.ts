@@ -10,6 +10,7 @@ import {
   orderSummary,
   salesChannel,
 } from "@my-store/db"
+import { sqlRows } from "../../lib/sql-rows"
 import type { OrderFieldsConfig } from "./fields"
 import type {
   FulfillmentForStatus,
@@ -65,9 +66,9 @@ async function loadPaymentCollectionsByOrderIds(
       AND pc.deleted_at IS NULL
   `)
 
-  const rows = (result.rows ?? result) as Array<
-    PaymentCollectionForStatus & { order_id: string }
-  >
+  const rows = sqlRows<PaymentCollectionForStatus & { order_id: string }>(
+    result,
+  )
   return groupBy(rows, "order_id")
 }
 
@@ -87,9 +88,7 @@ async function loadFulfillmentsByOrderIds(
       AND f.deleted_at IS NULL
   `)
 
-  const rows = (result.rows ?? result) as Array<
-    FulfillmentForStatus & { order_id: string }
-  >
+  const rows = sqlRows<FulfillmentForStatus & { order_id: string }>(result)
   return groupBy(rows, "order_id")
 }
 
@@ -128,7 +127,7 @@ async function loadOrderItemsByOrderIds(
     WHERE oi.order_id IN (${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)})
   `)
 
-  const rows = (result.rows ?? result) as (typeof orderItem.$inferSelect)[]
+  const rows = sqlRows<typeof orderItem.$inferSelect>(result)
   return new Map(
     [...groupBy(rows, "order_id")].map(([orderId, items]) => [
       orderId,
@@ -200,7 +199,7 @@ export async function loadOrderDetailLineItems(
     )
     .where(eq(orderItem.order_id, orderId))
 
-  return rows
+  return rows as OrderLineItemJoinRow[]
 }
 
 export async function loadOrderLineItemTaxLinesByLineItemIds(
@@ -250,7 +249,7 @@ export async function loadOrderDetailShippingMethods(
       AND osm.deleted_at IS NULL
   `)
 
-  const rows = (result.rows ?? result) as Array<Record<string, unknown>>
+  const rows = sqlRows<Record<string, unknown>>(result)
 
   return rows.map((row) => ({
     link: {

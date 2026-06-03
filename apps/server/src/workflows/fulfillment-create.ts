@@ -17,7 +17,7 @@ export const fulfillmentCreateWorkflow = createWorkflow("fulfillment-create", [
     return { order: ord }
   }),
 
-  step("create-fulfillment", async ({ input }) => {
+  step("create-fulfillment", async ({ input, output }) => {
     const db = getDb()
     const fId = generateId("ful")
     await db.insert(fulfillment).values({

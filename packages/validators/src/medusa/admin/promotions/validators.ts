@@ -147,7 +147,16 @@ export const AdminUpdateApplicationMethod = z
   })
   .strict()
 
-const promoRefinement = (promo) => {
+const promoRefinement = (promo: {
+  campaign?: unknown
+  campaign_id?: string | null
+  type?: string
+  application_method?: {
+    buy_rules?: unknown[]
+    apply_to_quantity?: number | null
+    buy_rules_min_quantity?: number | null
+  }
+}) => {
   if (promo.campaign && promo.campaign_id) {
     return false
   }

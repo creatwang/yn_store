@@ -669,8 +669,8 @@ export const draftOrderService = {
       .set({ details })
       .where(eq(orderChangeAction.id, actionId))
 
-    const orderItemId = details.order_item_id as string | undefined
-    if (orderItemId) {
+    const lineItemId = act.reference_id ?? undefined
+    if (lineItemId) {
       await db
         .update(orderItem)
         .set({
@@ -681,7 +681,9 @@ export const draftOrderService = {
             raw_unit_price: { amount: data.unit_price, precision: 2 },
           }),
         })
-        .where(eq(orderItem.id, orderItemId))
+        .where(
+          and(eq(orderItem.item_id, lineItemId), eq(orderItem.order_id, id)),
+        )
     }
 
     return buildDraftOrderEditPreview(id)

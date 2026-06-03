@@ -66,9 +66,8 @@ export const claimService = {
       order_id: input.order_id, order_version: input.order_version,
       type: input.type, refund_amount: input.refund_amount,
       claim_items: input.claim_items ?? [],
-      additional_items: (input.additional_items ?? []) as any,
-    });
-    return this.getById(String(result?.claimId ?? ''));
+    }) as { claimId: string }
+    return this.getById(String(result.claimId))
   },
 
   async addInboundItems(claimId: string, payload: { items: { item_id: string; quantity: number; reason?: string; note?: string }[] }) {
@@ -211,7 +210,7 @@ export const claimService = {
   ) {
     const db = getDb()
     const { claim: existing } = await this.getById(claimId)
-    const meta = {
+    const meta: Record<string, unknown> = {
       ...(((existing as { metadata?: Record<string, unknown> }).metadata) ??
         {}),
       requested_at: new Date().toISOString(),

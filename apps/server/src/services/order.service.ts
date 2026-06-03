@@ -327,7 +327,7 @@ export const orderService = {
         resource_id: id,
         resource_type: "order",
         idempotency_key: `order-cancel-${id}`,
-        no_notification: updated.no_notification,
+        no_notification: updated.no_notification ?? undefined,
         sender: () => sendOrderCanceledEmail(updated.email!, displayId, id),
       })
     }

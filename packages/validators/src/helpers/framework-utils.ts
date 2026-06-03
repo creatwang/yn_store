@@ -105,6 +105,26 @@ export enum ShippingOptionPriceType {
   FLAT = "flat",
 }
 
+export enum ApiKeyType {
+  PUBLISHABLE = "publishable",
+  SECRET = "secret",
+}
+
+export enum PriceListStatus {
+  DRAFT = "draft",
+  ACTIVE = "active",
+}
+
+export enum PriceListType {
+  SALE = "sale",
+  OVERRIDE = "override",
+}
+
+export enum TransactionHandlerType {
+  INVOKE = "invoke",
+  COMPENSATE = "compensate",
+}
+
 export function isDefined<T>(val: T): val is NonNullable<T> {
   return val !== undefined && val !== null
 }

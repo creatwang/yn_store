@@ -25,7 +25,7 @@ export const DraftOrderDetail = () => {
   const { getWidgets } = useExtension()
   const { draft_order, isLoading, isError, error } = useDraftOrder(id!)
   const { mutateAsync: deleteDraft, isPending: isDeleting } =
-    useDeleteDraftOrder(id!)
+    useDeleteDraftOrder()
 
   if (isError) {
     throw error
@@ -49,7 +49,7 @@ export const DraftOrderDetail = () => {
     }
 
     try {
-      await deleteDraft()
+      await deleteDraft(id!)
       toast.success(t("actions.delete"))
       navigate("/draft-orders")
     } catch (e) {

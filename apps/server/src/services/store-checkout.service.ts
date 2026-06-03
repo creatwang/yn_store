@@ -8,6 +8,7 @@ import {
   paymentSession,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import { sqlRows } from "../lib/sql-rows"
 import { cartService } from "./cart.service"
 
 export const storeShippingService = {
@@ -20,7 +21,7 @@ export const storeShippingService = {
       WHERE deleted_at IS NULL
       LIMIT 50
     `)
-    const rows = (result.rows ?? result) as Array<Record<string, unknown>>
+    const rows = sqlRows<Record<string, unknown>>(result)
 
     const shipping_options = rows.map((opt) => ({
       id: String(opt.id),
@@ -42,7 +43,7 @@ export const storeShippingService = {
       WHERE id = ${optionId} AND deleted_at IS NULL
       LIMIT 1
     `)
-    const rows = (result.rows ?? result) as Array<Record<string, unknown>>
+    const rows = sqlRows<Record<string, unknown>>(result)
     const opt = rows[0]
     if (!opt) throw new HTTPException(404, { message: "运输选项不存在" })
 
@@ -182,7 +183,7 @@ export const cartCheckoutService = {
         SELECT id, name, data FROM shipping_option
         WHERE id = ${input.option_id} AND deleted_at IS NULL LIMIT 1
       `)
-      const rows = (result.rows ?? result) as Array<Record<string, unknown>>
+      const rows = sqlRows<Record<string, unknown>>(result)
       const opt = rows[0]
       if (opt) {
         optName = String(opt.name)

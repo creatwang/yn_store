@@ -13,8 +13,9 @@ export const paymentService = {
     const { limit, offset } = listLimitOffset(query, { limit: 20, offset: 0 })
     const conditions = [isNull(payment.deleted_at)]
 
-    if (query.q?.trim()) {
-      conditions.push(ilike(payment.id, `%${query.q.trim()}%`))
+    const q = typeof query.q === "string" ? query.q : undefined
+    if (q?.trim()) {
+      conditions.push(ilike(payment.id, `%${q.trim()}%`))
     }
 
     const where = and(...conditions)

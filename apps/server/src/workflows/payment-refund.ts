@@ -19,10 +19,12 @@ export const paymentRefundWorkflow = createWorkflow("payment-refund", [
     const db = getDb()
     const refId = generateId("ref")
     await db.insert(refund).values({
-      id: refId, payment_id: input.paymentId,
+      id: refId,
+      payment_id: input.paymentId,
       amount: String(input.amount),
       raw_amount: { value: String(input.amount), precision: 20 },
-      reason: input.reason ?? null, created_by: "admin",
+      note: input.reason ?? null,
+      created_by: "admin",
     })
     return { refundId: refId }
   }, async ({ output }) => {
@@ -39,7 +41,7 @@ export const paymentRefundWorkflow = createWorkflow("payment-refund", [
   }, async ({ output }) => {
     const db = getDb()
     const { refundId } = output["create-refund"] ?? {}
-    if (refundId) await db.update(refund).set({ deleted_at: sql`now()` }).where(eq(refund.id, refundId))
+    if (refundId) await db.delete(refund).where(eq(refund.id, refundId))
   }),
 
   step("confirm", async ({ input }) => {

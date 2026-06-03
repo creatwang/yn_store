@@ -139,11 +139,10 @@ export function getLastFulfillmentStatus(order: OrderStatusInput): string {
     totalFulfillments - fulfillmentStatus[FulfillmentStatus.CANCELED]
 
   const hasUnfulfilledItems =
-    (order.items ?? []).filter(
-      (i) =>
-        isDefined(i?.detail?.raw_fulfilled_quantity) &&
-        bn.lt(i.detail.raw_fulfilled_quantity, i.raw_quantity),
-    ).length > 0
+    (order.items ?? []).filter((i) => {
+      const fulfilled = i?.detail?.raw_fulfilled_quantity
+      return isDefined(fulfilled) && bn.lt(fulfilled, i.raw_quantity)
+    }).length > 0
 
   if (fulfillmentStatus[FulfillmentStatus.DELIVERED] > 0) {
     if (

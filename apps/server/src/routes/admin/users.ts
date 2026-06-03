@@ -65,7 +65,7 @@ export const adminInvites = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
   .use("*", adminAuth)
-  .get("/", zValidator("query", listInvitesSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetInvitesParams), async (c) => {
     const query = c.req.valid("query")
     const result = await userService.listInvites(query)
     return c.json(result)

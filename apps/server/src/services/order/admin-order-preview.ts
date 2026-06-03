@@ -222,7 +222,7 @@ async function applyOrderEditToPreview(
   }
 }
 
-function cloneItem(item: Record<string, unknown>) {
+function cloneItem(item: Record<string, unknown>): Record<string, unknown> {
   return {
     ...item,
     detail: { ...((item.detail as object) ?? {}) },
@@ -264,7 +264,7 @@ function applyReturnItems(
       id: ri.id,
       return_id: returnId,
       internal_note: ri.note,
-      details: ri.reason ? { reason_id: ri.reason } : undefined,
+      details: ri.note ? { reason_id: ri.note } : undefined,
     }
     item.actions = [...((item.actions as PreviewAction[]) ?? []), action]
     item.detail = {
@@ -394,11 +394,15 @@ export async function buildAdminOrderPreview(orderId: string) {
     throw new HTTPException(404, { message: "Order not found" })
   }
 
-  const base = await presentAdminOrderDetail(
+  const base = (await presentAdminOrderDetail(
     db,
     ord,
     "*items,*items.variant,*shipping_methods,*summary",
-  )
+  )) as Record<string, unknown> & {
+    items?: Record<string, unknown>[]
+    shipping_methods?: Record<string, unknown>[]
+    currency_code?: string
+  }
 
   const [activeChange] = await db
     .select()

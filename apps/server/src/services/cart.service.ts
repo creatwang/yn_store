@@ -24,7 +24,7 @@ import { sendOrderConfirmationEmail } from "../lib/mail"
 import { eventBus } from "../lib/events"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
-import { runInTransaction } from "../lib/transaction"
+import { runInTransaction, type DbTx } from "../lib/transaction"
 
 export const cartService = {
   async create(input: CreateCartInput) {
@@ -290,7 +290,7 @@ export const cartService = {
 
   /** Internal: apply discount amount to cart line items */
   async _applyDiscount(
-    db: ReturnType<typeof getDb>,
+    db: DbTx,
     cartId: string,
     promo: typeof promotion.$inferSelect,
     items: Array<typeof cartLineItem.$inferSelect>,
@@ -444,8 +444,12 @@ export const cartService = {
   },
 
   async completeCheckout(cartId: string) {
-    const result = await orderConfirmWorkflow.run({ cartId });
-    if (!result?.orderId) throw new HTTPException(500, { message: 'Order creation failed' });
+    const result = (await orderConfirmWorkflow.run({
+      cartId,
+    })) as { orderId: string; email?: string; displayId?: string }
+    if (!result?.orderId) {
+      throw new HTTPException(500, { message: "Order creation failed" })
+    }
     const db = getDb();
     const [createdOrder] = await db.select().from(order).where(eq(order.id, result.orderId)).limit(1);
     if (!createdOrder) throw new HTTPException(500, { message: 'Order not found after creation' });

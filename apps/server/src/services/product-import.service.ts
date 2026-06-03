@@ -14,7 +14,7 @@ import {
 import { HTTPException } from "hono/http-exception"
 import { parseCsv, rowsToObjects, toCsv } from "../lib/csv"
 import { slugify } from "../lib/slug"
-import { runInTransaction } from "../lib/transaction"
+import { runInTransaction, type DbTx } from "../lib/transaction"
 
 const IMPORT_DIR = path.resolve(process.cwd(), "public/imports")
 const EXPORT_DIR = path.resolve(process.cwd(), "public/exports")
@@ -93,7 +93,7 @@ async function summarize(rows: ImportRow[]) {
 }
 
 async function upsertVariantPrice(
-  db: ReturnType<typeof getDb>,
+  db: DbTx,
   variantId: string,
   currency: string,
   amount: number,

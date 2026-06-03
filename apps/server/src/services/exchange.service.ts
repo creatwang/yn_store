@@ -60,9 +60,8 @@ export const exchangeService = {
     const result = await exchangeCreateWorkflow.run({
       order_id: input.order_id, order_version: input.order_version,
       difference_due: input.difference_due, allow_backorder: input.allow_backorder,
-      additional_items: (input.additional_items ?? []) as any,
-    });
-    return this.getById(String(result?.exchangeId ?? ''));
+    }) as { exchangeId: string }
+    return this.getById(String(result.exchangeId))
   },
 
   async addInboundItems(exchangeId: string, payload: { items: { item_id: string; quantity: number }[] }) {
@@ -184,7 +183,7 @@ export const exchangeService = {
   ) {
     const db = getDb()
     const { exchange: existing } = await this.getById(exchangeId)
-    const meta = {
+    const meta: Record<string, unknown> = {
       ...(((existing as { metadata?: Record<string, unknown> }).metadata) ??
         {}),
       requested_at: new Date().toISOString(),

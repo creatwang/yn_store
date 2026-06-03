@@ -13,6 +13,16 @@ export type BatchMethodRequest<TCreate = unknown, TUpdate = unknown, TDelete = u
 export namespace HttpTypes {
   export type AdminBatchProductRequest = BatchMethodRequest
 
+  export type AdminBatchImageVariantRequest = {
+    add?: string[]
+    remove?: string[]
+  }
+  export type AdminBatchVariantImagesRequest = {
+    add?: string[]
+    remove?: string[]
+  }
+  export type AdminImportProductsRequest = Record<string, unknown>
+
   export type AdminUploadPreSignedUrlRequest = {
     originalname: string
     mime_type: string

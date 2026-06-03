@@ -96,7 +96,7 @@ export const adminUploads = new Hono<{ Variables: AuthVariables }>()
       const db = getDb()
       const [row] = await db
         .update(file)
-        .set({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .set({ deleted_at: new Date(), updated_at: new Date() })
         .where(and(eq(file.id, id), isNull(file.deleted_at)))
         .returning()
       deleted = !!row

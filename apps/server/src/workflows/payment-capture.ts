@@ -41,7 +41,7 @@ export const paymentCaptureWorkflow = createWorkflow("payment-capture", [
   }, async ({ output }) => {
     const db = getDb()
     const { captureId } = output["create-capture"] ?? {}
-    if (captureId) await db.update(capture).set({ deleted_at: sql`now()` }).where(eq(capture.id, captureId))
+    if (captureId) await db.delete(capture).where(eq(capture.id, captureId))
   }),
 
   step("confirm", async ({ input, output }) => {

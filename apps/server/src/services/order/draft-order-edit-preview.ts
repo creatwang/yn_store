@@ -75,7 +75,10 @@ export async function buildDraftOrderEditPreview(orderId: string) {
   }
 
   const activeChange = await loadDraftEditChange(db, orderId)
-  const base = await presentAdminOrderDetail(db, ord, DRAFT_PREVIEW_FIELDS)
+  const base = (await presentAdminOrderDetail(db, ord, DRAFT_PREVIEW_FIELDS)) as Record<
+    string,
+    unknown
+  > & { items?: Record<string, unknown>[] }
 
   if (!activeChange) {
     return {

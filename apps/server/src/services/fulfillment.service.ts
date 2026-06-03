@@ -91,7 +91,9 @@ export const fulfillmentService = {
       tracking_numbers: input.tracking_numbers, tracking_url: input.tracking_url,
       metadata: input.metadata ?? undefined, no_notification: input.no_notification,
     });
-    return this.getById(String(result?.fulfillmentId ?? ''));
+    return this.getById(
+      String((result as { fulfillmentId?: string })?.fulfillmentId ?? ""),
+    )
   },
 
   async cancel(orderId: string, fulfillmentId: string, input?: CancelFulfillmentInput) {
@@ -190,7 +192,7 @@ export const fulfillmentService = {
         resource_id: fulfillmentId,
         resource_type: "fulfillment",
         idempotency_key: `fulfillment-deliver-${fulfillmentId}`,
-        no_notification: delOrd.no_notification,
+        no_notification: delOrd.no_notification ?? undefined,
         sender: () => sendOrderDeliveredEmail(delOrd.email!, displayId, orderId),
       })
     }

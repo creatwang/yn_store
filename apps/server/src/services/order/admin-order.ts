@@ -30,6 +30,7 @@ import {
   salesChannel,
 } from "@my-store/db"
 import { getCurrencyEpsilon, toAmount } from "../../lib/big-number"
+import { sqlRows } from "../../lib/sql-rows"
 import {
   applyOrderFieldMask,
   DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,
@@ -568,7 +569,7 @@ async function loadPaymentCollections(db: Db, orderIds: string[]) {
     ORDER BY opc.order_id, pc.created_at
   `)
 
-  const rows = (result.rows ?? result) as any[]
+  const rows = sqlRows<any>(result)
   const byOrder = new Map<string, Map<string, PaymentCollectionForStatus>>()
 
   for (const row of rows) {
@@ -653,7 +654,7 @@ async function loadFulfillments(db: Db, orderIds: string[]) {
 
   const byOrder = new Map<string, Map<string, Record<string, unknown>>>()
 
-  for (const row of (result.rows ?? result) as Array<Record<string, unknown>>) {
+  for (const row of sqlRows<Record<string, unknown>>(result)) {
     const orderId = String(row.order_id)
     const fid = String(row.id)
     if (!byOrder.has(orderId)) byOrder.set(orderId, new Map())
@@ -742,7 +743,7 @@ async function loadStatusItems(db: Db, orderIds: string[]) {
     WHERE oi.order_id IN (${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)})
   `)
 
-  const rows = (result.rows ?? result) as (typeof orderItem.$inferSelect)[]
+  const rows = sqlRows<typeof orderItem.$inferSelect>(result)
   return new Map(
     [...groupBy(rows, "order_id")].map(([orderId, items]) => [
       orderId,
@@ -819,7 +820,7 @@ async function loadDetailShipping(db: Db, orderId: string): Promise<OrderShippin
     WHERE osp.order_id = ${orderId} AND osm.deleted_at IS NULL
   `)
 
-  return ((result.rows ?? result) as Array<Record<string, unknown>>).map((row) => ({
+  return sqlRows<Record<string, unknown>>(result).map((row) => ({
     link: {
       id: String(row.id),
       order_id: String(row.order_id),
@@ -1001,7 +1002,7 @@ async function loadPresentedAdminOrderDetail(
       INNER JOIN promotion p ON p.id = op.promotion_id
       WHERE op.order_id = ${orderRow.id} AND op.deleted_at IS NULL AND p.deleted_at IS NULL
     `)
-  const promotions = (promotionsResult.rows ?? promotionsResult) as any[]
+  const promotions = sqlRows<any>(promotionsResult)
   const orderRegion = orderRow.region_id
     ? (await db.select().from(region).where(eq(region.id, orderRow.region_id)).limit(1))[0] ?? null
     : null
@@ -1023,7 +1024,7 @@ async function loadPresentedAdminOrderDetail(
       WHERE variant_id IN (${sql.join(variantIds.map(id => sql`${id}`), sql`,`)})
         AND deleted_at IS NULL
     `)
-    for (const row of (iiRows.rows ?? iiRows) as any[]) {
+    for (const row of sqlRows<any>(iiRows)) {
       const existing = inventoryItemsByVariant.get(row.variant_id) ?? []
       existing.push({ id: row.id, inventory_item_id: row.inventory_item_id, required_quantity: row.required_quantity })
       inventoryItemsByVariant.set(row.variant_id, existing)
@@ -1073,7 +1074,7 @@ export async function presentAdminOrderDetail(
   }
 
   return db.transaction((tx) =>
-    loadPresentedAdminOrderDetail(tx as Db, orderRow, fieldConfig),
+    loadPresentedAdminOrderDetail(tx as unknown as Db, orderRow, fieldConfig),
   )
 }
 
