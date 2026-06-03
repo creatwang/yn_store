@@ -1,10 +1,14 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { listRegionsSchema, listSalesChannelsSchema } from "@my-store/validators"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import {
+  AdminGetSalesChannelsParams,
+  StoreGetRegionsParams,
+} from "@my-store/validators/admin-list-params"
 import { regionService } from "../../services/region.service"
 
 export const storeRegions = new Hono()
-  .get("/", zValidator("query", listRegionsSchema), async (c) => {
+  .get("/", rpcQueryValidator(StoreGetRegionsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await regionService.listRegions(query)
     return c.json(result)
@@ -15,7 +19,7 @@ export const storeRegions = new Hono()
   })
 
 export const storeSalesChannels = new Hono()
-  .get("/", zValidator("query", listSalesChannelsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetSalesChannelsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await regionService.listSalesChannels(query)
     return c.json(result)
@@ -24,3 +28,4 @@ export const storeSalesChannels = new Hono()
     const result = await regionService.getSalesChannelById(c.req.param("id"))
     return c.json(result)
   })
+

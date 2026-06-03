@@ -1,9 +1,12 @@
 import { isNull } from "drizzle-orm"
 import { getDb, inventoryItem } from "@my-store/db"
+import type { AdminGetInventoryItemsParamsType } from "@my-store/validators/admin-list-params"
+import { listLimitOffset } from "../lib/query-filters"
 
 export const inventoryService = {
-  async listInventoryItems() {
+  async listInventoryItems(query: AdminGetInventoryItemsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const items = await db
       .select({
         id: inventoryItem.id,
@@ -19,7 +22,9 @@ export const inventoryService = {
       .from(inventoryItem)
       .where(isNull(inventoryItem.deleted_at))
       .orderBy(inventoryItem.title)
+      .limit(limit)
+      .offset(offset)
 
-    return { inventory_items: items, count: items.length }
+    return { inventory_items: items, count: items.length, limit, offset }
   },
 }

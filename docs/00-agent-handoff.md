@@ -105,7 +105,7 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 | 汇总挂载 + `AppType` | `apps/server/src/app.ts` |
 | 路由处理器 | `apps/server/src/routes/**/*.ts`（链式） |
 | 业务逻辑 | `apps/server/src/services/**/*.ts` |
-| 跨模块事务 | `apps/server/src/workflows/**/*.ts`（待建） |
+| 跨模块编排 | `apps/server/src/workflows/**/*.ts` + `lib/workflow.ts`（8 条已接线，见 `workflow-plan.md`） |
 | 请求 Schema | `packages/validators/src/**/*.ts` |
 | Drizzle 表 | `packages/db/src/schema/**/*.ts` |
 | Admin RPC 客户端 | `apps/admin/src/lib/api.ts` + `hooks/*.ts` |
@@ -151,20 +151,32 @@ pnpm run copy:dashboard-ui
 
 ---
 
-## 8. 实现顺序（建议严格执行）
+## 8. 增量开发顺序（2026-06-02 基线已通，接新需求时用）
 
-1. **补齐 `packages/db` schema**：按 `docs/01` 模块拆文件，至少覆盖 MVP 涉及表。
-2. **补齐 `packages/validators`**：与每个 `POST/PATCH` 对齐。
-3. **`apps/server` 路由**：先 `auth` → `admin/products` → `store/products`，再按 `docs/02` MVP 扩展 cart、order、payment、customer、region、shipping。
-4. **`apps/admin` 页面**：登录 → Shell → 商品列表/新建/编辑；再按模块加路由与 `hooks`。
-5. **`apps/storefront`**：首页列表、详情；再 cart/checkout（React islands）。
-6. **生产 All-in-One（可选）**：`astro build` + `vite build` 产物拷到 `apps/server/static/`，在 `app.ts` 加 `serveStatic`（Bun 用 `hono/bun`，Node 用 `@hono/node-server/serve-static`）。
+骨架、MVP Admin/Store API、事务层、Admin UI 迭代 01、C 端主路径**均已完成**（见 §9）。新任务按优先级：
+
+1. 读 [REMAINING-WORK.md](./REMAINING-WORK.md) 确认是否 **P2**（Stripe / i18n 等，默认本轮不做）。
+2. 改 API：对照 `docs/02` → 链式路由 + `validators` → `services` → 更新 [PROJECT_STATUS.md](./PROJECT_STATUS.md) + 补 `apps/server/tests`。
+3. 改 Admin：对照 `docs/09-stitching-alignment.mdx` → `hooks` + `client.ts` RPC → 手测或 Playwright。
+4. 改 C 端：更新 [ecommerce-c-end/implementation-status.md](./ecommerce-c-end/implementation-status.md)。
+5. 可选 All-in-One：见 `docs/08-target-architecture.mdx`。
 
 ---
 
-## 9. 当前已实现 vs 待办（接手时自检）
+## 9. 当前实现快照（2026-06-02，与 PROJECT_STATUS 同步）
 
-> **本节已过期（2026-05 骨架期）**。请以 [PROJECT_STATUS.md](./PROJECT_STATUS.md)（已完成）与 [REMAINING-WORK.md](./REMAINING-WORK.md)（未完成 + 过期文档）为准。
+| 维度 | 状态 |
+|------|------|
+| Admin 可运营 | ✅ 产品 / 订单 / 客户 / 库存 / 履约 / RMA 主线 |
+| Admin + Store API | ✅ 见 PROJECT_STATUS §API 挂载矩阵 |
+| `client.ts` / hooks | ✅ 零 noop |
+| 事务 `runInTransaction` + Workflow 8 条 | ✅ |
+| 自动化测试 | ✅ 19 文件 / 159 条（`pnpm --filter=@my-store/server test`） |
+| Storefront | ✅ ~70%；Hybrid、cart/checkout、E2E、部署 — 见 `ecommerce-c-end/implementation-status.md` |
+| **未做（P2，有意跳过）** | Stripe、i18n、View Transitions、`<dialog>` 抽屉、Cloudflare adapter、All-in-One |
+| **可选债（P3）** | admin `@ts-nocheck`、Store `fields`、server 全量 `tsc` 零错 |
+
+细节与矩阵：[PROJECT_STATUS.md](./PROJECT_STATUS.md)。待办-only：[REMAINING-WORK.md](./REMAINING-WORK.md)。
 
 ---
 

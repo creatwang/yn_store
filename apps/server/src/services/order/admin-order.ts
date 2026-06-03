@@ -11,6 +11,7 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   customer,
+  getDb,
   order,
   orderAddress,
   orderCreditLine,
@@ -53,7 +54,7 @@ import type {
   PaymentCollectionForStatus,
 } from "./types"
 
-type Db = NodePgDatabase<Record<string, never>>
+type Db = ReturnType<typeof getDb>
 
 export type PresentAdminOrdersOptions = { fields?: string }
 

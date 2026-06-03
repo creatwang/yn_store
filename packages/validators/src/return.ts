@@ -1,12 +1,5 @@
 import { z } from "zod"
-import { paginationSchema, metadataSchema } from "./common"
-
-export const listReturnsSchema = paginationSchema.extend({
-  status: z.string().optional(),
-  order_id: z.string().optional(),
-})
-
-export type ListReturnsQuery = z.infer<typeof listReturnsSchema>
+import { metadataSchema } from "./common"
 
 export const createReturnSchema = z.object({
   order_id: z.string().min(1),

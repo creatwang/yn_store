@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import {
   createCartSchema,
@@ -55,7 +55,7 @@ export const storeCarts = new Hono()
     const body = await c.req.json()
     const optionId = body.option_id ?? body.shipping_option_id ?? body.option?.id
     if (!optionId) {
-      return c.json({ message: "缺少 option_id" }, 400)
+      return c.json({ message: "缂哄皯 option_id" }, 400)
     }
     const result = await cartCheckoutService.addShippingMethod(c.req.param("id"), {
       option_id: optionId,
@@ -66,7 +66,7 @@ export const storeCarts = new Hono()
   .post("/:id/promotions", async (c) => {
     const body = await c.req.json<{ code: string }>()
     const code = body.code?.trim()
-    if (!code) return c.json({ message: "请输入优惠码" }, 400)
+    if (!code) return c.json({ message: "璇疯緭鍏ヤ紭鎯犵爜" }, 400)
     const result = await cartService.applyPromo(c.req.param("id"), code)
     return c.json(result)
   })

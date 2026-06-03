@@ -1,7 +1,9 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { z } from "zod"
-import { listExchangesSchema, createExchangeSchema } from "@my-store/validators"
+import { createExchangeSchema } from "@my-store/validators"
+import { AdminListExchangesParams } from "@my-store/validators/admin-list-params"
 import { exchangeService } from "../../services/exchange.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
@@ -17,7 +19,7 @@ const actionSchema = zValidator("json", z.object({ shipping_option_id: z.string(
 
 export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listExchangesSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminListExchangesParams), async (c) => {
     const result = await exchangeService.list(c.req.valid("query"))
     return c.json(result)
   })
@@ -29,7 +31,7 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     const result = await exchangeService.getById(c.req.param("id"))
     return c.json(result)
   })
-  // ── Inbound Items ─────────────────────────────────────
+  // 鈹€鈹€ Inbound Items 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .post("/:id/inbound/items", exchangeItemsSchema, async (c) => {
     const result = await exchangeService.addInboundItems(c.req.param("id"), c.req.valid("json"))
     return c.json(result)
@@ -43,7 +45,7 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     const result = await exchangeService.removeInboundItem(c.req.param("id"), c.req.param("actionId"))
     return c.json(result)
   })
-  // ── Inbound Shipping ──────────────────────────────────
+  // 鈹€鈹€ Inbound Shipping 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .post("/:id/inbound/shipping-method", actionSchema, async (c) => {
     const result = await exchangeService.addInboundShipping(c.req.param("id"), c.req.valid("json") as any)
     return c.json(result)
@@ -56,7 +58,7 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     const result = await exchangeService.removeInboundShipping(c.req.param("id"), c.req.param("actionId"))
     return c.json(result)
   })
-  // ── Outbound Items ────────────────────────────────────
+  // 鈹€鈹€ Outbound Items 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .post("/:id/outbound/items", outboundItemsSchema, async (c) => {
     const result = await exchangeService.addOutboundItems(c.req.param("id"), c.req.valid("json"))
     return c.json(result)
@@ -70,7 +72,7 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     const result = await exchangeService.removeOutboundItem(c.req.param("id"), c.req.param("actionId"))
     return c.json(result)
   })
-  // ── Outbound Shipping ─────────────────────────────────
+  // 鈹€鈹€ Outbound Shipping 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .post("/:id/outbound/shipping-method", actionSchema, async (c) => {
     const result = await exchangeService.addOutboundShipping(c.req.param("id"), c.req.valid("json") as any)
     return c.json(result)
@@ -83,7 +85,7 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     const result = await exchangeService.removeOutboundShipping(c.req.param("id"), c.req.param("actionId"))
     return c.json(result)
   })
-  // ── Actions ───────────────────────────────────────────
+  // 鈹€鈹€ Actions 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .post(
     "/:id/request",
     zValidator(
@@ -104,3 +106,4 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     const result = await exchangeService.cancel(c.req.param("id"))
     return c.json(result)
   })
+

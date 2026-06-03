@@ -1,16 +1,17 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import {
   createSalesChannelSchema,
-  listSalesChannelsSchema,
   updateSalesChannelSchema,
 } from "@my-store/validators"
+import { AdminGetSalesChannelsParams } from "@my-store/validators/admin-list-params"
 import { regionService } from "../../services/region.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminSalesChannels = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listSalesChannelsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetSalesChannelsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await regionService.listSalesChannels(query)
     return c.json(result)
@@ -33,3 +34,4 @@ export const adminSalesChannels = new Hono<{ Variables: AuthVariables }>()
     const result = await regionService.deleteSalesChannel(c.req.param("id"))
     return c.json(result)
   })
+

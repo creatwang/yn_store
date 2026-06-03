@@ -1,12 +1,4 @@
 import { z } from "zod"
-import { paginationSchema } from "./common"
-
-export const listCustomersSchema = paginationSchema.extend({
-  q: z.string().optional(),
-  has_account: z.boolean().optional(),
-})
-
-export type ListCustomersQuery = z.infer<typeof listCustomersSchema>
 
 export const registerCustomerSchema = z.object({
   email: z.string().email("邮箱格式不正确"),

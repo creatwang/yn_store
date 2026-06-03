@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   customer,
+  getDb,
   order,
   orderItem,
   orderLineItem,
@@ -20,7 +21,7 @@ import type {
   PaymentCollectionForStatus,
 } from "./types"
 
-type Db = NodePgDatabase<Record<string, never>>
+type Db = ReturnType<typeof getDb>
 
 function groupBy<T extends Record<string, unknown>>(
   rows: T[],

@@ -1,16 +1,17 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import {
   createRegionSchema,
-  listRegionsSchema,
   updateRegionSchema,
 } from "@my-store/validators"
+import { AdminGetRegionsParams } from "@my-store/validators/admin-list-params"
 import { regionService } from "../../services/region.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminRegions = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listRegionsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetRegionsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await regionService.listRegions(query)
     return c.json(result)
@@ -33,3 +34,4 @@ export const adminRegions = new Hono<{ Variables: AuthVariables }>()
     const result = await regionService.deleteRegion(c.req.param("id"))
     return c.json(result)
   })
+

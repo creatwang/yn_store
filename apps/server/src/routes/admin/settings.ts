@@ -1,22 +1,37 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import {
-  listProductTagsSchema, createProductTagSchema, updateProductTagSchema,
-  listProductTypesSchema, createProductTypeSchema, updateProductTypeSchema,
-  listTaxRegionsSchema, createTaxRegionSchema, updateTaxRegionSchema,
-  listReturnReasonsSchema, createReturnReasonSchema, updateReturnReasonSchema,
-  listRefundReasonsSchema, createRefundReasonSchema, updateRefundReasonSchema,
+  createProductTagSchema,
+  updateProductTagSchema,
+  createProductTypeSchema,
+  updateProductTypeSchema,
+  createTaxRegionSchema,
+  updateTaxRegionSchema,
+  createReturnReasonSchema,
+  updateReturnReasonSchema,
+  createRefundReasonSchema,
+  updateRefundReasonSchema,
 } from "@my-store/validators"
 import {
-  productTagService, productTypeService, taxRegionService,
-  returnReasonService, refundReasonService,
+  AdminGetProductTagsParams,
+  AdminGetProductTypesParams,
+  AdminGetTaxRegionsParams,
+  AdminGetReturnReasonsParams,
+  AdminGetRefundReasonsParams,
+} from "@my-store/validators/admin-list-params"
+import {
+  productTagService,
+  productTypeService,
+  taxRegionService,
+  returnReasonService,
+  refundReasonService,
 } from "../../services/settings.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
-// ── Product Tags ──────────────────────────────────────────────
 export const adminProductTags = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listProductTagsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetProductTagsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await productTagService.list(query)
     return c.json(result)
@@ -40,10 +55,9 @@ export const adminProductTags = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
 
-// ── Product Types ─────────────────────────────────────────────
 export const adminProductTypes = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listProductTypesSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetProductTypesParams), async (c) => {
     const query = c.req.valid("query")
     const result = await productTypeService.list(query)
     return c.json(result)
@@ -67,10 +81,9 @@ export const adminProductTypes = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
 
-// ── Tax Regions ───────────────────────────────────────────────
 export const adminTaxRegions = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listTaxRegionsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetTaxRegionsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await taxRegionService.list(query)
     return c.json(result)
@@ -94,10 +107,9 @@ export const adminTaxRegions = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
 
-// ── Return Reasons ────────────────────────────────────────────
 export const adminReturnReasons = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listReturnReasonsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetReturnReasonsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await returnReasonService.list(query)
     return c.json(result)
@@ -121,10 +133,9 @@ export const adminReturnReasons = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
 
-// ── Refund Reasons ────────────────────────────────────────────
 export const adminRefundReasons = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listRefundReasonsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetRefundReasonsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await refundReasonService.list(query)
     return c.json(result)
@@ -147,3 +158,4 @@ export const adminRefundReasons = new Hono<{ Variables: AuthVariables }>()
     const result = await refundReasonService.delete(c.req.param("id"))
     return c.json(result)
   })
+

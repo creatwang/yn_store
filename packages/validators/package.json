@@ -15,6 +15,10 @@
     "./helpers/*": {
       "types": "./src/helpers/*.ts",
       "default": "./src/helpers/*.ts"
+    },
+    "./admin-list-params": {
+      "types": "./src/admin-list-params.ts",
+      "default": "./src/admin-list-params.ts"
     }
   },
   "dependencies": {

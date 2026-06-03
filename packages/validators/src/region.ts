@@ -1,13 +1,5 @@
 import { z } from "zod"
 import { metadataSchema } from "./common"
-import { createFindParams } from "./helpers/validators"
-
-/** 对齐官方 Admin list query（含 fields / order / q） */
-export const listRegionsSchema = createFindParams({ limit: 50 }).extend({
-  q: z.string().optional(),
-})
-
-export type ListRegionsQuery = z.infer<typeof listRegionsSchema>
 
 export const createRegionSchema = z.object({
   name: z.string().min(1),
@@ -32,12 +24,6 @@ export const updateRegionSchema = z.object({
 })
 
 export type UpdateRegionInput = z.infer<typeof updateRegionSchema>
-
-export const listSalesChannelsSchema = createFindParams({ limit: 50 }).extend({
-  q: z.string().optional(),
-})
-
-export type ListSalesChannelsQuery = z.infer<typeof listSalesChannelsSchema>
 
 export const createSalesChannelSchema = z.object({
   name: z.string().min(1),

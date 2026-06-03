@@ -1,18 +1,37 @@
 import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
 import { generateId, getDb, productTag, productType, taxRegion, returnReason, refundReason } from "@my-store/db"
 import type {
-  ListProductTagsQuery, CreateProductTagInput, UpdateProductTagInput,
-  ListProductTypesQuery, CreateProductTypeInput, UpdateProductTypeInput,
-  ListTaxRegionsQuery, CreateTaxRegionInput, UpdateTaxRegionInput,
-  ListReturnReasonsQuery, CreateReturnReasonInput, UpdateReturnReasonInput,
-  ListRefundReasonsQuery, CreateRefundReasonInput, UpdateRefundReasonInput,
+  CreateProductTagInput,
+  UpdateProductTagInput,
+  CreateProductTypeInput,
+  UpdateProductTypeInput,
+  CreateTaxRegionInput,
+  UpdateTaxRegionInput,
+  CreateReturnReasonInput,
+  UpdateReturnReasonInput,
+  CreateRefundReasonInput,
+  UpdateRefundReasonInput,
 } from "@my-store/validators"
+import type {
+  AdminGetProductTagsParamsType,
+  AdminGetProductTypesParamsType,
+  AdminGetTaxRegionsParamsType,
+  AdminGetReturnReasonsParamsType,
+  AdminGetRefundReasonsParamsType,
+} from "@my-store/validators/admin-list-params"
+import { listLimitOffset } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 
 // 通用 CRUD 工厂
 function makeListFn(table: any, entityKey: string) {
-  return async (query: { limit: number; offset: number; q?: string; order?: string }) => {
+  return async (query: {
+    limit?: number
+    offset?: number
+    q?: string
+    order?: string
+  }) => {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [isNull(table.deleted_at)]
 
     if (query.q && table.value) {
@@ -25,11 +44,11 @@ function makeListFn(table: any, entityKey: string) {
     const orderBy = desc(table.created_at)
 
     const [rows, [{ total }]] = await Promise.all([
-      db.select().from(table).where(where).orderBy(orderBy).limit(query.limit).offset(query.offset),
+      db.select().from(table).where(where).orderBy(orderBy).limit(limit).offset(offset),
       db.select({ total: count() }).from(table).where(where),
     ])
 
-    return { [entityKey]: rows, count: Number(total), limit: query.limit, offset: query.offset }
+    return { [entityKey]: rows, count: Number(total), limit, offset }
   }
 }
 

@@ -2,17 +2,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, parseJsonResponse, toRpcQuery } from "@/lib/api"
 import type {
   CreateCustomerInput,
-  ListCustomersQuery,
   UpdateCustomerInput,
 } from "@my-store/validators"
+import type { AdminCustomersParamsType } from "@my-store/validators/admin-list-params"
 import type {
   CustomerDetailResponse,
   CustomerListResponse,
 } from "@/types/api"
 
-const defaultListQuery: ListCustomersQuery = { limit: 50, offset: 0 }
+const defaultListQuery: AdminCustomersParamsType = {
+  limit: 50,
+  offset: 0,
+  order: undefined,
+}
 
-export function useCustomers(params: ListCustomersQuery = defaultListQuery) {
+export function useCustomers(
+  params: AdminCustomersParamsType = defaultListQuery,
+) {
   return useQuery({
     queryKey: ["customers", params],
     queryFn: async () => {

@@ -1,10 +1,11 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { listStoreProductsSchema } from "@my-store/validators"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { StoreGetProductsParams } from "@my-store/validators/admin-list-params"
 import { productService } from "../../services/product.service"
 
 export const storeProducts = new Hono()
-  .get("/", zValidator("query", listStoreProductsSchema), async (c) => {
+  .get("/", rpcQueryValidator(StoreGetProductsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await productService.listStore(query)
     return c.json(result)
@@ -23,3 +24,4 @@ export const storeProducts = new Hono()
     const result = await productService.getByHandle(id)
     return c.json(result)
   })
+

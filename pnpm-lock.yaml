@@ -370,6 +370,9 @@ importers:
       nodemailer:
         specifier: ^8.0.10
         version: 8.0.10
+      qs:
+        specifier: ^6.15.2
+        version: 6.15.2
       resend:
         specifier: ^6.12.4
         version: 6.12.4

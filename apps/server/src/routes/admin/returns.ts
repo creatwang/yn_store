@@ -1,8 +1,9 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { z } from "zod"
+import { AdminListReturnsParams } from "@my-store/validators/admin-list-params"
 import {
-  listReturnsSchema,
   createReturnSchema,
   receiveReturnSchema,
   metadataSchema,
@@ -38,7 +39,7 @@ const shippingSchema = zValidator("json", metadataSchema)
 
 export const adminReturns = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listReturnsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminListReturnsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await returnService.list(query)
     return c.json(result)
@@ -162,3 +163,4 @@ export const adminReturns = new Hono<{ Variables: AuthVariables }>()
     const result = await returnService.cancelReceive(c.req.param("id"))
     return c.json(result)
   })
+

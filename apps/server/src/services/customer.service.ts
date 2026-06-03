@@ -9,20 +9,22 @@ import {
 } from "@my-store/db"
 import type {
   CreateCustomerInput,
-  ListCustomersQuery,
   UpdateCustomerInput,
   CreateCustomerAddressInput,
   UpdateCustomerAddressInput,
 } from "@my-store/validators"
+import type { AdminCustomersParamsType } from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
+import { applyDateRangeConditions, listLimitOffset } from "../lib/query-filters"
 import bcrypt from "bcryptjs"
 
 export const customerService = {
-  async list(query: ListCustomersQuery) {
+  async list(query: AdminCustomersParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [isNull(customer.deleted_at)]
 
-    if (query.has_account !== undefined) {
+    if (typeof query.has_account === "boolean") {
       conditions.push(eq(customer.has_account, query.has_account))
     }
 
@@ -31,10 +33,23 @@ export const customerService = {
         or(
           ilike(customer.email, `%${query.q}%`),
           ilike(customer.first_name, `%${query.q}%`),
-          ilike(customer.last_name, `%${query.q}%`)
-        )!
+          ilike(customer.last_name, `%${query.q}%`),
+        )!,
       )
     }
+
+    applyDateRangeConditions(
+      customer.created_at,
+      query.created_at as never,
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      customer.updated_at,
+      query.updated_at as never,
+      conditions,
+      sql,
+    )
 
     const where = and(...conditions)
 
@@ -44,16 +59,16 @@ export const customerService = {
         .from(customer)
         .where(where)
         .orderBy(desc(customer.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(customer).where(where),
     ])
 
     return {
       customers,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 

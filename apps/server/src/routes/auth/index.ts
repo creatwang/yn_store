@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import {
   loginSchema,
@@ -49,7 +49,7 @@ export const authRoutes = new Hono()
         c.req.header("Authorization")?.replace(/^Bearer\s+/i, "") ||
         ""
       if (!token) {
-        return c.json({ message: "缺少 token" }, 400)
+        return c.json({ message: "缂哄皯 token" }, 400)
       }
       const { password } = c.req.valid("json")
       const result = await authService.updateProviderPassword(token, password)
@@ -91,7 +91,7 @@ export const authRoutes = new Hono()
       return c.json(result)
     },
   )
-  // ── Customer registration (Auth module) ──
+  // 鈹€鈹€ Customer registration (Auth module) 鈹€鈹€
   .post(
     "/customer/emailpass/register",
     zValidator("json", registerCustomerSchema),
@@ -105,7 +105,7 @@ export const authRoutes = new Hono()
       return c.json({ ...result, ...token }, 201)
     },
   )
-  // ── OAuth callback (Admin + Storefront) ──
+  // 鈹€鈹€ OAuth callback (Admin + Storefront) 鈹€鈹€
   .on(["GET", "POST"], "/:actor_type/:auth_provider/callback", async (c) => {
     const { actor_type, auth_provider } = c.req.param()
     // Validate actor_type

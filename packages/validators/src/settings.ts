@@ -1,15 +1,4 @@
 import { z } from "zod"
-import { createFindParams } from "./helpers/validators"
-
-// ── Product Tags ──────────────────────────────────────────────
-export const listProductTagsSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
-  q: z.string().optional(),
-  order: z.string().optional(),
-})
-
-export type ListProductTagsQuery = z.infer<typeof listProductTagsSchema>
 
 export const createProductTagSchema = z.object({
   value: z.string().min(1),
@@ -22,16 +11,6 @@ export const updateProductTagSchema = createProductTagSchema.partial()
 
 export type UpdateProductTagInput = z.infer<typeof updateProductTagSchema>
 
-// ── Product Types ─────────────────────────────────────────────
-export const listProductTypesSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
-  q: z.string().optional(),
-  order: z.string().optional(),
-})
-
-export type ListProductTypesQuery = z.infer<typeof listProductTypesSchema>
-
 export const createProductTypeSchema = z.object({
   value: z.string().min(1),
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -42,13 +21,6 @@ export type CreateProductTypeInput = z.infer<typeof createProductTypeSchema>
 export const updateProductTypeSchema = createProductTypeSchema.partial()
 
 export type UpdateProductTypeInput = z.infer<typeof updateProductTypeSchema>
-
-// ── Tax Regions ───────────────────────────────────────────────
-export const listTaxRegionsSchema = createFindParams({ limit: 50 }).extend({
-  q: z.string().optional(),
-})
-
-export type ListTaxRegionsQuery = z.infer<typeof listTaxRegionsSchema>
 
 export const createTaxRegionSchema = z.object({
   country_code: z.string().min(1),
@@ -63,16 +35,6 @@ export const updateTaxRegionSchema = createTaxRegionSchema.partial()
 
 export type UpdateTaxRegionInput = z.infer<typeof updateTaxRegionSchema>
 
-// ── Return Reasons ────────────────────────────────────────────
-export const listReturnReasonsSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
-  q: z.string().optional(),
-  order: z.string().optional(),
-})
-
-export type ListReturnReasonsQuery = z.infer<typeof listReturnReasonsSchema>
-
 export const createReturnReasonSchema = z.object({
   value: z.string().min(1),
   label: z.string().min(1),
@@ -86,16 +48,6 @@ export type CreateReturnReasonInput = z.infer<typeof createReturnReasonSchema>
 export const updateReturnReasonSchema = createReturnReasonSchema.partial()
 
 export type UpdateReturnReasonInput = z.infer<typeof updateReturnReasonSchema>
-
-// ── Refund Reasons ────────────────────────────────────────────
-export const listRefundReasonsSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
-  q: z.string().optional(),
-  order: z.string().optional(),
-})
-
-export type ListRefundReasonsQuery = z.infer<typeof listRefundReasonsSchema>
 
 export const createRefundReasonSchema = z.object({
   label: z.string().min(1),

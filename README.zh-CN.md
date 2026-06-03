@@ -261,9 +261,12 @@ pnpm install
 
 ### 必读文档
 
-1. `docs/00-agent-handoff.md` - 完整交接文档
-2. `docs/PROJECT_STATUS.md` - 项目状态
-3. `AGENTS.md` - AI 开发指南
+1. `docs/00-agent-handoff.md` — 交接与硬规则
+2. `docs/PROJECT_STATUS.md` — 权威状态（API / 测试）
+3. `docs/REMAINING-WORK.md` — 未完成项
+4. `docs/README.md` — **全部文档路径索引（42+ 篇）**
+5. `docs/QUICKSTART.md` — 快速启动
+6. `AGENTS.md` — AI 规则摘要
 
 ### 核心规则
 
@@ -278,7 +281,7 @@ pnpm install
 
 | 类别 | 路径 |
 |------|------|
-| 交接文档 | `docs/`（含 `00-agent-handoff.md`） |
+| 交接文档 | `docs/README.md`（全集索引）+ `00-agent-handoff.md` |
 | AI 入口 | `AGENTS.md`、`AGENT_HANDOFF.md`、`START_HERE.md`、`TRAE_KICKOFF_PROMPT.md` |
 | Cursor | `.cursor/rules/`、`.cursor/skills/hono-medusa-rebuild/SKILL.md` |
 | 脚本 | `scripts/init.ps1`、`sync-handoff-from-old.ps1`、`copy-dashboard-ui.ps1` |

@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { imageService } from "../../services/image.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
@@ -16,7 +16,7 @@ export const adminProductImages = new Hono<{ Variables: AuthVariables }>()
     return c.json(result, 201)
   })
   /*
-   * 对齐官方 batchImageVariantsWorkflow
+   * 瀵归綈瀹樻柟 batchImageVariantsWorkflow
    * POST /admin/products/:id/images/:imageId/variants/batch
    * body: { add: string[], remove: string[] }
    * returns: { added: string[], removed: string[] }

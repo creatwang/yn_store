@@ -1,4 +1,5 @@
 import { hc } from "hono/client"
+import { stringify } from "qs"
 import type { AppType } from "@my-store/server/app"
 import { authStorage } from "./auth-storage"
 
@@ -37,15 +38,29 @@ type ApiErrorBody = {
   type?: string
 }
 
-/** Hono RPC 的 query 参数需为字符串 */
-export function toRpcQuery<T extends Record<string, unknown>>(params: T) {
-  const query: Record<string, string> = {}
+/**
+ * Hono RPC query：用 qs 展开 operator map / 数组（非 JSON 字符串）。
+ * 需 Record<string, string | string[]>，故从 qs 串还原 bracket 键名。
+ */
+export function toRpcQuery<T extends Record<string, unknown>>(
+  params: T,
+): Record<string, string | string[]> {
+  const cleaned: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null) {
-      query[key] = String(value)
-    }
+    if (value === undefined || value === null) continue
+    cleaned[key] = value
   }
-  return query
+
+  const serialized = stringify(cleaned, { skipNulls: true })
+  if (!serialized) return {}
+
+  const out: Record<string, string | string[]> = {}
+  const usp = new URLSearchParams(serialized)
+  for (const key of new Set(usp.keys())) {
+    const all = usp.getAll(key)
+    out[key] = all.length === 1 ? all[0]! : all
+  }
+  return out
 }
 
 /** 校验 HTTP 状态并解析 JSON；对 404 不抛异常，返回空对象 */

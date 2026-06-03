@@ -8,7 +8,7 @@ import { HTTPException } from "hono/http-exception"
 import { presentAdminOrderDetail } from "./admin-order"
 import { buildAdminOrderPreview } from "./admin-order-preview"
 
-type Db = NodePgDatabase<Record<string, never>>
+type Db = ReturnType<typeof getDb>
 
 import { DEFAULT_ADMIN_DRAFT_ORDER_RETRIEVE_FIELDS } from "./draft-order-fields"
 

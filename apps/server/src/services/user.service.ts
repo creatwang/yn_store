@@ -1,12 +1,15 @@
 import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
 import { generateId, getDb, user, invite } from "@my-store/db"
 import type {
-  ListUsersQuery,
   UpdateUserInput,
   CreateInviteInput,
   AcceptInviteInput,
-  ListInvitesQuery,
 } from "@my-store/validators"
+import type {
+  AdminGetUsersParamsType,
+  AdminGetInvitesParamsType,
+} from "@my-store/validators/admin-list-params"
+import { listLimitOffset } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 import crypto from "node:crypto"
 import { signInviteToken, verifyOpaqueToken } from "../lib/jwt"
@@ -15,7 +18,8 @@ import { adminAppUrl, sendInviteEmail, sendInviteResendEmail } from "../lib/mail
 export const userService = {
   // ── 用户 CRUD ──────────────────────────────────────────────
 
-  async listUsers(query: ListUsersQuery) {
+  async listUsers(query: AdminGetUsersParamsType) {
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const db = getDb()
     const conditions = [isNull(user.deleted_at)]
 
@@ -52,16 +56,16 @@ export const userService = {
         .from(user)
         .where(where)
         .orderBy(orderBy)
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(user).where(where),
     ])
 
     return {
       users,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 
@@ -131,8 +135,9 @@ export const userService = {
 
   // ── 邀请 CRUD ──────────────────────────────────────────────
 
-  async listInvites(query: ListInvitesQuery) {
+  async listInvites(query: AdminGetInvitesParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [isNull(invite.deleted_at)]
 
     const where = and(...conditions)
@@ -143,16 +148,16 @@ export const userService = {
         .from(invite)
         .where(where)
         .orderBy(desc(invite.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(invite).where(where),
     ])
 
     return {
       invites,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 

@@ -1,5 +1,6 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import {
   AdminAddDraftOrderItems,
   AdminAddDraftOrderPromotions,
@@ -7,6 +8,7 @@ import {
   AdminCreateDraftOrder,
   AdminGetDraftOrderParams,
   AdminGetDraftOrdersParams,
+  type AdminCreateDraftOrderType,
   AdminRemoveDraftOrderPromotions,
   AdminUpdateDraftOrder,
   AdminUpdateDraftOrderActionItem,
@@ -19,17 +21,19 @@ import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminDraftOrders = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", AdminGetDraftOrdersParams), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetDraftOrdersParams), async (c) => {
     const result = await draftOrderService.list(c.req.valid("query"))
     return c.json(result)
   })
   .post("/", zValidator("json", AdminCreateDraftOrder()), async (c) => {
-    const result = await draftOrderService.create(c.req.valid("json"))
+    const result = await draftOrderService.create(
+      c.req.valid("json") as AdminCreateDraftOrderType,
+    )
     return c.json(result, 201)
   })
   .get(
     "/:id",
-    zValidator("query", AdminGetDraftOrderParams),
+    rpcQueryValidator(AdminGetDraftOrderParams),
     async (c) => {
       const result = await draftOrderService.getById(
         c.req.param("id"),
@@ -182,3 +186,4 @@ export const adminDraftOrders = new Hono<{ Variables: AuthVariables }>()
     const result = await draftOrderService.confirmEdit(c.req.param("id"))
     return c.json(result)
   })
+

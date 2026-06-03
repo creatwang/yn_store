@@ -17,15 +17,25 @@ import {
 } from "@my-store/db"
 import type {
   CreateOrderInput,
-  ListOrdersQuery,
   UpdateOrderInput,
   CreateCreditLineInput,
   RequestTransferInput,
-  ListOrderChangesQuery,
 } from "@my-store/validators"
+import type {
+  AdminGetOrdersParamsType,
+  AdminOrderChangesType,
+  StoreGetOrdersParamsType,
+} from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
 import { sendOrderCanceledEmail } from "../lib/mail"
 import { loadActionsGroupedByChangeId } from "../lib/order-change-actions-batch"
+import {
+  applyDateRangeConditions,
+  applyInArrayCondition,
+  applyOrderTotalSummaryFilter,
+  listLimitOffset,
+  normalizeFilterIds,
+} from "../lib/query-filters"
 import { dispatchRollbackProcess } from "../lib/rollback"
 import { runInTransaction } from "../lib/transaction"
 import { notificationService } from "./notification.service"
@@ -48,50 +58,34 @@ const ORDER_EXPORT_HEADERS = [
   "Created At",
 ]
 
-function parseStatusFilter(
-  value: string | string[] | undefined,
-): string[] | undefined {
-  if (value == null || value === "") return undefined
-  const parts = (Array.isArray(value) ? value : [value])
-    .flatMap((v) => String(v).split(","))
-    .map((s) => s.trim())
-    .filter(Boolean)
-  return parts.length ? parts : undefined
-}
-
 export const orderService = {
-  async list(query: ListOrdersQuery) {
+  async list(query: AdminGetOrdersParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 15, offset: 0 })
     const conditions: any[] = [
       isNull(order.deleted_at),
       eq(order.is_draft_order, false),
     ]
 
-    if (query.status) conditions.push(eq(order.status, query.status))
-    if (query.customer_id) conditions.push(eq(order.customer_id, query.customer_id))
-    if (query.region_id) conditions.push(eq(order.region_id, query.region_id))
-    if (query.sales_channel_id) conditions.push(eq(order.sales_channel_id, query.sales_channel_id))
+    applyInArrayCondition(order.id, query.id as never, conditions)
+    applyInArrayCondition(order.status, query.status as never, conditions)
+    applyInArrayCondition(order.customer_id, query.customer_id as never, conditions)
+    applyInArrayCondition(order.region_id, query.region_id, conditions)
 
-    if (query.created_at) {
-      if (query.created_at.$gte) conditions.push(sql`${order.created_at} >= ${query.created_at.$gte}::timestamp`)
-      if (query.created_at.$lte) conditions.push(sql`${order.created_at} <= ${query.created_at.$lte}::timestamp`)
+    const channelIds = normalizeFilterIds(query.sales_channel_id)
+    if (channelIds?.length) {
+      conditions.push(inArray(order.sales_channel_id, channelIds))
     }
-    if (query.updated_at) {
-      if (query.updated_at.$gte) conditions.push(sql`${order.updated_at} >= ${query.updated_at.$gte}::timestamp`)
-      if (query.updated_at.$lte) conditions.push(sql`${order.updated_at} <= ${query.updated_at.$lte}::timestamp`)
-    }
+
+    applyDateRangeConditions(order.created_at, query.created_at, conditions, sql)
+    applyDateRangeConditions(order.updated_at, query.updated_at, conditions, sql)
+
+    const totalFilter = query.summary?.totals?.current_order_total
+    applyOrderTotalSummaryFilter(order.id, totalFilter, conditions, sql)
 
     if (query.q) {
-      conditions.push(
-        or(ilike(order.email, `%${query.q}%`))!
-      )
+      conditions.push(or(ilike(order.email, `%${query.q}%`))!)
     }
-
-    const paymentFilters = parseStatusFilter(query.payment_status)
-    const fulfillmentFilters = parseStatusFilter(query.fulfillment_status)
-    const hasAggregateStatusFilter =
-      (paymentFilters?.length ?? 0) > 0 ||
-      (fulfillmentFilters?.length ?? 0) > 0
 
     const where = and(...conditions)
 
@@ -101,62 +95,33 @@ export const orderService = {
         .from(order)
         .where(where)
         .orderBy(desc(order.created_at))
-        .limit(hasAggregateStatusFilter ? 10_000 : query.limit)
-        .offset(hasAggregateStatusFilter ? 0 : query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(order).where(where),
     ])
 
-    let enriched = await presentAdminOrders(db as any, orderRows, {
+    const orders = await presentAdminOrders(db as any, orderRows, {
       fields: query.fields,
     })
 
-    if (paymentFilters?.length) {
-      enriched = enriched.filter((o) =>
-        paymentFilters.includes(
-          (o as { payment_status?: string }).payment_status ?? "",
-        ),
-      )
-    }
-    if (fulfillmentFilters?.length) {
-      enriched = enriched.filter((o) =>
-        fulfillmentFilters.includes(
-          (o as { fulfillment_status?: string }).fulfillment_status ?? "",
-        ),
-      )
-    }
-
-    if (hasAggregateStatusFilter) {
-      const count = enriched.length
-      const orders = enriched.slice(
-        query.offset,
-        query.offset + query.limit,
-      )
-      return {
-        orders,
-        count,
-        limit: query.limit,
-        offset: query.offset,
-      }
-    }
-
     return {
-      orders: enriched,
+      orders,
       count: Number(dbTotal),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 
-  async listStore(customerId: string, query: ListOrdersQuery) {
+  async listStore(customerId: string, query: StoreGetOrdersParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [
       isNull(order.deleted_at),
       eq(order.customer_id, customerId),
     ]
 
-    if (query.status) {
-      conditions.push(eq(order.status, query.status))
-    }
+    applyInArrayCondition(order.id, query.id as never, conditions)
+    applyInArrayCondition(order.status, query.status as never, conditions)
 
     const where = and(...conditions)
 
@@ -173,16 +138,16 @@ export const orderService = {
         .from(order)
         .where(where)
         .orderBy(desc(order.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(order).where(where),
     ])
 
     return {
       orders,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 
@@ -408,22 +373,32 @@ export const orderService = {
 
   // ── Order Changes ─────────────────────────────────────
 
-  async getChanges(id: string, query: ListOrderChangesQuery = { limit: 50, offset: 0 }) {
+  async getChanges(id: string, query: AdminOrderChangesType = {}) {
     const db = getDb()
     const conditions = [eq(orderChange.order_id, id)]
 
-    if (query.status) {
-      conditions.push(eq(orderChange.change_type, query.status))
-    }
+    applyInArrayCondition(orderChange.id, query.id, conditions)
+    applyInArrayCondition(orderChange.status, query.status, conditions)
+    applyInArrayCondition(orderChange.change_type, query.change_type, conditions)
+    applyDateRangeConditions(
+      orderChange.created_at,
+      query.created_at,
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      orderChange.updated_at,
+      query.updated_at,
+      conditions,
+      sql,
+    )
 
     const [changes, [{ total }]] = await Promise.all([
       db
         .select()
         .from(orderChange)
         .where(and(...conditions))
-        .orderBy(desc(orderChange.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .orderBy(desc(orderChange.created_at)),
       db.select({ total: count() }).from(orderChange).where(and(...conditions)),
     ])
 

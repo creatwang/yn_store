@@ -23,8 +23,10 @@ pnpm run init
 
 1. `docs/00-agent-handoff.md`（Trae **首选**，含全部硬规则）
 2. `docs/PROJECT_STATUS.md`（权威状态）
-3. `AGENTS.md`
-4. `TRAE_KICKOFF_PROMPT.md`（**Trae 第一条消息粘贴本文件**）
+3. `docs/REMAINING-WORK.md`（未完成项）
+4. `docs/README.md`（**全部文档路径索引**）
+5. `AGENTS.md`
+6. `TRAE_KICKOFF_PROMPT.md`（**Trae 第一条消息粘贴本文件**）
 
 ## 4. 开发
 

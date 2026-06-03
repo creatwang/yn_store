@@ -21,7 +21,7 @@ import { HTTPException } from "hono/http-exception"
 import { toAmount } from "../../lib/big-number"
 import { decorateOrderTotals, presentAdminOrderDetail } from "./admin-order"
 
-type Db = NodePgDatabase<Record<string, never>>
+type Db = ReturnType<typeof getDb>
 
 type PreviewAction = {
   action: string

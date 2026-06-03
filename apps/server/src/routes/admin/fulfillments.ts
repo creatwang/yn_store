@@ -1,18 +1,19 @@
 import { Hono } from "hono"
 import { and, desc, eq, isNull } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { getDb, fulfillment, fulfillmentItem, fulfillmentLabel, orderItem } from "@my-store/db"
 import { createFulfillmentSchema, createShipmentSchema } from "@my-store/validators"
+import { AdminListFulfillmentsParams } from "@my-store/validators/admin-list-params"
 import { fulfillmentService } from "../../services/fulfillment.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { HTTPException } from "hono/http-exception"
 
 export const adminFulfillments = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", async (c) => {
+  .get("/", rpcQueryValidator(AdminListFulfillmentsParams), async (c) => {
     const db = getDb()
-    const limit = Number(c.req.query("limit") || 50)
-    const offset = Number(c.req.query("offset") || 0)
+    const { limit, offset } = c.req.valid("query")
     const rows = await db
       .select()
       .from(fulfillment)

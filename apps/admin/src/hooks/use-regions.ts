@@ -2,17 +2,27 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, parseJsonResponse, toRpcQuery } from "@/lib/api"
 import type {
   CreateRegionInput,
-  ListRegionsQuery,
   UpdateRegionInput,
   CreateSalesChannelInput,
-  ListSalesChannelsQuery,
   UpdateSalesChannelInput,
 } from "@my-store/validators"
+import type {
+  AdminGetRegionsParamsType,
+  AdminGetSalesChannelsParamsType,
+} from "@my-store/validators/admin-list-params"
 
-const defaultListQuery: ListRegionsQuery = { limit: 50, offset: 0 }
-const defaultSalesChannelQuery: ListSalesChannelsQuery = { limit: 50, offset: 0 }
+const defaultListQuery: AdminGetRegionsParamsType = {
+  limit: 50,
+  offset: 0,
+  order: undefined,
+}
+const defaultSalesChannelQuery: AdminGetSalesChannelsParamsType = {
+  limit: 50,
+  offset: 0,
+  order: undefined,
+}
 
-export function useRegions(params: ListRegionsQuery = defaultListQuery) {
+export function useRegions(params: AdminGetRegionsParamsType = defaultListQuery) {
   return useQuery({
     queryKey: ["regions", params],
     queryFn: async () => {
@@ -75,7 +85,9 @@ export function useDeleteRegion() {
   })
 }
 
-export function useSalesChannels(params: ListSalesChannelsQuery = defaultSalesChannelQuery) {
+export function useSalesChannels(
+  params: AdminGetSalesChannelsParamsType = defaultSalesChannelQuery,
+) {
   return useQuery({
     queryKey: ["sales-channels", params],
     queryFn: async () => {

@@ -1,15 +1,14 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { z } from "zod"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { createFindParams } from "@my-store/validators"
+import { StoreGetCollectionsParams } from "@my-store/validators/admin-list-params"
 import { storeCatalogService } from "../../services/store-catalog.service"
 
-const listQuerySchema = z.object({
-  limit: z.coerce.number().min(1).max(100).default(20),
-  offset: z.coerce.number().min(0).default(0),
-})
+const storePromotionsListParams = createFindParams({ limit: 20, offset: 0 })
 
 export const storeCollections = new Hono()
-  .get("/", zValidator("query", listQuerySchema), async (c) => {
+  .get("/", rpcQueryValidator(StoreGetCollectionsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await storeCatalogService.listCollections(query)
     return c.json(result)
@@ -20,8 +19,9 @@ export const storeCollections = new Hono()
   })
 
 export const storePromotions = new Hono()
-  .get("/", zValidator("query", listQuerySchema), async (c) => {
+  .get("/", rpcQueryValidator(storePromotionsListParams), async (c) => {
     const query = c.req.valid("query")
     const result = await storeCatalogService.listPromotions(query)
     return c.json(result)
   })
+

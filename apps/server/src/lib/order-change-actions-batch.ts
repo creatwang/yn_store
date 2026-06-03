@@ -20,9 +20,11 @@ export async function loadActionsGroupedByChangeId(
     .orderBy(asc(orderChangeAction.ordering), asc(orderChangeAction.created_at))
 
   for (const row of rows) {
-    const list = map.get(row.order_change_id) ?? []
+    const changeId = row.order_change_id
+    if (!changeId) continue
+    const list = map.get(changeId) ?? []
     list.push(row)
-    map.set(row.order_change_id, list)
+    map.set(changeId, list)
   }
   return map
 }

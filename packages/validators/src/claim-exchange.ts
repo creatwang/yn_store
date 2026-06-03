@@ -1,12 +1,5 @@
 import { z } from "zod"
-import { paginationSchema, metadataSchema } from "./common"
-
-export const listClaimsSchema = paginationSchema.extend({
-  status: z.string().optional(),
-  order_id: z.string().optional(),
-})
-
-export type ListClaimsQuery = z.infer<typeof listClaimsSchema>
+import { metadataSchema } from "./common"
 
 export const createClaimSchema = z.object({
   order_id: z.string().min(1),
@@ -24,12 +17,6 @@ export const createClaimSchema = z.object({
 })
 
 export type CreateClaimInput = z.infer<typeof createClaimSchema>
-
-export const listExchangesSchema = paginationSchema.extend({
-  order_id: z.string().optional(),
-})
-
-export type ListExchangesQuery = z.infer<typeof listExchangesSchema>
 
 export const createExchangeSchema = z.object({
   order_id: z.string().min(1),

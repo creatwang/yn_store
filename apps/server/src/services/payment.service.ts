@@ -1,17 +1,20 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, count, desc, eq, ilike, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, payment, capture, refund } from "@my-store/db"
-import type { ListPaymentsQuery, CapturePaymentInput, RefundPaymentInput } from "@my-store/validators"
+import type { CapturePaymentInput, RefundPaymentInput } from "@my-store/validators"
+import type { AdminGetPaymentsParamsType } from "@my-store/validators/admin-list-params"
+import { listLimitOffset } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 import { paymentCaptureWorkflow } from "../workflows/payment-capture"
 import { paymentRefundWorkflow } from "../workflows/payment-refund"
 
 export const paymentService = {
-  async listPayments(query: ListPaymentsQuery) {
+  async listPayments(query: AdminGetPaymentsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 20, offset: 0 })
     const conditions = [isNull(payment.deleted_at)]
 
-    if (query.status) {
-      conditions.push(eq(payment.captured_at, query.status === "captured" ? sql`now()` : sql`null`))
+    if (query.q?.trim()) {
+      conditions.push(ilike(payment.id, `%${query.q.trim()}%`))
     }
 
     const where = and(...conditions)
@@ -22,16 +25,16 @@ export const paymentService = {
         .from(payment)
         .where(where)
         .orderBy(desc(payment.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(payment).where(where),
     ])
 
     return {
       payments,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 

@@ -1,4 +1,9 @@
 import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import type {
+  AdminGetShippingOptionsParamsType,
+  AdminGetStockLocationsParamsType,
+} from "@my-store/validators/admin-list-params"
+import { listLimitOffset } from "../lib/query-filters"
 import {
   generateId,
   getDb,
@@ -241,8 +246,9 @@ async function enrichStockLocation(loc: typeof stockLocation.$inferSelect, full:
 }
 
 export const stockLocationService = {
-  async list(query: { limit: number; offset: number }) {
+  async list(query: AdminGetStockLocationsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const where = isNull(stockLocation.deleted_at)
     const [rows, [{ total }]] = await Promise.all([
       db
@@ -250,16 +256,15 @@ export const stockLocationService = {
         .from(stockLocation)
         .where(where)
         .orderBy(desc(stockLocation.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(stockLocation).where(where),
     ])
-    // 对齐官方 list：不展开 fulfillment_sets（详情页再 enrich）
     return {
       stock_locations: rows,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 
@@ -323,20 +328,21 @@ export const stockLocationService = {
 }
 
 export const shippingOptionService = {
-  async list(query: { limit: number; offset: number }) {
+  async list(query: AdminGetShippingOptionsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const rows = sqlRows(
       await db.execute(sql`
         SELECT ${sql.raw(SHIPPING_OPTION_COLS)}
         FROM shipping_option
         WHERE deleted_at IS NULL
         ORDER BY created_at DESC
-        LIMIT ${query.limit} OFFSET ${query.offset}
+        LIMIT ${limit} OFFSET ${offset}
       `),
     )
     const total = await countShippingOptions()
     const shipping_options = await enrichShippingOptionsBatch(db, rows)
-    return { shipping_options, count: total, limit: query.limit, offset: query.offset }
+    return { shipping_options, count: total, limit, offset }
   },
 
   async getById(id: string) {

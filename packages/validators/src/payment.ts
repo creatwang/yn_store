@@ -1,13 +1,5 @@
 import { z } from "zod"
 
-export const listPaymentsSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
-  status: z.string().optional(),
-})
-
-export type ListPaymentsQuery = z.infer<typeof listPaymentsSchema>
-
 export const createPaymentSchema = z.object({
   amount: z.number().positive(),
   currency_code: z.string().min(1),

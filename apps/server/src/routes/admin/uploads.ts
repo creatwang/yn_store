@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { existsSync } from "node:fs"
 import { mkdir, writeFile, readdir, unlink } from "node:fs/promises"
 import path from "node:path"
@@ -16,7 +16,7 @@ async function ensureUploadsDir() {
 
 /**
  * POST /admin/uploads
- * 对齐 Medusa 官方：formData → 本地存储 + DB file 记录
+ * 瀵归綈 Medusa 瀹樻柟锛歠ormData 鈫?鏈湴瀛樺偍 + DB file 璁板綍
  * defaultAdminUploadFields: ["id", "url"]
  */
 export const adminUploads = new Hono<{ Variables: AuthVariables }>()
@@ -39,7 +39,7 @@ export const adminUploads = new Hono<{ Variables: AuthVariables }>()
         const ext = path.extname(f.name)
         const safeBase = path
           .basename(f.name, ext)
-          .replace(/[^a-zA-Z0-9一-鿿_-]/g, "_")
+          .replace(/[^a-zA-Z0-9涓€-榭縚-]/g, "_")
         const filename = `${safeBase}-${id}${ext}`
         const filepath = path.join(UPLOADS_DIR, filename)
 

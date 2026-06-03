@@ -1,15 +1,17 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { sql, eq, inArray } from "drizzle-orm"
 import { generateId, getDb, shippingOptionRule } from "@my-store/db"
+import { AdminGetShippingOptionsParams } from "@my-store/validators/admin-list-params"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { shippingOptionService } from "../../services/stock-location.service"
 
 export const adminShippingOptions = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  // ── CRUD ─────────────────────────────────────────────
-  .get("/", async (c) => {
-    const q = c.req.query()
-    const result = await shippingOptionService.list({ limit: Number(q.limit) || 50, offset: Number(q.offset) || 0 })
+  // 鈹€鈹€ CRUD 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  .get("/", rpcQueryValidator(AdminGetShippingOptionsParams), async (c) => {
+    const result = await shippingOptionService.list(c.req.valid("query"))
     return c.json(result)
   })
   .get("/:id", async (c) => {
@@ -30,7 +32,7 @@ export const adminShippingOptions = new Hono<{ Variables: AuthVariables }>()
     const result = await shippingOptionService.delete(c.req.param("id"))
     return c.json(result)
   })
-  // ── Rules Batch (对齐 Medusa: POST /admin/shipping-options/:id/rules/batch) ──
+  // 鈹€鈹€ Rules Batch (瀵归綈 Medusa: POST /admin/shipping-options/:id/rules/batch) 鈹€鈹€
   .post("/:id/rules/batch", async (c) => {
     const db = getDb()
     const shippingOptionId = c.req.param("id")
@@ -94,3 +96,4 @@ export const adminShippingOptions = new Hono<{ Variables: AuthVariables }>()
       deleted: body.delete ?? [],
     })
   })
+

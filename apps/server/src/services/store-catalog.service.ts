@@ -1,10 +1,13 @@
 import { and, count, desc, eq, isNull } from "drizzle-orm"
 import { getDb, product, productCollection, promotion } from "@my-store/db"
+import type { StoreGetCollectionsParamsType } from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
+import { listLimitOffset } from "../lib/query-filters"
 
 export const storeCatalogService = {
-  async listCollections(query: { limit: number; offset: number }) {
+  async listCollections(query: StoreGetCollectionsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 20, offset: 0 })
     const where = isNull(productCollection.deleted_at)
     const [collections, [{ total }]] = await Promise.all([
       db
@@ -12,15 +15,15 @@ export const storeCatalogService = {
         .from(productCollection)
         .where(where)
         .orderBy(desc(productCollection.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(productCollection).where(where),
     ])
     return {
       collections,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 

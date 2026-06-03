@@ -10,8 +10,13 @@ import {
 import type {
   CreateReturnInput,
   ReceiveReturnInput,
-  ListReturnsQuery,
 } from "@my-store/validators"
+import type { AdminListReturnsParamsType } from "@my-store/validators/admin-list-params"
+import {
+  applyDateRangeConditions,
+  applyInArrayCondition,
+  listLimitOffset,
+} from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 import { eventBus } from "../lib/events"
 import { returnCreateWorkflow } from "../workflows/return-create"
@@ -30,17 +35,26 @@ function shippingFromMetadata(metadata: unknown) {
 }
 
 export const returnService = {
-  async list(query: ListReturnsQuery) {
+  async list(query: AdminListReturnsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 15, offset: 0 })
     const conditions = [isNull(orderReturn.deleted_at)]
 
-    if (query.status) {
-      conditions.push(eq(orderReturn.status, query.status))
-    }
-
-    if (query.order_id) {
-      conditions.push(eq(orderReturn.order_id, query.order_id))
-    }
+    applyInArrayCondition(orderReturn.id, query.id, conditions)
+    applyInArrayCondition(orderReturn.status, query.status, conditions)
+    applyInArrayCondition(orderReturn.order_id, query.order_id, conditions)
+    applyDateRangeConditions(
+      orderReturn.created_at,
+      query.created_at,
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      orderReturn.updated_at,
+      query.updated_at,
+      conditions,
+      sql,
+    )
 
     const [returns, [{ total }]] = await Promise.all([
       db
@@ -48,8 +62,8 @@ export const returnService = {
         .from(orderReturn)
         .where(and(...conditions))
         .orderBy(desc(orderReturn.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(orderReturn).where(and(...conditions)),
     ])
 

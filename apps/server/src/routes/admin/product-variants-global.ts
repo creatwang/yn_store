@@ -1,26 +1,21 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { AdminGetProductVariantsParams } from "@my-store/validators/admin-list-params"
 import { variantService } from "../../services/variant.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
-/** 对齐官方 GET /admin/product-variants */
+/** 瀵归綈瀹樻柟 GET /admin/product-variants */
 export const adminProductVariantsGlobal = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", async (c) => {
-    const limit = Number(c.req.query("limit") || 50)
-    const offset = Number(c.req.query("offset") || 0)
-    const q = c.req.query("q")
-    const product_id = c.req.query("product_id")
-    const rawId = c.req.queries("id") ?? c.req.query("id")
-    const inventory_quantity = c.req.query("inventory_quantity") === "true"
-
+  .get("/", rpcQueryValidator(AdminGetProductVariantsParams), async (c) => {
+    const q = c.req.valid("query")
     const result = await variantService.listAll({
-      limit,
-      offset,
-      q,
-      product_id,
-      id: rawId,
-      inventory_quantity,
+      limit: typeof q.limit === "number" ? q.limit : 50,
+      offset: typeof q.offset === "number" ? q.offset : 0,
+      q: typeof q.q === "string" ? q.q : undefined,
+      id: q.id as string | string[] | undefined,
     })
-
     return c.json(result)
   })
+

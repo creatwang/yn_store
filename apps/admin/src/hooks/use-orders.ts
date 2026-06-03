@@ -2,14 +2,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, parseJsonResponse, toRpcQuery } from "@/lib/api"
 import type {
   CreateOrderInput,
-  ListOrdersQuery,
   UpdateOrderInput,
 } from "@my-store/validators"
+import type { AdminGetOrdersParamsType } from "@my-store/validators/admin-list-params"
 import type { OrderDetailResponse, OrderListResponse } from "@/types/api"
 
-const defaultListQuery: ListOrdersQuery = { limit: 50, offset: 0 }
+const defaultListQuery: AdminGetOrdersParamsType = {
+  limit: 50,
+  offset: 0,
+  order: undefined,
+}
 
-export function useOrders(params: ListOrdersQuery = defaultListQuery) {
+export function useOrders(params: AdminGetOrdersParamsType = defaultListQuery) {
   return useQuery({
     queryKey: ["orders", params],
     queryFn: async () => {

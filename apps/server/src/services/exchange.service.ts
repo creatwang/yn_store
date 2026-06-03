@@ -1,21 +1,47 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, orderExchange, orderChange, orderChangeAction } from "@my-store/db"
-import type { CreateExchangeInput, ListExchangesQuery } from "@my-store/validators"
+import type { CreateExchangeInput } from "@my-store/validators"
+import type { AdminListExchangesParamsType } from "@my-store/validators/admin-list-params"
+import {
+  applyDateRangeConditions,
+  applyInArrayCondition,
+  listLimitOffset,
+} from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 import { createCompanionReturn } from "./order/admin-order-preview"
 import { eventBus } from "../lib/events"
 import { exchangeCreateWorkflow } from "../workflows/exchange-create"
 
 export const exchangeService = {
-  async list(query: ListExchangesQuery) {
+  async list(query: AdminListExchangesParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 15, offset: 0 })
     const conditions = [isNull(orderExchange.deleted_at)]
-    if (query.order_id) conditions.push(eq(orderExchange.order_id, query.order_id))
+    applyInArrayCondition(orderExchange.id, query.id, conditions)
+    applyInArrayCondition(orderExchange.order_id, query.order_id, conditions)
+    applyDateRangeConditions(
+      orderExchange.created_at,
+      query.created_at,
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      orderExchange.updated_at,
+      query.updated_at,
+      conditions,
+      sql,
+    )
     const [exchanges, [{ total }]] = await Promise.all([
-      db.select().from(orderExchange).where(and(...conditions)).orderBy(desc(orderExchange.created_at)).limit(query.limit).offset(query.offset),
+      db
+        .select()
+        .from(orderExchange)
+        .where(and(...conditions))
+        .orderBy(desc(orderExchange.created_at))
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(orderExchange).where(and(...conditions)),
     ])
-    return { exchanges, count: Number(total) }
+    return { exchanges, count: Number(total), limit, offset }
   },
 
   async getById(id: string) {

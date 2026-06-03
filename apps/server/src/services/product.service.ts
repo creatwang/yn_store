@@ -14,12 +14,21 @@ import {
 } from "@my-store/db"
 import type {
   CreateProductInput,
-  ListProductsQuery,
-  ListStoreProductsQuery,
   UpdateProductInput,
 } from "@my-store/validators"
+import type {
+  AdminGetProductsParamsType,
+  StoreGetProductsParamsType,
+} from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
 import { attachOptionValues } from "../lib/product-option-values-batch"
+import {
+  applyDateRangeConditions,
+  applyInArrayCondition,
+  listLimitOffset,
+  normalizeFilterIds,
+  normalizeIdFilter,
+} from "../lib/query-filters"
 import { slugify } from "../lib/slug"
 import { variantService } from "./variant.service"
 
@@ -243,31 +252,69 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
 }
 
 export const productService = {
-  async list(query: ListProductsQuery) {
+  async list(query: AdminGetProductsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions: any[] = [isNull(product.deleted_at)]
 
-    if (query.status) {
-      if (Array.isArray(query.status)) {
-        conditions.push(sql`${product.status} = ANY(${query.status}::text[])`)
-      } else {
-        conditions.push(eq(product.status, query.status))
-      }
+    if (query.status?.length) {
+      conditions.push(sql`${product.status} = ANY(${query.status}::text[])`)
     }
-    if (query.collection_id) conditions.push(eq(product.collection_id, query.collection_id))
-    if (query.type_id) conditions.push(eq(product.type_id, query.type_id))
 
-    if (query.created_at) {
-      if (query.created_at.$gte) conditions.push(sql`${product.created_at} >= ${query.created_at.$gte}::timestamp`)
-      if (query.created_at.$lte) conditions.push(sql`${product.created_at} <= ${query.created_at.$lte}::timestamp`)
+    applyInArrayCondition(product.id, query.id, conditions)
+    applyInArrayCondition(product.collection_id, query.collection_id, conditions)
+    applyInArrayCondition(product.type_id, query.type_id, conditions)
+
+    if (query.is_giftcard != null) {
+      conditions.push(eq(product.is_giftcard, query.is_giftcard))
     }
+
+    const tagIds = normalizeFilterIds(
+      (query.tags as { id?: string | string[] } | undefined)?.id,
+    ) ?? normalizeIdFilter(query.tag_id as string | string[] | undefined)
+    if (tagIds?.length) {
+      conditions.push(
+        sql`exists (
+          select 1 from product_tags pt
+          where pt.product_id = ${product.id}
+            and pt.product_tag_id in (${sql.join(tagIds.map((id) => sql`${id}`), sql`, `)})
+        )`,
+      )
+    }
+
+    const categoryIds = normalizeFilterIds(
+      (query.categories as { id?: string | string[] } | undefined)?.id,
+    ) ?? normalizeIdFilter(query.category_id as string | string[] | undefined)
+    if (categoryIds?.length) {
+      conditions.push(
+        sql`exists (
+          select 1 from product_category_product pcp
+          where pcp.product_id = ${product.id}
+            and pcp.product_category_id in (${sql.join(categoryIds.map((id) => sql`${id}`), sql`, `)})
+        )`,
+      )
+    }
+
+    const channelIds = normalizeIdFilter(query.sales_channel_id)
+    if (channelIds?.length) {
+      conditions.push(
+        sql`exists (
+          select 1 from product_sales_channel psc
+          where psc.product_id = ${product.id}
+            and psc.sales_channel_id in (${sql.join(channelIds.map((id) => sql`${id}`), sql`, `)})
+        )`,
+      )
+    }
+
+    applyDateRangeConditions(product.created_at, query.created_at, conditions, sql)
+    applyDateRangeConditions(product.updated_at, query.updated_at, conditions, sql)
 
     if (query.q) {
       conditions.push(
         or(
           ilike(product.title, `%${query.q}%`),
-          ilike(product.handle, `%${query.q}%`)
-        )!
+          ilike(product.handle, `%${query.q}%`),
+        )!,
       )
     }
 
@@ -279,25 +326,42 @@ export const productService = {
         .from(product)
         .where(where)
         .orderBy(desc(product.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(product).where(where),
     ])
 
     return {
       products,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 
-  async listStore(query: ListStoreProductsQuery) {
+  async listStore(query: StoreGetProductsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [
       isNull(product.deleted_at),
       eq(product.status, "published"),
     ]
+
+    applyInArrayCondition(product.id, query.id, conditions)
+    applyInArrayCondition(product.collection_id, query.collection_id, conditions)
+
+    const categoryIds = normalizeFilterIds(
+      (query.categories as { id?: string | string[] } | undefined)?.id,
+    ) ?? normalizeIdFilter(query.category_id as string | string[] | undefined)
+    if (categoryIds?.length) {
+      conditions.push(
+        sql`exists (
+          select 1 from product_category_product pcp
+          where pcp.product_id = ${product.id}
+            and pcp.product_category_id in (${sql.join(categoryIds.map((id) => sql`${id}`), sql`, `)})
+        )`,
+      )
+    }
 
     if (query.q) {
       conditions.push(
@@ -324,8 +388,8 @@ export const productService = {
         .from(product)
         .where(where)
         .orderBy(desc(product.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(product).where(where),
     ])
 
@@ -354,8 +418,8 @@ export const productService = {
     return {
       products: products.map((p) => ({ ...p, price: priceMap.get(p.id) ?? null })),
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 

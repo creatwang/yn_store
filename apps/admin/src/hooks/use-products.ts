@@ -2,22 +2,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, parseJsonResponse, toRpcQuery } from "@/lib/api"
 import type {
   CreateProductInput,
-  ListProductsQuery,
   UpdateProductInput,
 } from "@my-store/validators"
+import type { AdminGetProductsParamsType } from "@my-store/validators/admin-list-params"
 import type {
   CreateProductResponse,
   ProductDetailResponse,
   ProductListResponse,
 } from "@/types/api"
 
-const defaultListQuery: ListProductsQuery = { limit: 50, offset: 0 }
+const defaultListQuery: AdminGetProductsParamsType = {
+  limit: 50,
+  offset: 0,
+  order: undefined,
+}
 
-export function useProducts(params: ListProductsQuery = defaultListQuery) {
+export function useProducts(params: AdminGetProductsParamsType = defaultListQuery) {
   return useQuery({
     queryKey: ["products", params],
     queryFn: async () => {
-      const res = await api.admin.products.$get({ query: toRpcQuery(params) })
+      const res = await api.admin.products.$get({
+        query: toRpcQuery(params as Record<string, unknown>),
+      })
       return parseJsonResponse<ProductListResponse>(res)
     },
   })

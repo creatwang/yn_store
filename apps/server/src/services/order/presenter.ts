@@ -1,4 +1,4 @@
-import type { NodePgDatabase } from "drizzle-orm/node-postgres"
+import { getDb } from "@my-store/db"
 import {
   getLastFulfillmentStatus,
   getLastPaymentStatus,
@@ -24,7 +24,7 @@ import {
 } from "./transform"
 import type { OrderRelationsBundle, OrderRow } from "./types"
 
-type Db = NodePgDatabase<Record<string, never>>
+type Db = ReturnType<typeof getDb>
 
 export type PresentAdminOrdersOptions = {
   fields?: string

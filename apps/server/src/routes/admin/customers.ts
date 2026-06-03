@@ -1,12 +1,13 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import {
   createCustomerSchema,
-  listCustomersSchema,
   updateCustomerSchema,
   createCustomerAddressSchema,
   updateCustomerAddressSchema,
 } from "@my-store/validators"
+import { AdminCustomersParams } from "@my-store/validators/admin-list-params"
 import { customerService } from "../../services/customer.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { sql, eq, and } from "drizzle-orm"
@@ -14,7 +15,7 @@ import { customerGroupCustomer, generateId, getDb } from "@my-store/db"
 
 export const adminCustomers = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listCustomersSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminCustomersParams), async (c) => {
     const query = c.req.valid("query")
     const result = await customerService.list(query)
     return c.json(result)
@@ -37,7 +38,7 @@ export const adminCustomers = new Hono<{ Variables: AuthVariables }>()
     const result = await customerService.delete(c.req.param("id"))
     return c.json(result)
   })
-  // ── 地址管理 ──────────────────────────────────────────────
+  // 鈹€鈹€ 鍦板潃绠＄悊 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .get("/:id/addresses", async (c) => {
     const result = await customerService.listAddresses(c.req.param("id"))
     return c.json(result)
@@ -90,3 +91,4 @@ export const adminCustomers = new Hono<{ Variables: AuthVariables }>()
 
     return c.json({ customer: { id: customerId }, added: add, removed: remove })
   })
+

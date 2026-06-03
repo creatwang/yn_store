@@ -1,10 +1,8 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import {
-  createProductSchema,
-  listProductsSchema,
-  updateProductSchema,
-} from "@my-store/validators"
+import { createProductSchema, updateProductSchema } from "@my-store/validators"
+import { AdminGetProductsParams } from "@my-store/validators/admin-list-params"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { productService } from "../../services/product.service"
 import {
   productExportService,
@@ -14,7 +12,7 @@ import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminProducts = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listProductsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetProductsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await productService.list(query)
     return c.json(result)

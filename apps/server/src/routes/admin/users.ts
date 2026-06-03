@@ -1,12 +1,15 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import {
-  listUsersSchema,
   updateUserSchema,
   createInviteSchema,
   acceptInviteSchema,
-  listInvitesSchema,
 } from "@my-store/validators"
+import {
+  AdminGetInvitesParams,
+  AdminGetUsersParams,
+} from "@my-store/validators/admin-list-params"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { userService } from "../../services/user.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { verifyToken } from "../../lib/jwt"
@@ -18,7 +21,7 @@ export const adminUsers = new Hono<{ Variables: AuthVariables }>()
     const result = await userService.getMe(authUser.actor_id)
     return c.json(result)
   })
-  .get("/", zValidator("query", listUsersSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetUsersParams), async (c) => {
     const query = c.req.valid("query")
     const result = await userService.listUsers(query)
     return c.json(result)

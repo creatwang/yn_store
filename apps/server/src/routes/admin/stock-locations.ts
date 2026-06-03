@@ -1,16 +1,15 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { paginationSchema } from "@my-store/validators"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { AdminGetStockLocationsParams } from "@my-store/validators/admin-list-params"
 import { stockLocationService } from "../../services/stock-location.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminStockLocations = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", paginationSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetStockLocationsParams), async (c) => {
     const query = c.req.valid("query")
-    const result = await stockLocationService.list({
-      limit: query.limit,
-      offset: query.offset,
-    })
+    const result = await stockLocationService.list(query)
     return c.json(result)
   })
+

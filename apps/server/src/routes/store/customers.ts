@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import {
   createCustomerSchema,
@@ -31,7 +31,7 @@ export const storeCustomers = new Hono()
     const result = await customerService.update(user.actor_id, body)
     return c.json(result)
   })
-  // ── Addresses ──
+  // 鈹€鈹€ Addresses 鈹€鈹€
   .get("/me/addresses", storeAuth, async (c) => {
     const user = c.get("user")
     const result = await customerService.listAddresses(user.actor_id)

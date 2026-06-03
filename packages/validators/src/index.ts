@@ -7,7 +7,10 @@ export * from "./helpers/types"
 // Official Medusa v2.15.3 validators — import by path, e.g.:
 // import { AdminGetProductsParams } from "@my-store/validators/medusa/admin/products/validators"
 
-// Project route/service schemas (Hono-specific + simplified aliases)
+// Official list query validators (Medusa v2.15.3)
+export * from "./admin-list-params"
+
+// Project route/service schemas (Hono-specific body schemas)
 export * from "./common"
 export * from "./auth"
 export * from "./product"

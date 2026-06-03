@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { paginationSchema } from "./common"
 
 export const productStatusEnum = z.enum([
   "draft",
@@ -7,33 +6,6 @@ export const productStatusEnum = z.enum([
   "published",
   "rejected",
 ])
-
-export const listProductsSchema = paginationSchema.extend({
-  q: z.string().optional(),
-  status: z.union([productStatusEnum, z.array(productStatusEnum)]).optional(),
-  price_list_id: z.union([z.string(), z.array(z.string())]).optional(),
-  collection_id: z.string().optional(),
-  type_id: z.string().optional(),
-  tags: z.array(z.object({ id: z.string() })).optional(),
-  categories: z.array(z.object({ id: z.string() })).optional(),
-  sales_channel_id: z.union([z.string(), z.array(z.string())]).optional(),
-  created_at: z.object({
-    $gte: z.string().optional(), $lte: z.string().optional(),
-  }).optional(),
-  updated_at: z.object({
-    $gte: z.string().optional(), $lte: z.string().optional(),
-  }).optional(),
-})
-
-export type ListProductsQuery = z.infer<typeof listProductsSchema>
-
-export const listStoreProductsSchema = paginationSchema.extend({
-  q: z.string().optional(),
-  category_id: z.string().optional(),
-  collection_id: z.string().optional(),
-})
-
-export type ListStoreProductsQuery = z.infer<typeof listStoreProductsSchema>
 
 export const createProductSchema = z.object({
   title: z.string().min(1, "标题不能为空"),

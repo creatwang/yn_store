@@ -1,24 +1,50 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, orderClaim, orderClaimItem, orderChange, orderChangeAction, orderItem } from "@my-store/db"
-import type { CreateClaimInput, ListClaimsQuery } from "@my-store/validators"
+import type { CreateClaimInput } from "@my-store/validators"
+import type { AdminListClaimsParamsType } from "@my-store/validators/admin-list-params"
+import {
+  applyDateRangeConditions,
+  applyInArrayCondition,
+  listLimitOffset,
+} from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 import { createCompanionReturn } from "./order/admin-order-preview"
 import { eventBus } from "../lib/events"
 import { claimCreateWorkflow } from "../workflows/claim-create"
 
 export const claimService = {
-  async list(query: ListClaimsQuery) {
+  async list(query: AdminListClaimsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 15, offset: 0 })
     const conditions = [isNull(orderClaim.deleted_at)]
 
-    if (query.status) conditions.push(eq(orderClaim.type, query.status))
-    if (query.order_id) conditions.push(eq(orderClaim.order_id, query.order_id))
+    applyInArrayCondition(orderClaim.id, query.id, conditions)
+    applyInArrayCondition(orderClaim.type, query.status, conditions)
+    applyInArrayCondition(orderClaim.order_id, query.order_id, conditions)
+    applyDateRangeConditions(
+      orderClaim.created_at,
+      query.created_at,
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      orderClaim.updated_at,
+      query.updated_at,
+      conditions,
+      sql,
+    )
 
     const [claims, [{ total }]] = await Promise.all([
-      db.select().from(orderClaim).where(and(...conditions)).orderBy(desc(orderClaim.created_at)).limit(query.limit).offset(query.offset),
+      db
+        .select()
+        .from(orderClaim)
+        .where(and(...conditions))
+        .orderBy(desc(orderClaim.created_at))
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(orderClaim).where(and(...conditions)),
     ])
-    return { claims, count: Number(total) }
+    return { claims, count: Number(total), limit, offset }
   },
 
   async getById(id: string) {

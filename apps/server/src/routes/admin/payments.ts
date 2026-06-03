@@ -1,16 +1,17 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import {
-  listPaymentsSchema,
   capturePaymentSchema,
   refundPaymentSchema,
 } from "@my-store/validators"
+import { AdminGetPaymentsParams } from "@my-store/validators/admin-list-params"
 import { paymentService } from "../../services/payment.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminPayments = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", zValidator("query", listPaymentsSchema), async (c) => {
+  .get("/", rpcQueryValidator(AdminGetPaymentsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await paymentService.listPayments(query)
     return c.json(result)
@@ -25,3 +26,4 @@ export const adminPayments = new Hono<{ Variables: AuthVariables }>()
     const result = await paymentService.refund(c.req.param("id"), body)
     return c.json(result)
   })
+

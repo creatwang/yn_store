@@ -1,5 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
-import type { NodePgDatabase } from "drizzle-orm/node-postgres"
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm"
 import {
   generateId,
   getDb,
@@ -21,6 +20,12 @@ import type {
   AdminUpdateDraftOrderType,
 } from "@my-store/validators/medusa/admin/draft-orders/validators"
 import { HTTPException } from "hono/http-exception"
+import {
+  applyDateRangeConditions,
+  applyInArrayCondition,
+  asDateRange,
+  listLimitOffset,
+} from "../lib/query-filters"
 import { runInTransaction } from "../lib/transaction"
 import { variantService } from "./variant.service"
 import {
@@ -33,12 +38,7 @@ import {
   DEFAULT_ADMIN_DRAFT_ORDER_RETRIEVE_FIELDS,
 } from "./order/draft-order-fields"
 
-type Db = NodePgDatabase<Record<string, never>>
-
-function asArray<T>(value: T | T[] | undefined): T[] | undefined {
-  if (value == null) return undefined
-  return Array.isArray(value) ? value : [value]
-}
+type Db = ReturnType<typeof getDb>
 
 async function requireDraftOrder(db: Db, id: string) {
   const [row] = await db
@@ -149,36 +149,51 @@ async function linkShippingToOrder(
 
 export const draftOrderService = {
   async list(query: AdminGetDraftOrdersParamsType) {
-    const db = getDb() as Db
-    const conditions = [
+    const db = getDb()
+    const conditions: Parameters<typeof and>[0][] = [
       isNull(order.deleted_at),
       eq(order.is_draft_order, true),
     ]
 
-    const ids = asArray(query.id)
-    if (ids?.length) conditions.push(inArray(order.id, ids))
-
-    const regionIds = asArray(query.region_id)
-    if (regionIds?.length) {
-      conditions.push(inArray(order.region_id, regionIds))
-    }
-
-    const channelIds = asArray(query.sales_channel_id)
-    if (channelIds?.length) {
-      conditions.push(inArray(order.sales_channel_id, channelIds))
-    }
-
-    const customerIds = asArray(query.customer_id)
-    if (customerIds?.length) {
-      conditions.push(inArray(order.customer_id, customerIds))
-    }
+    applyInArrayCondition(
+      order.id,
+      query.id as string | string[] | undefined,
+      conditions,
+    )
+    applyInArrayCondition(
+      order.region_id,
+      query.region_id as string | string[] | undefined,
+      conditions,
+    )
+    applyInArrayCondition(
+      order.sales_channel_id,
+      query.sales_channel_id as string | string[] | undefined,
+      conditions,
+    )
+    applyInArrayCondition(
+      order.customer_id,
+      query.customer_id as string | string[] | undefined,
+      conditions,
+    )
 
     if (query.q) {
       conditions.push(sql`${order.email} ILIKE ${`%${query.q}%`}`)
     }
 
-    const limit = query.limit ?? 50
-    const offset = query.offset ?? 0
+    applyDateRangeConditions(
+      order.created_at,
+      asDateRange(query.created_at),
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      order.updated_at,
+      asDateRange(query.updated_at),
+      conditions,
+      sql,
+    )
+
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
 
     const orders = await db
       .select()
@@ -209,7 +224,7 @@ export const draftOrderService = {
   },
 
   async getById(id: string, fields?: string) {
-    const db = getDb() as Db
+    const db = getDb()
     const ord = await requireDraftOrder(db, id)
     const draft_order = await presentAdminOrderDetail(
       db,
@@ -273,7 +288,7 @@ export const draftOrderService = {
   },
 
   async update(id: string, input: AdminUpdateDraftOrderType) {
-    const db = getDb() as Db
+    const db = getDb()
     await requireDraftOrder(db, id)
 
     const [updated] = await db
@@ -307,7 +322,7 @@ export const draftOrderService = {
   },
 
   async delete(id: string) {
-    const db = getDb() as Db
+    const db = getDb()
     await db
       .update(order)
       .set({ deleted_at: sql`now()` })
@@ -316,7 +331,7 @@ export const draftOrderService = {
   },
 
   async convertToOrder(id: string) {
-    const db = getDb() as Db
+    const db = getDb()
     const [updated] = await db
       .update(order)
       .set({
@@ -339,14 +354,14 @@ export const draftOrderService = {
   },
 
   async beginEdit(id: string) {
-    const db = getDb() as Db
+    const db = getDb()
     await requireDraftOrder(db, id)
     await ensureEdit(db, id)
     return buildDraftOrderEditPreview(id)
   },
 
   async cancelEdit(id: string) {
-    const db = getDb() as Db
+    const db = getDb()
     const active = await getActiveEdit(db, id)
 
     if (active) {
@@ -360,7 +375,7 @@ export const draftOrderService = {
   },
 
   async requestEdit(id: string) {
-    const db = getDb() as Db
+    const db = getDb()
     const active = await getActiveEdit(db, id)
     if (!active) {
       throw new HTTPException(400, { message: "No active draft order edit" })
@@ -379,7 +394,7 @@ export const draftOrderService = {
   },
 
   async confirmEdit(id: string) {
-    const db = getDb() as Db
+    const db = getDb()
     const ord = await requireDraftOrder(db, id)
     const active = await getActiveEdit(db, id)
     if (!active) {
@@ -476,7 +491,7 @@ export const draftOrderService = {
       metadata?: Record<string, unknown>
     }[],
   ) {
-    const db = getDb() as Db
+    const db = getDb()
     const ord = await requireDraftOrder(db, id)
     const change = await ensureEdit(db, id)
 
@@ -572,7 +587,7 @@ export const draftOrderService = {
       metadata?: Record<string, unknown> | null
     },
   ) {
-    const db = getDb() as Db
+    const db = getDb()
     const change = await ensureEdit(db, id)
 
     const [oi] = await db
@@ -626,7 +641,7 @@ export const draftOrderService = {
       internal_note?: string
     },
   ) {
-    const db = getDb() as Db
+    const db = getDb()
     await ensureEdit(db, id)
 
     const [act] = await db
@@ -673,7 +688,7 @@ export const draftOrderService = {
   },
 
   async removeItemAction(id: string, actionId: string) {
-    const db = getDb() as Db
+    const db = getDb()
     await ensureEdit(db, id)
 
     const [act] = await db
@@ -718,7 +733,7 @@ export const draftOrderService = {
       metadata?: Record<string, unknown>
     },
   ) {
-    const db = getDb() as Db
+    const db = getDb()
     const ord = await requireDraftOrder(db, id)
     const change = await ensureEdit(db, id)
 
@@ -762,7 +777,7 @@ export const draftOrderService = {
       internal_note?: string | null
     },
   ) {
-    const db = getDb() as Db
+    const db = getDb()
     await ensureEdit(db, id)
 
     const [sm] = await db
@@ -802,7 +817,7 @@ export const draftOrderService = {
       metadata?: Record<string, unknown> | null
     },
   ) {
-    const db = getDb() as Db
+    const db = getDb()
     await ensureEdit(db, id)
 
     const [act] = await db
@@ -848,7 +863,7 @@ export const draftOrderService = {
   },
 
   async removeShippingMethodAction(id: string, actionId: string) {
-    const db = getDb() as Db
+    const db = getDb()
     await ensureEdit(db, id)
 
     const [act] = await db
@@ -880,7 +895,7 @@ export const draftOrderService = {
   },
 
   async removeShippingMethod(id: string, methodId: string) {
-    const db = getDb() as Db
+    const db = getDb()
     const change = await ensureEdit(db, id)
 
     await db
@@ -902,7 +917,7 @@ export const draftOrderService = {
   },
 
   async addPromotions(id: string, data: AdminAddDraftOrderPromotionsType) {
-    const db = getDb() as Db
+    const db = getDb()
     const change = await ensureEdit(db, id)
 
     for (const code of data.promo_codes) {
@@ -933,7 +948,7 @@ export const draftOrderService = {
     id: string,
     data: AdminRemoveDraftOrderPromotionsType,
   ) {
-    const db = getDb() as Db
+    const db = getDb()
     const change = await ensureEdit(db, id)
 
     for (const code of data.promo_codes) {

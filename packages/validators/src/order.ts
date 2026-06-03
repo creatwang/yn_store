@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { paginationSchema, metadataSchema } from "./common"
+import { metadataSchema } from "./common"
 
 export const orderStatusEnum = z.enum([
   "pending",
@@ -24,31 +24,6 @@ const addressSchema = z.object({
   postal_code: z.string().nullish(),
   metadata: z.record(z.string(), z.unknown()).nullish(),
 }).strict()
-
-export const listOrdersSchema = paginationSchema.extend({
-  q: z.string().optional(),
-  status: orderStatusEnum.optional(),
-  customer_id: z.string().optional(),
-  region_id: z.string().optional(),
-  sales_channel_id: z.string().optional(),
-  created_at: z.object({
-    $gte: z.string().optional(),
-    $lte: z.string().optional(),
-    $gt: z.string().optional(),
-    $lt: z.string().optional(),
-  }).optional(),
-  updated_at: z.object({
-    $gte: z.string().optional(),
-    $lte: z.string().optional(),
-    $gt: z.string().optional(),
-    $lt: z.string().optional(),
-  }).optional(),
-  fields: z.string().optional(),
-  payment_status: z.union([z.string(), z.array(z.string())]).optional(),
-  fulfillment_status: z.union([z.string(), z.array(z.string())]).optional(),
-})
-
-export type ListOrdersQuery = z.infer<typeof listOrdersSchema>
 
 export const createOrderSchema = z.object({
   region_id: z.string().optional(),
@@ -94,13 +69,6 @@ export const requestTransferSchema = z.object({
 })
 
 export type RequestTransferInput = z.infer<typeof requestTransferSchema>
-
-export const listOrderChangesSchema = paginationSchema.extend({
-  status: z.string().optional(),
-  change_type: z.string().optional(),
-})
-
-export type ListOrderChangesQuery = z.infer<typeof listOrderChangesSchema>
 
 export const storeRequestTransferSchema = z.object({
   note: z.string().optional(),

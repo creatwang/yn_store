@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { sql } from "drizzle-orm"
 import { eq, and, isNull } from "drizzle-orm"
 import { generateId, getDb, productVariantInventoryItem } from "@my-store/db"
@@ -52,7 +52,7 @@ export const adminProductVariants = new Hono<{ Variables: AuthVariables }>()
     const db = getDb()
     const variantId = c.req.param("variantId")
     const body = await c.req.json()
-    // 全量替换
+    // 鍏ㄩ噺鏇挎崲
     await db.delete(productVariantInventoryItem).where(eq(productVariantInventoryItem.variant_id, variantId))
     for (const item of body.items || []) {
       await db.insert(productVariantInventoryItem).values({

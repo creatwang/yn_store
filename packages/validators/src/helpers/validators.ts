@@ -96,7 +96,7 @@ export const createOperatorMap = (type?: z.ZodType, valueParser?: (val: any) => 
   const arrayType: any = z.array(type).optional()
   const unionType: any = z.union([simpleType, arrayType]).optional()
 
-  return z.union([
+  const operatorUnion = z.union([
     unionType,
     z.object({
       $eq: unionType,
@@ -113,4 +113,6 @@ export const createOperatorMap = (type?: z.ZodType, valueParser?: (val: any) => 
       $lte: simpleType,
     }),
   ])
+
+  return operatorUnion.optional()
 }

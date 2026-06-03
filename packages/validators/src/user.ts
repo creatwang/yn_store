@@ -1,15 +1,5 @@
 import { z } from "zod"
 
-// ── 用户列表查询 ──────────────────────────────────────────────
-export const listUsersSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
-  q: z.string().optional(),
-  order: z.string().optional(),
-})
-
-export type ListUsersQuery = z.infer<typeof listUsersSchema>
-
 // ── 更新用户 ──────────────────────────────────────────────────
 export const updateUserSchema = z.object({
   first_name: z.string().optional(),
@@ -36,11 +26,3 @@ export const acceptInviteSchema = z.object({
 })
 
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>
-
-// ── 邀请列表查询 ──────────────────────────────────────────────
-export const listInvitesSchema = z.object({
-  limit: z.coerce.number().min(1).default(50),
-  offset: z.coerce.number().min(0).default(0),
-})
-
-export type ListInvitesQuery = z.infer<typeof listInvitesSchema>

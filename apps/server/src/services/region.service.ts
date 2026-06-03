@@ -2,17 +2,24 @@ import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
 import { generateId, getDb, region, salesChannel } from "@my-store/db"
 import type {
   CreateRegionInput,
-  ListRegionsQuery,
   UpdateRegionInput,
   CreateSalesChannelInput,
-  ListSalesChannelsQuery,
   UpdateSalesChannelInput,
 } from "@my-store/validators"
+import type {
+  AdminGetRegionsParamsType,
+  AdminGetSalesChannelsParamsType,
+  StoreGetRegionsParamsType,
+} from "@my-store/validators/admin-list-params"
+import { listLimitOffset } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 
 export const regionService = {
-  async listRegions(query: ListRegionsQuery) {
+  async listRegions(
+    query: AdminGetRegionsParamsType | StoreGetRegionsParamsType,
+  ) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [isNull(region.deleted_at)]
 
     const where = and(...conditions)
@@ -23,16 +30,16 @@ export const regionService = {
         .from(region)
         .where(where)
         .orderBy(desc(region.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(region).where(where),
     ])
 
     return {
       regions,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 
@@ -106,11 +113,12 @@ export const regionService = {
     return { success: true }
   },
 
-  async listSalesChannels(query: ListSalesChannelsQuery) {
+  async listSalesChannels(query: AdminGetSalesChannelsParamsType) {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [isNull(salesChannel.deleted_at)]
 
-    if (query.q?.trim()) {
+    if (typeof query.q === "string" && query.q.trim()) {
       const term = `%${query.q.trim()}%`
       conditions.push(
         or(
@@ -128,16 +136,16 @@ export const regionService = {
         .from(salesChannel)
         .where(where)
         .orderBy(desc(salesChannel.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(salesChannel).where(where),
     ])
 
     return {
       sales_channels: channels,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
 

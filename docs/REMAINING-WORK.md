@@ -108,7 +108,7 @@
 | 文档 | 改用 |
 |------|------|
 | `11-feature-tracker.mdx` | PROJECT_STATUS |
-| `00-agent-handoff.md` §9 | 本文 |
+| `00-agent-handoff.md` 旧 §9「已过期」占位 | 已改为 §9 实现快照（2026-06-02） |
 | `ecommerce-c-end/adoption-matrix.md` 搜索 ❌ | 已修正为 ✅ |
 
 ---

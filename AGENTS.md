@@ -16,14 +16,15 @@
 ## 项目结构
 
 ```
-apps/server/         # 后台运行时：/api + /app（public/app 静态）
-apps/admin/          # Admin 源码 → build 到 server/public/app
-apps/storefront/     # Astro 商城，独立部署，PUBLIC_API_URL → server
-apps/backend/        # 旧 Medusa 后端（参考用，不修改）
+apps/server/         # Hono：/api + 可选 /app 静态
+apps/admin/          # Vite Admin → build 到 server/public/app
+apps/storefront/     # Astro 商城，PUBLIC_API_URL → server
 packages/db/         # Drizzle schema + 查询
 packages/validators/ # 共享 Zod schema
-docs/                # 蓝图（08-target-architecture.mdx）
+docs/                # 见 docs/README.md（全集索引）
 ```
+
+Medusa 运行时对照（**不在本仓库**）：`../my-medusa-store/apps/backend/`
 
 **本地地址**：API `http://localhost:7000/api`；Admin 挂载后 `http://localhost:7000/app/`；Vite dev `http://localhost:5173/app/`
 

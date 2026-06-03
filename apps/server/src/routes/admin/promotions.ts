@@ -1,10 +1,13 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { AdminGetPromotionsParams } from "@my-store/validators/admin-list-params"
 import { sql, eq, inArray } from "drizzle-orm"
 import { generateId, getDb, promotionRule, promotionRuleValue } from "@my-store/db"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { promotionService } from "../../services/batch.service"
 
-/** 统一处理 rules / target-rules / buy-rules 的 batch 操作 */
+/** 缁熶竴澶勭悊 rules / target-rules / buy-rules 鐨?batch 鎿嶄綔 */
 async function handleRuleBatch(promotionId: string, body: {
   create?: Array<{ operator: string; attribute: string; description?: string; values: string[] }>
   update?: Array<{ id: string; operator?: string; attribute?: string; description?: string; values?: string[] }>
@@ -89,10 +92,9 @@ async function handleRuleBatch(promotionId: string, body: {
 
 export const adminPromotions = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  // ── CRUD ─────────────────────────────────────────────
-  .get("/", async (c) => {
-    const q = c.req.query()
-    const result = await promotionService.list({ limit: Number(q.limit) || 50, offset: Number(q.offset) || 0 })
+  // 鈹€鈹€ CRUD 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  .get("/", rpcQueryValidator(AdminGetPromotionsParams), async (c) => {
+    const result = await promotionService.list(c.req.valid("query"))
     return c.json(result)
   })
   .get("/:id", async (c) => {
@@ -113,7 +115,7 @@ export const adminPromotions = new Hono<{ Variables: AuthVariables }>()
     const result = await promotionService.delete(c.req.param("id"))
     return c.json(result)
   })
-  // ── Rules Batch ──────────────────────────────────────
+  // 鈹€鈹€ Rules Batch 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .post("/:id/rules/batch", async (c) => {
     const result = await handleRuleBatch(c.req.param("id"), await c.req.json())
     return c.json(result)
@@ -126,3 +128,4 @@ export const adminPromotions = new Hono<{ Variables: AuthVariables }>()
     const result = await handleRuleBatch(c.req.param("id"), await c.req.json())
     return c.json(result)
   })
+

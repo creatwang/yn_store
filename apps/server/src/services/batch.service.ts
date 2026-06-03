@@ -32,17 +32,114 @@ import {
   stockLocation,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import type {
+  AdminFulfillmentProvidersParamsType,
+  AdminGetCollectionsParamsType,
+  AdminGetInventoryItemsParamsType,
+  AdminProductCategoriesParamsType,
+} from "@my-store/validators/admin-list-params"
+import {
+  applyDateRangeConditions,
+  asDateRange,
+  listLimitOffset,
+} from "../lib/query-filters"
 import { stockLocationService, shippingOptionService } from "./stock-location.service"
 
-function mkl(table: any, entityKey: string) {
-  return async (query: { limit: number; offset: number }) => {
+function mkl<T extends { limit?: number; offset?: number }>(
+  table: any,
+  entityKey: string,
+) {
+  return async (query: T) => {
     const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const where = isNull(table.deleted_at)
     const [rows, [{ total }]] = await Promise.all([
-      db.select().from(table).where(where).orderBy(desc(table.created_at)).limit(query.limit).offset(query.offset),
+      db
+        .select()
+        .from(table)
+        .where(where)
+        .orderBy(desc(table.created_at))
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(table).where(where),
     ])
-    return { [entityKey]: rows, count: Number(total), limit: query.limit, offset: query.offset }
+    return { [entityKey]: rows, count: Number(total), limit, offset }
+  }
+}
+
+async function listCollectionsFiltered(query: AdminGetCollectionsParamsType) {
+  const db = getDb()
+  const { limit, offset } = listLimitOffset(query, { limit: 10, offset: 0 })
+  const conditions: any[] = [isNull(productCollection.deleted_at)]
+  if (query.q) {
+    conditions.push(ilike(productCollection.title, `%${query.q}%`))
+  }
+  applyDateRangeConditions(
+    productCollection.created_at,
+    asDateRange(query.created_at),
+    conditions,
+    sql,
+  )
+  applyDateRangeConditions(
+    productCollection.updated_at,
+    asDateRange(query.updated_at),
+    conditions,
+    sql,
+  )
+  const where = and(...conditions)
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(productCollection)
+      .where(where)
+      .orderBy(desc(productCollection.created_at))
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(productCollection).where(where),
+  ])
+  return {
+    collections: rows,
+    count: Number(total),
+    limit,
+    offset,
+  }
+}
+
+async function listCategoriesFiltered(query: AdminProductCategoriesParamsType) {
+  const db = getDb()
+  const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
+  const conditions: any[] = [isNull(productCategory.deleted_at)]
+  if (query.q) {
+    conditions.push(ilike(productCategory.name, `%${query.q}%`))
+  }
+  applyDateRangeConditions(
+    productCategory.created_at,
+    asDateRange(query.created_at),
+    conditions,
+    sql,
+  )
+  applyDateRangeConditions(
+    productCategory.updated_at,
+    asDateRange(query.updated_at),
+    conditions,
+    sql,
+  )
+  const where = and(...conditions)
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(productCategory)
+      .where(where)
+      .orderBy(desc(productCategory.created_at))
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(productCategory).where(where),
+  ])
+  return {
+    product_categories: rows,
+    count: Number(total),
+    limit,
+    offset,
   }
 }
 function mkg(table: any, entityKey: string) {
@@ -87,7 +184,7 @@ function slugHandle(value: string, fallback: string) {
 
 // ── Categories ─────────────────────────────────────────────
 export const categoryService = {
-  list: mkl(productCategory, "product_categories"),
+  list: listCategoriesFiltered,
   getById: mkg(productCategory, "product_categories"),
   create: async (input: Record<string, unknown>) => {
     const db = getDb()
@@ -119,7 +216,7 @@ export const categoryService = {
 
 // ── Collections ─────────────────────────────────────────────
 export const collectionService = {
-  list: mkl(productCollection, "collections"),
+  list: listCollectionsFiltered,
   getById: mkg(productCollection, "collections"),
   create: async (input: Record<string, unknown>) => {
     const db = getDb()
@@ -172,16 +269,12 @@ export const taxRateService = {
 
 // ── Inventory Items ─────────────────────────────────────────
 export const inventoryItemService = {
-  async list(query: {
-    limit: number
-    offset: number
-    q?: string
-    location_id?: string
-  }) {
+  async list(query: AdminGetInventoryItemsParamsType) {
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const db = getDb()
     const conditions = [isNull(inventoryItem.deleted_at)]
 
-    if (query.q?.trim()) {
+    if (typeof query.q === "string" && query.q.trim()) {
       const term = `%${query.q.trim()}%`
       conditions.push(
         or(
@@ -199,15 +292,15 @@ export const inventoryItemService = {
         .from(inventoryItem)
         .where(where)
         .orderBy(desc(inventoryItem.created_at))
-        .limit(query.limit)
-        .offset(query.offset),
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(inventoryItem).where(where),
     ])
     return {
       inventory_items: rows,
       count: Number(total),
-      limit: query.limit,
-      offset: query.offset,
+      limit,
+      offset,
     }
   },
   getById: mkg(inventoryItem, "inventory_items"),
@@ -624,16 +717,24 @@ export const priceListPriceService = {
 }
 
 export const fulfillmentProviderService = {
-  async list(query?: Record<string, unknown>) {
+  async list(query?: AdminFulfillmentProvidersParamsType) {
     const db = getDb()
     const rows = await db.select().from(fulfillmentProvider)
 
-    const stockLocationId = query?.stock_location_id as string | undefined
+    const stockLocationId =
+      typeof query?.stock_location_id === "string"
+        ? query.stock_location_id
+        : undefined
     if (stockLocationId) {
       const [loc] = await db
         .select()
         .from(stockLocation)
-        .where(and(eq(stockLocation.id, stockLocationId), isNull(stockLocation.deleted_at)))
+        .where(
+          and(
+            eq(stockLocation.id, stockLocationId),
+            isNull(stockLocation.deleted_at),
+          ),
+        )
         .limit(1)
       const meta = (loc?.metadata ?? {}) as Record<string, unknown>
       const linkedIds = new Set(

@@ -1,11 +1,11 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { existsSync } from "node:fs"
 import { zValidator } from "@hono/zod-validator"
+import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import {
   createOrderSchema,
-  listOrdersSchema,
   updateOrderSchema,
   createFulfillmentSchema,
   cancelFulfillmentSchema,
@@ -13,18 +13,21 @@ import {
   markAsDeliveredSchema,
   createCreditLineSchema,
   requestTransferSchema,
-  listOrderChangesSchema,
   addLineItemToOrderSchema,
   addShippingMethodToOrderSchema,
 } from "@my-store/validators"
+import {
+  AdminGetOrdersParams,
+  AdminOrderChangesParams,
+} from "@my-store/validators/admin-list-params"
 import { orderService } from "../../services/order.service"
 import { fulfillmentService } from "../../services/fulfillment.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminOrders = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  // ── Order CRUD ──────────────────────────────────────────
-  .get("/", zValidator("query", listOrdersSchema), async (c) => {
+  // 鈹€鈹€ Order CRUD 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  .get("/", rpcQueryValidator(AdminGetOrdersParams), async (c) => {
     const query = c.req.valid("query")
     const result = await orderService.list(query)
     return c.json(result)
@@ -58,7 +61,7 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const body = await c.req.json().catch(() => ({}))
     const value = typeof body?.value === "string" ? body.value.trim() : ""
     if (!value) {
-      return c.json({ message: "备注内容不能为空" }, 400)
+      return c.json({ message: "澶囨敞鍐呭涓嶈兘涓虹┖" }, 400)
     }
     const result = await orderService.addNote(c.req.param("id"), value)
     return c.json(result)
@@ -85,8 +88,8 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const result = await orderService.complete(c.req.param("id"))
     return c.json(result)
   })
-  // ── Changes / Preview / Credit Lines / Transfer ─────────
-  .get("/:id/changes", zValidator("query", listOrderChangesSchema), async (c) => {
+  // 鈹€鈹€ Changes / Preview / Credit Lines / Transfer 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+  .get("/:id/changes", rpcQueryValidator(AdminOrderChangesParams), async (c) => {
     const query = c.req.valid("query")
     const result = await orderService.getChanges(c.req.param("id"), query)
     return c.json(result)
@@ -113,7 +116,7 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const result = await orderService.cancelTransfer(c.req.param("id"))
     return c.json(result)
   })
-  // ── Line Items / Shipping Options ──────────────────────
+  // 鈹€鈹€ Line Items / Shipping Options 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .get("/:id/line-items", async (c) => {
     const result = await orderService.listLineItems(c.req.param("id"))
     return c.json(result)
@@ -137,7 +140,7 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const result = await orderService.removeShippingMethod(id, methodId)
     return c.json(result)
   })
-  // ── Transactions / Delete ──────────────────────────────
+  // 鈹€鈹€ Transactions / Delete 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .get("/:id/transactions", async (c) => {
     const result = await orderService.listTransactions(c.req.param("id"))
     return c.json(result)
@@ -146,7 +149,7 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const result = await orderService.deleteOrder(c.req.param("id"))
     return c.json(result)
   })
-  // ── Fulfillments ────────────────────────────────────────
+  // 鈹€鈹€ Fulfillments 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
   .get("/:id/fulfillments", async (c) => {
     const result = await fulfillmentService.listByOrder(c.req.param("id"))
     return c.json(result)
@@ -178,3 +181,4 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const result = await fulfillmentService.markAsDelivered(id, fulfillmentId, body)
     return c.json(result)
   })
+

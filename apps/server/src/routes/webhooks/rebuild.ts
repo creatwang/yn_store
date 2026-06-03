@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+﻿import { Hono } from "hono"
 
 export const rebuildWebhook = new Hono().post("/rebuild-storefront", async (c) => {
   const secret = process.env.WEBHOOK_SECRET
