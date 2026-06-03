@@ -1,6 +1,8 @@
 ﻿import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
 import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import type { z } from "zod"
+import { AdminBulkCreateReservations } from "@my-store/validators"
 import { sql } from "drizzle-orm"
 import { generateId, getDb } from "@my-store/db"
 import {
@@ -93,11 +95,38 @@ export const adminTaxRates = crudRoutes(
   taxRateService,
   AdminGetTaxRatesParams,
 )
-export const adminReservations = crudRoutes(
-  "reservations",
-  reservationService,
-  AdminGetReservationsParams,
-)
+export const adminReservations = new Hono<{ Variables: AuthVariables }>()
+  .use("*", adminAuth)
+  .get("/", rpcQueryValidator(AdminGetReservationsParams), async (c) => {
+    const result = await reservationService.list(c.req.valid("query"))
+    return c.json(result)
+  })
+  .post(
+    "/batch",
+    zValidator("json", AdminBulkCreateReservations),
+    async (c) => {
+      const result = await reservationService.bulkAllocate(c.req.valid("json"))
+      return c.json(result, 201)
+    },
+  )
+  .get("/:id", async (c) => {
+    const result = await reservationService.getById(c.req.param("id"))
+    return c.json(result)
+  })
+  .post("/", async (c) => {
+    const body = await c.req.json()
+    const result = await reservationService.create(body)
+    return c.json(result, 201)
+  })
+  .post("/:id", async (c) => {
+    const body = await c.req.json()
+    const result = await reservationService.update(c.req.param("id"), body)
+    return c.json(result)
+  })
+  .delete("/:id", async (c) => {
+    const result = await reservationService.delete(c.req.param("id"))
+    return c.json(result)
+  })
 export const adminShippingProfiles = crudRoutes(
   "shipping-profiles",
   shippingProfileService,

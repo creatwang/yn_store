@@ -9,6 +9,12 @@ import {
 } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 import { claimCreateWorkflow } from "../workflows/claim-create"
+import {
+  addChangeShippingAction,
+  getPendingChangeByClaimId,
+  removeChangeShippingAction,
+  updateChangeShippingAction,
+} from "../lib/order-change-shipping"
 
 export const claimService = {
   async list(query: AdminListClaimsParamsType) {
@@ -111,60 +117,50 @@ export const claimService = {
   // ── Inbound Shipping ─────────────────────────────────
 
   async addInboundShipping(claimId: string, payload: { shipping_option_id: string }) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    meta.inbound_shipping = [...(meta.inbound_shipping ?? []), { ...payload, id: generateId("act") }]
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await addChangeShippingAction({
+      change,
+      shipping_option_id: payload.shipping_option_id,
+      isInbound: true,
+      claim_id: claimId,
+    })
     return this.getById(claimId)
   },
 
   async updateInboundShipping(claimId: string, actionId: string, payload: { shipping_option_id?: string }) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    const items = (meta.inbound_shipping ?? []).map((s: any) => s.id === actionId ? { ...s, ...payload } : s)
-    meta.inbound_shipping = items
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await updateChangeShippingAction(change.id, actionId, payload)
     return this.getById(claimId)
   },
 
   async removeInboundShipping(claimId: string, actionId: string) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    meta.inbound_shipping = (meta.inbound_shipping ?? []).filter((s: any) => s.id !== actionId)
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await removeChangeShippingAction(change.id, actionId)
     return this.getById(claimId)
   },
 
   // ── Outbound Items / Shipping (stored in metadata for action tracking) ──
 
   async addOutboundShipping(claimId: string, payload: { shipping_option_id: string }) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    meta.outbound_shipping = [...(meta.outbound_shipping ?? []), { ...payload, id: generateId("act") }]
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await addChangeShippingAction({
+      change,
+      shipping_option_id: payload.shipping_option_id,
+      isInbound: false,
+      claim_id: claimId,
+    })
     return this.getById(claimId)
   },
 
   async updateOutboundShipping(claimId: string, actionId: string, payload: { shipping_option_id?: string }) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    const items = (meta.outbound_shipping ?? []).map((s: any) => s.id === actionId ? { ...s, ...payload } : s)
-    meta.outbound_shipping = items
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await updateChangeShippingAction(change.id, actionId, payload)
     return this.getById(claimId)
   },
 
   async removeOutboundShipping(claimId: string, actionId: string) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    meta.outbound_shipping = (meta.outbound_shipping ?? []).filter((s: any) => s.id !== actionId)
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await removeChangeShippingAction(change.id, actionId)
     return this.getById(claimId)
   },
 

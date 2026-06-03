@@ -20,6 +20,7 @@ import {
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import { enrichShippingOptionsBatch } from "../lib/shipping-option-enrich-batch"
+import { listShippingOptionRowsFiltered } from "../lib/shipping-option-list-filter"
 
 function sqlRows(result: unknown): Record<string, unknown>[] {
   return (Array.isArray(result) ? result : ((result as { rows?: Record<string, unknown>[] }).rows ?? [])) as Record<string, unknown>[]
@@ -330,16 +331,10 @@ export const shippingOptionService = {
   async list(query: AdminGetShippingOptionsParamsType) {
     const db = getDb()
     const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
-    const rows = sqlRows(
-      await db.execute(sql`
-        SELECT ${sql.raw(SHIPPING_OPTION_COLS)}
-        FROM shipping_option
-        WHERE deleted_at IS NULL
-        ORDER BY created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `),
-    )
-    const total = await countShippingOptions()
+    const { rows, total } = await listShippingOptionRowsFiltered(query, {
+      limit,
+      offset,
+    })
     const shipping_options = await enrichShippingOptionsBatch(db, rows)
     return { shipping_options, count: total, limit, offset }
   },

@@ -38,9 +38,13 @@ export const exchangeCreateWorkflow = createWorkflow("exchange-create", [
     return { exchangeId: id, changeId, orderId: input.order_id }
   }, async ({ output }) => {
     const db = getDb()
-    const { exchangeId } = output["create-exchange"] ?? {}
+    const created = output["create-exchange"] ?? {}
+    const exchangeId = created.exchangeId as string | undefined
+    const changeId = created.changeId as string | undefined
     if (exchangeId) {
-      await db.delete(orderChangeAction).where(eq(orderChangeAction.order_change_id, exchangeId))
+      if (changeId) {
+        await db.delete(orderChangeAction).where(eq(orderChangeAction.order_change_id, changeId))
+      }
       await db.delete(orderChange).where(eq(orderChange.exchange_id, exchangeId))
       await db.delete(orderExchange).where(eq(orderExchange.id, exchangeId))
     }

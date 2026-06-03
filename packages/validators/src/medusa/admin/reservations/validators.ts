@@ -53,3 +53,23 @@ export const AdminUpdateReservation = z
     metadata: z.record(z.string(), z.unknown()).nullish(),
   })
   .strict()
+
+export const AdminBulkCreateReservationItem = z
+  .object({
+    line_item_id: z.string(),
+    inventory_item_id: z.string(),
+    quantity: z.number().positive(),
+    description: z.string().nullish(),
+    metadata: z.record(z.string(), z.unknown()).nullish(),
+  })
+  .strict()
+
+export type AdminBulkCreateReservationsType = z.infer<
+  typeof AdminBulkCreateReservations
+>
+export const AdminBulkCreateReservations = z
+  .object({
+    location_id: z.string(),
+    items: z.array(AdminBulkCreateReservationItem).min(1),
+  })
+  .strict()

@@ -12,7 +12,6 @@ import {
   taxRate,
   inventoryItem,
   inventoryLevel,
-  reservationItem,
   shippingProfile,
   shippingOptionType,
   currency,
@@ -314,14 +313,7 @@ export const inventoryItemService = {
   },
 }
 
-// ── Reservations ────────────────────────────────────────────
-export const reservationService = {
-  list: mkl(reservationItem, "reservations"),
-  getById: mkg(reservationItem, "reservations"),
-  create: mkc(reservationItem, "res", "reservations"),
-  update: mku(reservationItem, "reservations"),
-  delete: mkdel(reservationItem),
-}
+export { reservationService } from "./reservation.service"
 
 // ── Stock Locations / Shipping Options → stock-location.service.ts ──
 export { stockLocationService, shippingOptionService }

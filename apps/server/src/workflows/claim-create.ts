@@ -48,9 +48,13 @@ export const claimCreateWorkflow = createWorkflow("claim-create", [
     return { claimId: id, changeId, orderId: input.order_id }
   }, async ({ output }) => {
     const db = getDb()
-    const { claimId } = output["create-claim"] ?? {}
+    const created = output["create-claim"] ?? {}
+    const claimId = created.claimId as string | undefined
+    const changeId = created.changeId as string | undefined
     if (claimId) {
-      await db.delete(orderChangeAction).where(eq(orderChangeAction.order_change_id, claimId))
+      if (changeId) {
+        await db.delete(orderChangeAction).where(eq(orderChangeAction.order_change_id, changeId))
+      }
       await db.delete(orderChange).where(eq(orderChange.claim_id, claimId))
       await db.delete(orderClaimItem).where(eq(orderClaimItem.claim_id, claimId))
       await db.delete(orderClaim).where(eq(orderClaim.id, claimId))

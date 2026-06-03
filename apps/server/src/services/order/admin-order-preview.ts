@@ -344,6 +344,7 @@ function buildShippingMethods(
   methods: Array<Record<string, unknown>>,
   returnId: string | null,
   isInbound: boolean,
+  ctx?: { claim_id?: string; exchange_id?: string },
 ) {
   return methods.map((m) => ({
     id: m.id,
@@ -354,9 +355,63 @@ function buildShippingMethods(
         action: "SHIPPING_ADD",
         id: m.id as string,
         ...(isInbound && returnId ? { return_id: returnId } : {}),
+        ...(ctx?.claim_id ? { claim_id: ctx.claim_id } : {}),
+        ...(ctx?.exchange_id ? { exchange_id: ctx.exchange_id } : {}),
       },
     ],
   }))
+}
+
+function shippingMethodsFromChangeActions(
+  actions: Array<typeof orderChangeAction.$inferSelect>,
+  returnId: string | null,
+  ctx: { claim_id?: string; exchange_id?: string },
+) {
+  const inbound: Record<string, unknown>[] = []
+  const outbound: Record<string, unknown>[] = []
+
+  for (const row of actions) {
+    if (row.action !== "SHIPPING_ADD") continue
+    const details = (row.details ?? {}) as Record<string, unknown>
+    const isInbound =
+      row.return_id != null || details.is_inbound === true
+    const method = {
+      id: row.id,
+      shipping_option_id: row.reference_id,
+      amount: row.amount ?? details.amount,
+      total: row.amount ?? details.amount,
+    }
+    if (isInbound) inbound.push(method)
+    else outbound.push(method)
+  }
+
+  return {
+    inbound: buildShippingMethods(inbound, returnId, true, ctx),
+    outbound: buildShippingMethods(outbound, null, false, ctx),
+  }
+}
+
+async function loadChangeShippingForPreview(
+  db: Db,
+  changeId: string,
+  returnId: string | null,
+  ctx: { claim_id?: string; exchange_id?: string },
+) {
+  const actions = await db
+    .select()
+    .from(orderChangeAction)
+    .where(
+      and(
+        eq(orderChangeAction.order_change_id, changeId),
+        eq(orderChangeAction.action, "SHIPPING_ADD"),
+      ),
+    )
+    .orderBy(asc(orderChangeAction.ordering))
+
+  if (actions.length) {
+    return shippingMethodsFromChangeActions(actions, returnId, ctx)
+  }
+  return null
 }
 
 function sumReturnRequested(items: Record<string, unknown>[]) {
@@ -445,10 +500,23 @@ export async function buildAdminOrderPreview(orderId: string) {
       const meta = (ex.metadata ?? {}) as Record<string, unknown>
       applyMetadataInbound(items, activeChange.return_id, ex.id, null, (meta.inbound_items as any[]) ?? [])
       await appendOutboundItems(db, items, (meta.outbound_items as any[]) ?? [], { exchangeId: ex.id })
-      shipping_methods = [
-        ...buildShippingMethods((meta.inbound_shipping as any[]) ?? [], activeChange.return_id, true),
-        ...buildShippingMethods((meta.outbound_shipping as any[]) ?? [], null, false),
-      ] as Record<string, unknown>[]
+      const fromActions = await loadChangeShippingForPreview(
+        db,
+        activeChange.id,
+        activeChange.return_id,
+        { exchange_id: ex.id },
+      )
+      if (fromActions) {
+        shipping_methods = [
+          ...fromActions.inbound,
+          ...fromActions.outbound,
+        ] as Record<string, unknown>[]
+      } else {
+        shipping_methods = [
+          ...buildShippingMethods((meta.inbound_shipping as any[]) ?? [], activeChange.return_id, true, { exchange_id: ex.id }),
+          ...buildShippingMethods((meta.outbound_shipping as any[]) ?? [], null, false, { exchange_id: ex.id }),
+        ] as Record<string, unknown>[]
+      }
     }
   }
 
@@ -489,10 +557,23 @@ export async function buildAdminOrderPreview(orderId: string) {
         applyMetadataInbound(items, activeChange.return_id, null, cl.id, (meta.inbound_items as any[]) ?? [])
       }
       await appendOutboundItems(db, items, (meta.outbound_items as any[]) ?? [], { claimId: cl.id })
-      shipping_methods = [
-        ...buildShippingMethods((meta.inbound_shipping as any[]) ?? [], activeChange.return_id, true),
-        ...buildShippingMethods((meta.outbound_shipping as any[]) ?? [], null, false),
-      ] as Record<string, unknown>[]
+      const fromActions = await loadChangeShippingForPreview(
+        db,
+        activeChange.id,
+        activeChange.return_id,
+        { claim_id: cl.id },
+      )
+      if (fromActions) {
+        shipping_methods = [
+          ...fromActions.inbound,
+          ...fromActions.outbound,
+        ] as Record<string, unknown>[]
+      } else {
+        shipping_methods = [
+          ...buildShippingMethods((meta.inbound_shipping as any[]) ?? [], activeChange.return_id, true, { claim_id: cl.id }),
+          ...buildShippingMethods((meta.outbound_shipping as any[]) ?? [], null, false, { claim_id: cl.id }),
+        ] as Record<string, unknown>[]
+      }
     }
   }
 
