@@ -1,7 +1,7 @@
 /**
  * Admin 订单 Preview DTO — RMA 向导（退货/换货/索赔）依赖
  */
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   generateId,
@@ -13,6 +13,7 @@ import {
   orderClaimItem,
   orderExchange,
   orderReturn,
+  product,
   productVariant,
   returnItem,
 } from "@my-store/db"
@@ -71,19 +72,29 @@ async function loadVariantsForEditPreview(db: Db, variantIds: string[]) {
   >()
   if (variantIds.length === 0) return map
 
-  const rows = await db.execute(sql`
-    SELECT pv.id, pv.title, pv.sku, p.thumbnail, p.title AS product_title
-    FROM product_variant pv
-    LEFT JOIN product p ON p.id = pv.product_id AND p.deleted_at IS NULL
-    WHERE pv.id = ANY(${variantIds}::text[]) AND pv.deleted_at IS NULL
-  `)
+  const rows = await db
+    .select({
+      id: productVariant.id,
+      title: productVariant.title,
+      sku: productVariant.sku,
+      thumbnail: product.thumbnail,
+      product_title: product.title,
+    })
+    .from(productVariant)
+    .leftJoin(
+      product,
+      and(eq(product.id, productVariant.product_id), isNull(product.deleted_at)),
+    )
+    .where(
+      and(inArray(productVariant.id, variantIds), isNull(productVariant.deleted_at)),
+    )
 
-  for (const row of sqlRows(rows) as Array<Record<string, unknown>>) {
-    map.set(String(row.id), {
-      title: String(row.title ?? row.id),
-      sku: row.sku != null ? String(row.sku) : null,
-      thumbnail: row.thumbnail != null ? String(row.thumbnail) : null,
-      product_title: row.product_title != null ? String(row.product_title) : null,
+  for (const row of rows) {
+    map.set(row.id, {
+      title: row.title ?? row.id,
+      sku: row.sku ?? null,
+      thumbnail: row.thumbnail ?? null,
+      product_title: row.product_title ?? null,
     })
   }
   return map
@@ -97,13 +108,18 @@ async function loadVariantUnitPrices(
   const map = new Map<string, number>()
   if (variantIds.length === 0) return map
 
+  const variantIdList = sql.join(
+    variantIds.map((id) => sql`${id}`),
+    sql`, `,
+  )
+
   try {
     const rows = await db.execute(sql`
       SELECT pvps.variant_id, MIN(pr.amount)::numeric AS amount
       FROM product_variant_price_set pvps
       JOIN price_set ps ON ps.id = pvps.price_set_id
       JOIN price pr ON pr.price_set_id = ps.id
-      WHERE pvps.variant_id = ANY(${variantIds}::text[])
+      WHERE pvps.variant_id IN (${variantIdList})
         AND pr.currency_code = ${currencyCode}
       GROUP BY pvps.variant_id
     `)
@@ -115,7 +131,7 @@ async function loadVariantUnitPrices(
       const rows = await db.execute(sql`
         SELECT variant_id, MIN(amount)::numeric AS amount
         FROM price
-        WHERE variant_id = ANY(${variantIds}::text[])
+        WHERE variant_id IN (${variantIdList})
           AND currency_code = ${currencyCode}
         GROUP BY variant_id
       `)
