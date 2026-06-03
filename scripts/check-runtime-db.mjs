@@ -21,16 +21,16 @@ function loadEnvMax() {
 }
 
 const poolMax = loadEnvMax()
-const effective = poolMax ?? (process.env.VITEST ? 3 : 4)
+const effective = poolMax ?? (process.env.VITEST ? 2 : 20)
 
-console.log("[check-runtime-db] Supabase Session pool_size 通常为 15")
+console.log("[check-runtime-db] Druid 式：maxActive + 应用层排队（DB_MAX_WAIT_MS=0 无限等）")
 console.log(
-  `[check-runtime-db] 本进程 postgres max=${effective}` +
+  `[check-runtime-db] 本进程 maxActive=${effective}` +
     (poolMax != null ? " (DB_POOL_MAX)" : " (默认)"),
 )
-if (effective > 6) {
+if (effective > 30) {
   console.warn(
-    "[check-runtime-db] 警告: DB_POOL_MAX 偏大，多实例 dev+test 易触发 EMAXCONNSESSION",
+    "[check-runtime-db] 警告: DB_POOL_MAX 过大，多 dev/test 进程仍会抢云端总连接",
   )
 }
 

@@ -46,6 +46,44 @@ describe("Admin 订单 API — CRUD", () => {
       const res = await unauthGet("/admin/orders")
       expect(res.status).toBe(401)
     })
+
+    it("items[].variant_id 创建时写入行项目（对齐官方 createOrders）", async () => {
+      const prodRes = await apiPostRetry("/admin/products", {
+        title: `ord_item_${Date.now()}`,
+      })
+      const productId = (await prodRes.json()).product.id as string
+      const variantRes = await apiPost(`/admin/products/${productId}/variants`, {
+        title: "Default",
+        sku: `ORD_${Date.now()}`,
+      })
+      const variantId = (await variantRes.json()).variant.id as string
+
+      const res = await apiPostRetry("/admin/orders", {
+        email: `items_${Date.now()}@example.com`,
+        currency_code: "USD",
+        items: [{ variant_id: variantId, quantity: 2, unit_price: 15 }],
+      })
+      expect(res.status).toBe(201)
+      const body = await res.json()
+      expect(body.order.items?.length).toBeGreaterThanOrEqual(1)
+      expect(body.order.items[0].id).toMatch(/^olitm_/)
+      expect(body.order.items[0].variant_id).toBe(variantId)
+      createdIds.push(body.order.id)
+    })
+
+    it("items 使用 product id 作 variant_id 应 404", async () => {
+      const prodRes = await apiPostRetry("/admin/products", {
+        title: `bad_var_${Date.now()}`,
+      })
+      const productId = (await prodRes.json()).product.id as string
+
+      const res = await apiPost("/admin/orders", {
+        email: `bad_${Date.now()}@example.com`,
+        currency_code: "USD",
+        items: [{ variant_id: productId, quantity: 1 }],
+      })
+      expect(res.status).toBe(404)
+    })
   })
 
   // -----------------------------------------------------------------------

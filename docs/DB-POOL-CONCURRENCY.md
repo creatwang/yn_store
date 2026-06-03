@@ -1,57 +1,50 @@
-# 数据库连接池与并发
+# Druid 式数据库连接池（本项目实现）
 
-## Supabase：`:5432` vs `:6543`（先选对端口）
+## 对标关系
 
-| | **:5432 Session pooler** | **:6543 Transaction pooler** |
-|--|--------------------------|------------------------------|
-| 本质 | 更接近 **Postgres 直连名额**（全项目共享约十余条） | **云端连接池（叫号机）**，客户端并发由池 multiplex |
-| 本地 `DB_POOL_MAX` | 默认 **2**（勿轻易 4+，多进程会抢同一批名额） | 默认 **10**（可按需 **10～20**，一般不易 `Too many clients`） |
-| 典型问题 | 僵尸 idle + 重启 dev → 第 5 条连接被 DB **踢断** | 需 `prepare: false`（已在 `client.ts` 配置） |
-| 推荐 | 仅当必须用 Session 特性时 | **日常开发 / Admin / vitest 优先** |
+| Druid | 本项目 |
+|-------|--------|
+| `maxActive` | `DB_POOL_MAX`（默认 **20**，上限 50） |
+| `maxWait=-1` 无限等连接 | `DB_MAX_WAIT_MS` 未设或 **0** → 借连接**无限排队** |
+| `maxWait` 毫秒超时 | `DB_MAX_WAIT_MS=30000` 等 → `database_pool_busy` |
+| 单例 DataSource | `globalThis` 每进程一个 `postgres()` |
+| 占满不立刻失败 | **两层队列**（见下） |
 
-单例只保证「每进程一个池」；**端口选错**时，池再大也会在 `:5432` 上撞物理上限。
+## 两层排队（压测时关键）
 
-## 两类常见故障
+1. **应用层 `DbConcurrencyGate`**（`packages/db/src/db-gate.ts`）  
+   每条 SQL 先「借槽位」，槽位 = `maxActive`，满了就排队，默认**一直等**。
 
-### 1. 单进程内的「隐式并发」
+2. **驱动层 `postgres.js`**  
+   `max` 与 `maxActive` 一致；TCP 连接占满时驱动内继续排队。
 
-即使 `packages/db` 使用 `globalThis` 单例，**同一 HTTP 请求**里若 `Promise.all` 或 `array.map(async …)` 同时发起 N 条查询，仍会瞬间占满本进程 `max`（Session pooler 默认 **2**）。
+压测 Admin 并行 HTTP 时，请求会在应用层排队拿槽位，而不是瞬间冲 50 路建连把库打挂后返回 `database_unavailable`。
 
-典型症状：`database_unavailable`、连接等待超时、Socket hang up。
+## 环境变量（只改这些，与端口无关）
 
-**已收敛的热点（串行或批量 IN）：**
+```env
+DB_POOL_MAX=20          # maxActive
+DB_MAX_WAIT_MS=0        # 0 或未设 = 无限等待（Druid 阻塞借连接）
+DB_CONNECT_TIMEOUT=60   # 单次建连超时（秒）
+DB_IDLE_TIMEOUT=60
+DB_MAX_LIFETIME=600
+```
 
-- `order.service.getChanges`：`order_change_action` 改为 `inArray` 一次查询
-- `order-edit.service.list`：同上
-- `order-edit.service.confirm`：变体快照在事务**外**预加载，避免事务占坑时再 `getDb()` 抢连接
-- `admin-order` 详情 / `relations` / `presenter`：关联加载改为串行 `await`
+Supabase pooler 已自动 `prepare: false`（任意 `pooler.supabase.com`）。
 
-**已批量收敛：**
+## 仍会导致 503 的情况（不是池「不够大」）
 
-- `product.service` / `option.service`：`product_option_value` 用 `inArray` 一次查询后内存分组（`product-option-values-batch.ts`）
-- `stock-location.service`：库位树（zones / geo / shipping_options）与 `enrichShippingOption` 改为固定轮次批量查询（`shipping-option-enrich-batch.ts`）
+- **多进程**各建一池：`pnpm dev` + `vitest` + 第二个 terminal `dev:server` → 抢云端总名额。
+- **僵尸进程**未 `closeDb`：用 `pnpm predev` 清端口与 `entry.node`。
+- **显式排队超时**：设了 `DB_MAX_WAIT_MS>0` 且压测超过该时间。
 
-**仍需谨慎：**
+启动日志示例：
 
-- Admin 一单页会并行请求 `order`、`preview`、`variants` 等多个接口 → 多 HTTP 请求叠加
-- 列表接口 `Promise.all([rows, count])` 仅 2 路，一般可接受
+```text
+📦 DB pool (Druid): maxActive=20, maxWait=无限等待（Druid maxWait=-1）, connect_timeout=60s
+   两层排队：① 应用借连接队列 ② postgres.js 池满继续排队；占满不立刻失败
+```
 
-### 2. Supabase 僵尸 idle 连接
+## 代码侧并发习惯
 
-开发时 Ctrl+C 重启，海外 Session pooler 上的旧连接要等 `idle_timeout` 才回收。新进程再申请连接时，**旧 idle + 新连接** 可能超过项目上限。
-
-**缓解：**
-
-- 推荐 `DATABASE_URL` 使用 **Transaction pooler `:6543`**（`prepare: false`）
-- Session `:5432` 时设 `DB_POOL_MAX=2`，勿同时 `pnpm dev:server` + `vitest`
-- `entry.node.ts` 在 SIGINT/SIGTERM 调用 `closeDb()` 释放本地池
-- Session pooler 下 `idle_timeout` 已缩短为 **10s**（见 `packages/db/src/client.ts`）
-
-## 环境变量
-
-| 变量 | 说明 |
-|------|------|
-| `DATABASE_URL` | **`:6543`** Transaction pooler（推荐） |
-| `DB_POOL_MAX` | 覆盖默认：`:6543` 默认 **10**，`:5432` 默认 **2**，本地 PG 默认 **4** |
-
-启动日志会打印 `describeDbPool()` 的 `max` 与 `mode`。
+单请求内避免无界 `Promise.all` / `map(async)` 同时打 DB；列表已批量 `inArray` 的见 `order-change-actions-batch.ts`、`product-option-values-batch.ts` 等。

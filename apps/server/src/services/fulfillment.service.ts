@@ -15,7 +15,12 @@ import type {
   MarkAsDeliveredInput,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
-import { sendOrderDeliveredEmail } from "../lib/mail"
+import {
+  sendFulfillmentCreatedEmail,
+  sendOrderDeliveredEmail,
+  sendShipmentEmail,
+} from "../lib/mail"
+import { getOrderNotificationContext } from "../lib/order-notification-context"
 import { notificationService } from "./notification.service"
 import { eventBus } from "../lib/events"
 import { fulfillmentCreateWorkflow } from "../workflows/fulfillment-create"
@@ -89,9 +94,35 @@ export const fulfillmentService = {
       tracking_numbers: input.tracking_numbers, tracking_url: input.tracking_url,
       metadata: input.metadata ?? undefined, no_notification: input.no_notification,
     });
-    return this.getById(
-      String((result as { fulfillmentId?: string })?.fulfillmentId ?? ""),
+    const fulfillmentId = String(
+      (result as { fulfillmentId?: string })?.fulfillmentId ?? "",
     )
+    const ctx = await getOrderNotificationContext(orderId, {
+      no_notification: input.no_notification,
+    })
+    if (ctx && fulfillmentId) {
+      notificationService.send({
+        to: ctx.email,
+        template: "fulfillment.created",
+        data: {
+          display_id: ctx.displayId,
+          order_id: ctx.orderId,
+          fulfillment_id: fulfillmentId,
+        },
+        trigger_type: "fulfillment.created",
+        resource_id: fulfillmentId,
+        resource_type: "fulfillment",
+        idempotency_key: `fulfillment-create-${fulfillmentId}`,
+        no_notification: input.no_notification,
+        sender: () =>
+          sendFulfillmentCreatedEmail(
+            ctx.email,
+            ctx.displayId,
+            ctx.orderId,
+          ),
+      })
+    }
+    return this.getById(fulfillmentId)
   },
 
   async cancel(
@@ -155,7 +186,47 @@ export const fulfillmentService = {
       items: input.items, labels: input.labels,
       no_notification: input.no_notification,
     });
-    return this.getById(fulfillmentId);
+    const { fulfillment: f } = await this.getById(fulfillmentId)
+    const ctx = await getOrderNotificationContext(orderId, {
+      no_notification: input.no_notification,
+    })
+    if (ctx) {
+      const labels = (f.labels ?? []) as Array<{
+        tracking_number?: string | null
+        tracking_url?: string | null
+      }>
+      const tracking_numbers = labels
+        .map((l) => l.tracking_number)
+        .filter((n): n is string => Boolean(n))
+      const tracking_urls = labels
+        .map((l) => l.tracking_url)
+        .filter((u): u is string => Boolean(u))
+      notificationService.send({
+        to: ctx.email,
+        template: "fulfillment.shipped",
+        data: {
+          display_id: ctx.displayId,
+          order_id: ctx.orderId,
+          fulfillment_id: fulfillmentId,
+          tracking_numbers,
+          tracking_urls,
+        },
+        trigger_type: "fulfillment.shipped",
+        resource_id: fulfillmentId,
+        resource_type: "fulfillment",
+        idempotency_key: `fulfillment-ship-${fulfillmentId}`,
+        no_notification: input.no_notification,
+        sender: () =>
+          sendShipmentEmail(
+            ctx.email,
+            ctx.displayId,
+            ctx.orderId,
+            tracking_numbers,
+            tracking_urls,
+          ),
+      })
+    }
+    return { fulfillment: f };
   },
 
   async markAsDelivered(orderId: string, fulfillmentId: string, _input?: MarkAsDeliveredInput) {

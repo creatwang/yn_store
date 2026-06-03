@@ -25,6 +25,22 @@ const addressSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).nullish(),
 }).strict()
 
+/** 对齐 Medusa CreateOrderLineItemDTO / AdminCreateDraftOrder Item */
+export const createOrderItemSchema = z
+  .object({
+    variant_id: z.string().min(1).optional(),
+    title: z.string().nullish(),
+    quantity: z.number().min(1),
+    unit_price: z.number().positive().optional(),
+    metadata: metadataSchema.optional(),
+  })
+  .refine(
+    (item) => Boolean(item.variant_id?.trim() || item.title?.trim()),
+    { message: "Items must have either a variant_id or a title" },
+  )
+
+export type CreateOrderItemInput = z.infer<typeof createOrderItemSchema>
+
 export const createOrderSchema = z.object({
   region_id: z.string().optional(),
   customer_id: z.string().optional(),
@@ -34,6 +50,7 @@ export const createOrderSchema = z.object({
   shipping_address: addressSchema.optional(),
   billing_address: addressSchema.optional(),
   metadata: metadataSchema.optional(),
+  items: z.array(createOrderItemSchema).optional(),
 })
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>

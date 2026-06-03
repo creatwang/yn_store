@@ -33,6 +33,7 @@ import {
   presentAdminOrders,
 } from "./order/admin-order"
 import { buildDraftOrderEditPreview } from "./order/draft-order-edit-preview"
+import { insertOrderLineItemPair } from "./order/order-line-item-write"
 import {
   DEFAULT_ADMIN_DRAFT_ORDER_LIST_FIELDS,
   DEFAULT_ADMIN_DRAFT_ORDER_RETRIEVE_FIELDS,
@@ -280,6 +281,17 @@ export const draftOrderService = {
           updated_at: sql`now()`,
         })
         .returning()
+
+      for (const item of input.items ?? []) {
+        await insertOrderLineItemPair(tx, id, {
+          variant_id: item.variant_id ?? undefined,
+          title: item.title,
+          quantity: item.quantity,
+          unit_price:
+            item.unit_price != null ? Number(item.unit_price) : undefined,
+          metadata: item.metadata ?? null,
+        })
+      }
 
       return row
     })

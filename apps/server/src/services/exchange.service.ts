@@ -15,6 +15,7 @@ import {
   removeChangeShippingAction,
   updateChangeShippingAction,
 } from "../lib/order-change-shipping"
+import { notifyExchangeRequested } from "../lib/notify-customer"
 
 export const exchangeService = {
   async list(query: AdminListExchangesParamsType) {
@@ -191,6 +192,11 @@ export const exchangeService = {
       metadata: meta,
     }).where(and(eq(orderExchange.id, exchangeId), isNull(orderExchange.deleted_at))).returning()
     if (!updated) throw new HTTPException(404, { message: "Exchange not found" })
+    await notifyExchangeRequested(
+      exchangeId,
+      existing.order_id,
+      input?.no_notification,
+    )
     return { exchange: updated }
   },
 

@@ -52,10 +52,17 @@ describe("Reservations — bulk allocate", () => {
       title: `Alloc_${Date.now()}`,
     })
     const productId = (await prodRes.json()).product.id as string
+    const variantRes = await apiPost(`/admin/products/${productId}/variants`, {
+      title: "Default",
+      sku: `ALLOC_${Date.now()}`,
+    })
+    expect(variantRes.status).toBe(201)
+    const variantId = (await variantRes.json()).variant.id as string
 
     const orderRes = await apiPostRetry("/admin/orders", {
       email: `alloc_${Date.now()}@test.com`,
-      items: [{ variant_id: productId, quantity: 1 }],
+      currency_code: "USD",
+      items: [{ variant_id: variantId, quantity: 1, unit_price: 10 }],
     })
     expect(orderRes.status).toBe(201)
     const order = (await orderRes.json()).order as {

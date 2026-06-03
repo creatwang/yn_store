@@ -326,6 +326,69 @@ export async function sendOrderUpdatedEmail(
   await sendEmail(email, `订单 #${displayId} 已更新`, html, "order")
 }
 
+export async function sendReturnRequestedEmail(
+  email: string,
+  displayId: number | string,
+  orderId: string,
+): Promise<void> {
+  const detailUrl = storefrontUrl(`/orders/${orderId}`)
+  const html = emailLayout(`
+    <h2 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1a1a1a;">退货申请已提交</h2>
+    <p style="margin:0 0 12px;font-size:16px;font-weight:500;color:#333;">
+      订单号：#${displayId}
+    </p>
+    <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#555;">
+      我们已收到您的退货申请，审核通过后将另行通知后续步骤。
+    </p>
+    <div style="text-align:center;margin-bottom:24px;">
+      ${buttonHtml("查看订单", detailUrl)}
+    </div>
+  `)
+  await sendEmail(email, `订单 #${displayId} 退货申请`, html, "returns")
+}
+
+export async function sendClaimRequestedEmail(
+  email: string,
+  displayId: number | string,
+  orderId: string,
+): Promise<void> {
+  const detailUrl = storefrontUrl(`/orders/${orderId}`)
+  const html = emailLayout(`
+    <h2 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1a1a1a;">索赔申请已提交</h2>
+    <p style="margin:0 0 12px;font-size:16px;font-weight:500;color:#333;">
+      订单号：#${displayId}
+    </p>
+    <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#555;">
+      您的索赔申请已进入处理流程，我们会尽快与您联系。
+    </p>
+    <div style="text-align:center;margin-bottom:24px;">
+      ${buttonHtml("查看订单", detailUrl)}
+    </div>
+  `)
+  await sendEmail(email, `订单 #${displayId} 索赔申请`, html, "returns")
+}
+
+export async function sendExchangeRequestedEmail(
+  email: string,
+  displayId: number | string,
+  orderId: string,
+): Promise<void> {
+  const detailUrl = storefrontUrl(`/orders/${orderId}`)
+  const html = emailLayout(`
+    <h2 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1a1a1a;">换货申请已提交</h2>
+    <p style="margin:0 0 12px;font-size:16px;font-weight:500;color:#333;">
+      订单号：#${displayId}
+    </p>
+    <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#555;">
+      您的换货申请已提交，确认后我们将安排后续物流。
+    </p>
+    <div style="text-align:center;margin-bottom:24px;">
+      ${buttonHtml("查看订单", detailUrl)}
+    </div>
+  `)
+  await sendEmail(email, `订单 #${displayId} 换货申请`, html, "returns")
+}
+
 export async function sendOrderDeliveredEmail(
   email: string,
   displayId: number | string,

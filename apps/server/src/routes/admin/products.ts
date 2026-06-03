@@ -50,7 +50,9 @@ export const adminProducts = new Hono<{ Variables: AuthVariables }>()
   })
   .post("/export", async (c) => {
     const body = await c.req.json().catch(() => ({}))
-    const result = await productExportService.export(body)
+    const result = await productExportService.export(body, {
+      receiver_id: c.get("user").actor_id,
+    })
     return c.json(result)
   })
   .post("/import", async (c) => {
@@ -73,7 +75,10 @@ export const adminProducts = new Hono<{ Variables: AuthVariables }>()
     return c.json({ message: "请提供 CSV 文件或 csv 字段" }, 400)
   })
   .post("/import/:transactionId/confirm", async (c) => {
-    const result = await productImportService.confirm(c.req.param("transactionId"))
+    const result = await productImportService.confirm(
+      c.req.param("transactionId"),
+      { receiver_id: c.get("user").actor_id },
+    )
     return c.json(result)
   })
   .post("/:id", zValidator("json", updateProductSchema), async (c) => {

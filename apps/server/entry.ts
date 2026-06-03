@@ -1,9 +1,11 @@
 /**
  * 生产 / Bun compile 入口（与 entry.node.ts 相同）
  */
-import { loadEnv, maskDatabaseUrl } from "./load-env"
+import { loadEnv } from "./load-env"
 import { serve } from "@hono/node-server"
+import { closeDb } from "@my-store/db"
 import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
+import { logDbPoolAtStartup } from "./src/lib/log-db-pool"
 import { app, appMount } from "./src/app"
 import { logServerStartup } from "./src/lib/log-startup"
 
@@ -11,12 +13,7 @@ loadEnv()
 
 const dbUrl = process.env.DATABASE_URL
 if (dbUrl) {
-  console.log(`📦 DATABASE_URL → ${maskDatabaseUrl(dbUrl)}`)
-  if (dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1")) {
-    console.warn(
-      "⚠️  当前连接指向本机 PostgreSQL。若使用 Supabase，请检查 apps/server/.env 并完整重启。"
-    )
-  }
+  logDbPoolAtStartup(dbUrl)
 }
 
 void getHealthStatus().then(({ payload }) => {
@@ -42,3 +39,16 @@ server.on("error", (err: NodeJS.ErrnoException) => {
 })
 
 logServerStartup(port, appMount)
+
+let isShuttingDown = false
+async function gracefulShutdown(signal: string) {
+  if (isShuttingDown) return
+  isShuttingDown = true
+  console.log(`\n${signal}: closing DB pool…`)
+  await closeDb()
+  server.close(() => process.exit(0))
+  setTimeout(() => process.exit(0), 3000).unref()
+}
+
+process.on("SIGINT", () => void gracefulShutdown("SIGINT"))
+process.on("SIGTERM", () => void gracefulShutdown("SIGTERM"))

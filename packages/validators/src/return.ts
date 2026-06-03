@@ -23,6 +23,7 @@ export const receiveReturnSchema = z.object({
     received_quantity: z.number().min(0).optional(),
     damaged_quantity: z.number().min(0).optional(),
   })),
+  no_notification: z.boolean().optional(),
 })
 
 export type ReceiveReturnInput = z.infer<typeof receiveReturnSchema>

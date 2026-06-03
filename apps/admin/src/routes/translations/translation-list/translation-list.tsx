@@ -12,7 +12,7 @@ import {
 } from "../../../hooks/api"
 import { ActiveLocalesSection } from "./components/active-locales-section/active-locales-section"
 import { TranslationListSection } from "./components/translation-list-section/translation-list-section"
-import { TranslationsCompletionSection } from "./components/translations-completion-section/translations-completion-section"
+import { TranslationsCompletionSection } from "./components/translations-completion-section"
 import { ListCheckbox } from "@medusajs/icons"
 
 export type TranslatableEntity = {

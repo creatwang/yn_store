@@ -21,7 +21,6 @@ import {
   promotionRule,
   promotionRuleValue,
   apiKey,
-  notification,
   workflowExecution,
   pricePreference,
   propertyLabel,
@@ -547,8 +546,7 @@ export const campaignService = { list: mkl(promotionCampaign, "campaigns"), getB
 // ── API Keys ───────────────────────────────────────────────
 export const apiKeyService = { list: mkl(apiKey, "api_keys"), getById: mkg(apiKey, "api_keys"), create: mkc(apiKey, "ak", "api_keys"), update: mku(apiKey, "api_keys"), delete: mkdel(apiKey) }
 
-// ── Notifications ──────────────────────────────────────────
-export const notificationService = { list: mkl(notification, "notifications"), getById: mkg(notification, "notifications") }
+// Notifications: use services/notification.service.ts (adminNotifications routes)
 
 // ── Workflow Executions ────────────────────────────────────
 export const workflowExecutionService = { list: mkl(workflowExecution, "workflow_executions"), getById: mkg(workflowExecution, "workflow_executions") }

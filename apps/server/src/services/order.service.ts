@@ -46,6 +46,7 @@ import {
   presentAdminOrderDetail,
   presentAdminOrders,
 } from "./order"
+import { insertOrderLineItemPair } from "./order/order-line-item-write"
 import { toCsv } from "../lib/csv"
 
 const EXPORT_DIR = path.resolve(process.cwd(), "public/exports")
@@ -219,10 +220,14 @@ export const orderService = {
         })
         .returning()
 
+      for (const item of input.items ?? []) {
+        await insertOrderLineItemPair(tx, id, item)
+      }
+
       return row
     })
 
-    return { order: created }
+    return this.getById(created.id)
   },
 
   async addNote(orderId: string, value: string) {
@@ -698,45 +703,9 @@ export const orderService = {
   },
 
   async addLineItem(orderId: string, input: import("@my-store/validators").AddLineItemToOrderInput) {
-    const lineItemId = generateId("olitm")
-    const orderItemId = generateId("orditm")
-
-    await runInTransaction(async (tx) => {
-      await tx.insert(orderLineItem).values({
-        id: lineItemId,
-        title: "",
-        variant_id: input.variant_id ?? null,
-        product_id: null,
-        requires_shipping: true,
-        is_giftcard: false,
-        is_discountable: true,
-        is_tax_inclusive: false,
-        unit_price: input.unit_price ? String(input.unit_price) : null,
-        raw_unit_price: input.unit_price
-          ? { amount: input.unit_price, precision: 2 }
-          : null,
-      })
-
-      await tx.insert(orderItem).values({
-        id: orderItemId,
-        version: 1,
-        order_id: orderId,
-        item_id: lineItemId,
-        quantity: String(input.quantity),
-        raw_quantity: { amount: input.quantity, precision: 0 },
-        unit_price: input.unit_price ? String(input.unit_price) : null,
-        raw_unit_price: input.unit_price
-          ? { amount: input.unit_price, precision: 2 }
-          : null,
-        fulfilled_quantity: "0",
-        shipped_quantity: "0",
-        delivered_quantity: "0",
-        return_requested_quantity: "0",
-        return_received_quantity: "0",
-        return_dismissed_quantity: "0",
-        written_off_quantity: "0",
-      })
-    })
+    const { lineItemId, orderItemId } = await runInTransaction(async (tx) =>
+      insertOrderLineItemPair(tx, orderId, input),
+    )
 
     return { line_item: { id: lineItemId, order_item_id: orderItemId } }
   },

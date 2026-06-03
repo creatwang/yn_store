@@ -15,6 +15,7 @@ import {
   removeChangeShippingAction,
   updateChangeShippingAction,
 } from "../lib/order-change-shipping"
+import { notifyClaimRequested } from "../lib/notify-customer"
 
 export const claimService = {
   async list(query: AdminListClaimsParamsType) {
@@ -216,6 +217,11 @@ export const claimService = {
       metadata: meta,
     }).where(and(eq(orderClaim.id, claimId), isNull(orderClaim.deleted_at))).returning()
     if (!updated) throw new HTTPException(404, { message: "Claim not found" })
+    await notifyClaimRequested(
+      claimId,
+      existing.claim.order_id,
+      input?.no_notification,
+    )
     return { claim: updated }
   },
 

@@ -408,19 +408,11 @@ async function loadChangeShippingForPreview(
     )
     .orderBy(asc(orderChangeAction.ordering))
 
-  if (actions.length) {
-    return shippingMethodsFromChangeActions(actions, returnId, ctx)
-  }
-  return null
+  return shippingMethodsFromChangeActions(actions, returnId, ctx)
 }
 
 function sumReturnRequested(items: Record<string, unknown>[]) {
   return items.reduce((acc, i) => acc + num(i.return_requested_total), 0)
-}
-
-function shippingFromMeta(meta: Record<string, unknown>) {
-  const methods = meta.shipping_methods ?? meta.inbound_shipping
-  return Array.isArray(methods) ? (methods as Array<Record<string, unknown>>) : []
 }
 
 export async function createCompanionReturn(orderId: string, orderVersion = 1) {
@@ -483,10 +475,13 @@ export async function buildAdminOrderPreview(orderId: string) {
     if (ret) {
       const riRows = await db.select().from(returnItem).where(eq(returnItem.return_id, ret.id))
       applyReturnItems(items, ret.id, riRows)
-      const returnShipping = shippingFromMeta((ret.metadata ?? {}) as Record<string, unknown>)
-      if (returnShipping.length) {
-        shipping_methods = buildShippingMethods(returnShipping, ret.id, true) as Record<string, unknown>[]
-      }
+      const returnShipping = await loadChangeShippingForPreview(
+        db,
+        activeChange.id,
+        ret.id,
+        {},
+      )
+      shipping_methods = returnShipping.inbound as Record<string, unknown>[]
     }
   }
 
@@ -500,23 +495,16 @@ export async function buildAdminOrderPreview(orderId: string) {
       const meta = (ex.metadata ?? {}) as Record<string, unknown>
       applyMetadataInbound(items, activeChange.return_id, ex.id, null, (meta.inbound_items as any[]) ?? [])
       await appendOutboundItems(db, items, (meta.outbound_items as any[]) ?? [], { exchangeId: ex.id })
-      const fromActions = await loadChangeShippingForPreview(
+      const exchangeShipping = await loadChangeShippingForPreview(
         db,
         activeChange.id,
         activeChange.return_id,
         { exchange_id: ex.id },
       )
-      if (fromActions) {
-        shipping_methods = [
-          ...fromActions.inbound,
-          ...fromActions.outbound,
-        ] as Record<string, unknown>[]
-      } else {
-        shipping_methods = [
-          ...buildShippingMethods((meta.inbound_shipping as any[]) ?? [], activeChange.return_id, true, { exchange_id: ex.id }),
-          ...buildShippingMethods((meta.outbound_shipping as any[]) ?? [], null, false, { exchange_id: ex.id }),
-        ] as Record<string, unknown>[]
-      }
+      shipping_methods = [
+        ...exchangeShipping.inbound,
+        ...exchangeShipping.outbound,
+      ] as Record<string, unknown>[]
     }
   }
 
@@ -557,23 +545,16 @@ export async function buildAdminOrderPreview(orderId: string) {
         applyMetadataInbound(items, activeChange.return_id, null, cl.id, (meta.inbound_items as any[]) ?? [])
       }
       await appendOutboundItems(db, items, (meta.outbound_items as any[]) ?? [], { claimId: cl.id })
-      const fromActions = await loadChangeShippingForPreview(
+      const claimShipping = await loadChangeShippingForPreview(
         db,
         activeChange.id,
         activeChange.return_id,
         { claim_id: cl.id },
       )
-      if (fromActions) {
-        shipping_methods = [
-          ...fromActions.inbound,
-          ...fromActions.outbound,
-        ] as Record<string, unknown>[]
-      } else {
-        shipping_methods = [
-          ...buildShippingMethods((meta.inbound_shipping as any[]) ?? [], activeChange.return_id, true, { claim_id: cl.id }),
-          ...buildShippingMethods((meta.outbound_shipping as any[]) ?? [], null, false, { claim_id: cl.id }),
-        ] as Record<string, unknown>[]
-      }
+      shipping_methods = [
+        ...claimShipping.inbound,
+        ...claimShipping.outbound,
+      ] as Record<string, unknown>[]
     }
   }
 

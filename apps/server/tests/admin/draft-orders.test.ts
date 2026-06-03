@@ -40,6 +40,32 @@ describe("Admin 草稿订单 API", () => {
       expect(body.draft_order.is_draft_order).toBe(true)
       createdIds.push(body.draft_order.id)
     })
+
+    it("items[].variant_id 创建时写入行项目（对齐官方 AdminCreateDraftOrder）", async () => {
+      const email = `draft_items_${Date.now()}@example.com`
+      const region_id = await defaultRegionId()
+      const prodRes = await apiPost("/admin/products", {
+        title: `draft_prod_${Date.now()}`,
+      })
+      const productId = (await prodRes.json()).product.id as string
+      const variantRes = await apiPost(`/admin/products/${productId}/variants`, {
+        title: "Default",
+        sku: `DRAFT_${Date.now()}`,
+      })
+      const variantId = (await variantRes.json()).variant.id as string
+
+      const res = await apiPost("/admin/draft-orders", {
+        email,
+        region_id,
+        currency_code: "USD",
+        items: [{ variant_id: variantId, quantity: 1, unit_price: 12 }],
+      })
+      expect(res.status).toBe(201)
+      const body = await res.json()
+      expect(body.draft_order.items?.length).toBeGreaterThanOrEqual(1)
+      expect(body.draft_order.items[0].variant_id).toBe(variantId)
+      createdIds.push(body.draft_order.id)
+    })
   })
 
   describe("GET /api/admin/draft-orders — 列表", () => {

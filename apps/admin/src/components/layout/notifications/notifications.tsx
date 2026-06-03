@@ -206,8 +206,8 @@ const NotificationsEmptyState = ({ t }: { t: TFunction }) => {
 const useUnreadNotifications = () => {
   const [hasUnread, setHasUnread] = useState(false)
   const { notifications } = useNotifications(
-    { limit: 1, offset: 0, fields: "created_at" },
-    { refetchInterval: 60_000 }
+    { limit: 1, offset: 0, fields: "created_at", channel: "feed" },
+    { refetchInterval: 60_000 },
   )
   const lastNotification = notifications?.[0]
 

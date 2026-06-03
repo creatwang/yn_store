@@ -1,5 +1,6 @@
 import type { ErrorHandler } from "hono"
 import { HTTPException } from "hono/http-exception"
+import { DbPoolWaitTimeoutError } from "@my-store/db"
 import { formatDbError } from "../lib/check-db"
 
 function isDev() {
@@ -52,6 +53,13 @@ export const errorHandler: ErrorHandler = (err, c) => {
   }
 
   console.error(err)
+
+  if (err instanceof DbPoolWaitTimeoutError) {
+    return c.json(
+      { message: err.message, type: "database_pool_busy" },
+      503,
+    )
+  }
 
   if (isDbConnectivityError(err)) {
     const message = getUnknownErrorMessage(err)

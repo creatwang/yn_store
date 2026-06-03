@@ -19,7 +19,7 @@ const _orderKeys = queryKeysFactory(ORDERS_QUERY_KEY) as TQueryKey<"orders"> & {
   preview: (orderId: string) => any
   changes: (orderId: string) => any
   lineItems: (orderId: string, query?: any) => any
-  shippingOptions: (orderId: string) => any
+  shippingOptions: (orderId: string, query?: any) => any
 }
 
 _orderKeys.preview = function (id: string) {
@@ -36,8 +36,10 @@ _orderKeys.lineItems = function (id: string, query?: any) {
   )
 }
 
-_orderKeys.shippingOptions = function (id: string) {
-  return [this.detail(id), "shippingOptions"]
+_orderKeys.shippingOptions = function (id: string, query?: any) {
+  return [this.detail(id), query ? { query } : undefined, "shippingOptions"].filter(
+    (k) => !!k
+  )
 }
 
 export const ordersQueryKeys = _orderKeys
@@ -174,7 +176,7 @@ export const useOrderShippingOptions = (
 ) => {
   const { data, ...rest } = useQuery({
     queryFn: async () => sdk.admin.order.listShippingOptions(id, query),
-    queryKey: ordersQueryKeys.shippingOptions(id),
+    queryKey: ordersQueryKeys.shippingOptions(id, query),
     ...options,
   })
 

@@ -27,6 +27,7 @@ import {
   removeChangeShippingAction,
   updateChangeShippingAction,
 } from "../lib/order-change-shipping"
+import { notifyReturnRequested } from "../lib/notify-customer"
 
 type ReturnItemInput = {
   item_id: string
@@ -186,8 +187,12 @@ export const returnService = {
     return this.getById(id)
   },
 
-  async confirmRequest(id: string, _input?: Record<string, unknown>) {
+  async confirmRequest(
+    id: string,
+    input?: { no_notification?: boolean },
+  ) {
     const db = getDb()
+    const current = await this.getById(id)
     const [updated] = await db
       .update(orderReturn)
       .set({
@@ -201,6 +206,12 @@ export const returnService = {
     if (!updated) {
       throw new HTTPException(404, { message: "Return not found" })
     }
+
+    await notifyReturnRequested(
+      id,
+      current.return.order_id,
+      input?.no_notification,
+    )
 
     return this.getById(id)
   },

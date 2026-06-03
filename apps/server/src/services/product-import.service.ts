@@ -15,6 +15,7 @@ import { HTTPException } from "hono/http-exception"
 import { parseCsv, rowsToObjects, toCsv } from "../lib/csv"
 import { slugify } from "../lib/slug"
 import { runInTransaction, type DbTx } from "../lib/transaction"
+import { notificationService } from "./notification.service"
 
 const IMPORT_DIR = path.resolve(process.cwd(), "public/imports")
 const EXPORT_DIR = path.resolve(process.cwd(), "public/exports")
@@ -172,7 +173,10 @@ export const productImportService = {
     return { transaction_id: transactionId, summary }
   },
 
-  async confirm(transactionId: string) {
+  async confirm(
+    transactionId: string,
+    options?: { receiver_id?: string },
+  ) {
     const filePath = path.join(IMPORT_DIR, `${transactionId}.json`)
     if (!existsSync(filePath)) {
       throw new HTTPException(404, { message: "导入事务不存在或已过期" })
@@ -180,7 +184,7 @@ export const productImportService = {
 
     const stored = JSON.parse(await readFile(filePath, "utf-8")) as StoredImport
 
-    return runInTransaction(async (db) => {
+    const result = await runInTransaction(async (db) => {
     const createdProducts: string[] = []
     const updatedProducts: string[] = []
 
@@ -317,11 +321,26 @@ export const productImportService = {
       updated_count: updatedProducts.length,
     }
     })
+
+    await notificationService.sendFeed({
+      title: "商品导入完成",
+      description: `新建 ${result.created_count} 个、更新 ${result.updated_count} 个商品`,
+      receiver_id: options?.receiver_id,
+      trigger_type: "product.import.completed",
+      resource_id: transactionId,
+      resource_type: "product_import",
+      idempotency_key: `product-import-feed-${transactionId}`,
+    })
+
+    return result
   },
 }
 
 export const productExportService = {
-  async export(query?: { product_ids?: string[]; limit?: number }) {
+  async export(
+    query?: { product_ids?: string[]; limit?: number },
+    options?: { receiver_id?: string },
+  ) {
     const db = getDb()
     const limit = query?.limit ?? 500
     const conditions = [isNull(product.deleted_at)]
@@ -437,10 +456,28 @@ export const productExportService = {
     const filename = `${transactionId}.csv`
     await writeFile(path.join(EXPORT_DIR, filename), csv, "utf-8")
 
-    return {
+    const downloadUrl = `/api/admin/products/export/${transactionId}`
+    const result = {
       transaction_id: transactionId,
-      url: `/exports/${filename}`,
+      url: downloadUrl,
       count: csvRows.length,
     }
+
+    await notificationService.sendFeed({
+      title: "商品导出完成",
+      description: `共导出 ${csvRows.length} 行，可下载 CSV`,
+      file: {
+        filename,
+        url: downloadUrl,
+        mimeType: "text/csv",
+      },
+      receiver_id: options?.receiver_id,
+      trigger_type: "product.export.completed",
+      resource_id: transactionId,
+      resource_type: "product_export",
+      idempotency_key: `product-export-feed-${transactionId}`,
+    })
+
+    return result
   },
 }

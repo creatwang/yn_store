@@ -7,7 +7,7 @@ import { useVariants } from "../../../hooks/api"
 import { useDataTable } from "../../../hooks/use-data-table"
 import { hasStockAtLocation } from "../../../lib/rma-inventory"
 import {
-  useOrderEditItemTableColumns,
+  useOrderEditItemsTableColumns,
 } from "../order-create-edit/components/add-order-edit-items-table/use-order-edit-item-table-columns"
 import {
   useOrderEditItemTableFilters,
@@ -62,7 +62,7 @@ export function AddOutboundVariantItemsTable({
     fields: "*inventory_items.inventory.location_levels,+inventory_quantity",
   })
 
-  const columns = useOrderEditItemTableColumns(currencyCode)
+  const columns = useOrderEditItemsTableColumns(currencyCode)
   const filters = useOrderEditItemTableFilters()
 
   const { table } = useDataTable({

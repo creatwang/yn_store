@@ -1,6 +1,16 @@
 import { sql } from "drizzle-orm"
-import { getDb } from "@my-store/db"
+import { describeDbPool, getDb, getDbGateStats } from "@my-store/db"
 import { getAppUiMountStatus } from "../host/mount-app"
+
+export type HealthDbPool = {
+  maxActive: number
+  maxWaitMs: number
+  maxWaitLabel: string
+  gate: {
+    active: number
+    waiting: number
+  } | null
+}
 
 export type HealthPayload = {
   status: "ok" | "degraded"
@@ -10,7 +20,23 @@ export type HealthPayload = {
     mounted: boolean
     path: "/app"
   }
+  db_pool?: HealthDbPool
   message?: string
+}
+
+function buildHealthDbPool(): HealthDbPool | undefined {
+  const url = process.env.DATABASE_URL
+  if (!url) return undefined
+  const described = describeDbPool(url)
+  const gate = getDbGateStats()
+  return {
+    maxActive: described.maxActive,
+    maxWaitMs: described.maxWaitMs,
+    maxWaitLabel: described.maxWaitLabel,
+    gate: gate
+      ? { active: gate.active, waiting: gate.waiting }
+      : null,
+  }
 }
 
 export async function checkDatabaseConnection(): Promise<{
@@ -58,6 +84,7 @@ export async function getHealthStatus(): Promise<{
       timestamp,
       database: "connected",
       admin_ui,
+      db_pool: buildHealthDbPool(),
     },
     statusCode: 200,
   }
@@ -109,7 +136,7 @@ export function formatDbError(err: unknown): string {
     return (
       "数据库连接中断或超时（可能被 Supabase 断开，或与 Session 池打满有关）。" +
       "单例只保证每个 Node 进程一个池，无法跨 dev/vitest/多终端共享限额。" +
-      "请保持单实例 server、勿同时跑 vitest，Session pooler(:5432) 建议 DB_POOL_MAX=2，或改用 :6543 Transaction pooler。"
+      "请保持单实例 server、勿同时跑 vitest；DB_POOL_MAX 默认 20，占满会排队（DB_MAX_WAIT_MS=0 无限等）。"
     )
   }
 
@@ -120,7 +147,7 @@ export function formatDbError(err: unknown): string {
   ) {
     return (
       "数据库 Session 连接池已满（Supabase 默认上限 15）。请关闭多余 dev/test 进程、" +
-      "勿同时跑 Vitest 与 pnpm dev，并确认 apps/server/.env 使用 pooler 且 DB_POOL_MAX≤4。"
+      "勿同时跑 Vitest 与 pnpm dev；减少并行进程数或调小 DB_POOL_MAX。"
     )
   }
 

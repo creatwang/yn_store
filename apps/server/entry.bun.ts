@@ -1,5 +1,7 @@
-import { loadEnv, maskDatabaseUrl } from "./load-env"
+import { loadEnv } from "./load-env"
+import { closeDb } from "@my-store/db"
 import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
+import { logDbPoolAtStartup } from "./src/lib/log-db-pool"
 import { app, appMount } from "./src/app"
 import { logServerStartup } from "./src/lib/log-startup"
 
@@ -10,8 +12,10 @@ const port = Number(process.env.PORT) || 7000
 
 const dbUrl = process.env.DATABASE_URL
 if (dbUrl) {
-  console.log(`📦 DATABASE_URL → ${maskDatabaseUrl(dbUrl)}`)
+  logDbPoolAtStartup(dbUrl)
 }
+
+process.on("beforeExit", () => void closeDb())
 
 void getHealthStatus().then(({ payload }) => {
   logHealthToConsole(payload, "startup")

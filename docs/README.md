@@ -37,7 +37,7 @@
 |------|------|:----:|
 | [workflow-plan.md](workflow-plan.md) | Workflow 引擎 vs rollback vs `db.transaction` | ✅ |
 | [ADMIN-UI-ITERATION-01.md](ADMIN-UI-ITERATION-01.md) | Admin 订单/RMA UI 迭代 01（S1–S4 已完成） | ✅ 历史+验收 |
-| [DB-POOL-CONCURRENCY.md](DB-POOL-CONCURRENCY.md) | Supabase :5432/:6543、连接池、并发 | ✅ |
+| [DB-POOL-CONCURRENCY.md](DB-POOL-CONCURRENCY.md) | Druid 式连接池（大池 + 排队等待） | ✅ |
 | [ORDERS-PRODUCTS-1TO1.md](ORDERS-PRODUCTS-1TO1.md) | 订单行与产品 1:1 对齐说明 | ✅ |
 | [DRAFT-ORDERS-1TO1.md](DRAFT-ORDERS-1TO1.md) | 草稿订单与产品 1:1 对齐说明 | ✅ |
 | [MIGRATION.md](MIGRATION.md) | 迁移指南 | ✅ |
