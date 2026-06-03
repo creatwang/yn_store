@@ -3,59 +3,133 @@ import postgres from "postgres"
 import type { Sql } from "postgres"
 import * as schema from "./schema"
 
-export type Database = ReturnType<typeof createDb>
+const GLOBAL_DB_KEY = "__myStoreDbSingleton__" as const
 
-let _db: Database | null = null
-let _client: Sql | null = null
+type DbSingleton = {
+  drizzle: Database
+  sql: Sql
+  connectionString: string
+}
+
+type GlobalWithDb = typeof globalThis & {
+  [GLOBAL_DB_KEY]?: DbSingleton
+}
+
+function getGlobalStore(): GlobalWithDb {
+  return globalThis as GlobalWithDb
+}
+
+function readSingleton(): DbSingleton | undefined {
+  return getGlobalStore()[GLOBAL_DB_KEY]
+}
+
+function writeSingleton(entry: DbSingleton | undefined) {
+  if (entry) {
+    getGlobalStore()[GLOBAL_DB_KEY] = entry
+  } else {
+    delete getGlobalStore()[GLOBAL_DB_KEY]
+  }
+}
 
 function resolvePoolMax() {
   if (process.env.DB_POOL_MAX) return Number(process.env.DB_POOL_MAX)
-  // Supabase Session 模式 pool_size=15，且多进程/并行 HTTP 会叠加占用
   if (process.env.VITEST) return 3
   return 4
 }
 
-export function createDb(connectionString: string) {
-  const client = postgres(connectionString, {
+function createDrizzleInstance(sql: Sql) {
+  return drizzle(sql, { schema })
+}
+
+export type Database = ReturnType<typeof createDrizzleInstance>
+
+function attachSingleton(connectionString: string): Database {
+  const existing = readSingleton()
+  if (existing?.connectionString === connectionString) {
+    return existing.drizzle
+  }
+
+  if (existing) {
+    void existing.sql.end({ timeout: 5 }).catch(() => {})
+  }
+
+  const sql = postgres(connectionString, {
     max: resolvePoolMax(),
     idle_timeout: 20,
   })
-  _client = client
-  return drizzle(client, { schema })
-}
 
-export function getDb(): Database {
-  if (!_db) {
-    const url = process.env.DATABASE_URL
-    if (!url) {
-      throw new Error("DATABASE_URL is not set")
-    }
-    _db = createDb(url)
+  const entry: DbSingleton = {
+    sql,
+    drizzle: createDrizzleInstance(sql),
+    connectionString,
   }
-  return _db
+
+  writeSingleton(entry)
+  return entry.drizzle
 }
 
-export function setDb(db: Database) {
-  _db = db
+/**
+ * 创建或复用全局连接池（同一 connectionString 不会重复建池）。
+ * 测试注入请优先用 setDb / replaceDb / closeDb。
+ */
+export function createDb(connectionString: string): Database {
+  return attachSingleton(connectionString)
 }
 
-/** 替换 DB 实例时关闭旧连接，避免 Vitest 多文件泄漏 pool 槽位 */
+/** 进程内唯一连接池；热更新复用 globalThis，避免重复 postgres() 实例 */
+export function getDb(): Database {
+  const url = process.env.DATABASE_URL
+  if (!url) {
+    throw new Error("DATABASE_URL is not set")
+  }
+  return attachSingleton(url)
+}
+
+/** 与 getDb() 相同单例，便于 `db.select()` 写法 */
+export const db: Database = new Proxy({} as Database, {
+  get(_target, prop) {
+    const instance = getDb()
+    const value = Reflect.get(instance, prop, instance)
+    if (typeof value === "function") {
+      return (value as (...args: unknown[]) => unknown).bind(instance)
+    }
+    return value
+  },
+})
+
+/** 测试注入：须与 createDb() 返回的实例一致，或先 createDb 再 setDb */
+export function setDb(next: Database) {
+  const current = readSingleton()
+  if (current?.drizzle === next) {
+    return
+  }
+
+  if (current) {
+    writeSingleton({ ...current, drizzle: next })
+    return
+  }
+
+  const url = process.env.DATABASE_URL
+  if (!url) {
+    throw new Error("setDb: DATABASE_URL is not set; use createDb() first")
+  }
+  createDb(url)
+}
+
 export async function replaceDb(connectionString: string) {
   await closeDb()
-  _db = createDb(connectionString)
-  return _db
+  return createDb(connectionString)
 }
 
-/** 开发时 .env 变更后需重置连接池（一般由 tsx 重启进程，通常不必手动调用） */
 export function resetDb() {
-  _db = null
+  writeSingleton(undefined)
 }
 
-/** 测试 teardown：关闭 postgres 连接，释放 Supabase pool 槽位 */
+/** 测试 teardown / 切换库：关闭并清除全局池 */
 export async function closeDb() {
-  if (_client) {
-    await _client.end({ timeout: 5 })
-    _client = null
+  const current = readSingleton()
+  writeSingleton(undefined)
+  if (current) {
+    await current.sql.end({ timeout: 5 }).catch(() => {})
   }
-  _db = null
 }
