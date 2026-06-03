@@ -179,10 +179,22 @@ export const claimService = {
 
   // ── Claim Request / Shipment ─────────────────────────
 
-  async request(claimId: string) {
+  async request(
+    claimId: string,
+    input?: { no_notification?: boolean },
+  ) {
     const db = getDb()
+    const { claim: existing } = await this.getById(claimId)
+    const meta = {
+      ...(((existing as { metadata?: Record<string, unknown> }).metadata) ??
+        {}),
+      requested_at: new Date().toISOString(),
+    }
+    if (input?.no_notification != null) {
+      meta.no_notification = input.no_notification
+    }
     const [updated] = await db.update(orderClaim).set({
-      metadata: sql`jsonb_set(COALESCE(metadata, '{}'::jsonb), '{requested_at}', to_jsonb(now()::text))`,
+      metadata: meta,
     }).where(and(eq(orderClaim.id, claimId), isNull(orderClaim.deleted_at))).returning()
     if (!updated) throw new HTTPException(404, { message: "Claim not found" })
     return { claim: updated }

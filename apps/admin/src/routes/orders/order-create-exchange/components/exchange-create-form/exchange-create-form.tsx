@@ -37,6 +37,10 @@ import { useUpdateOrderChange } from "../../../../../hooks/api/orders"
 import { currencies } from "../../../../../lib/data/currencies"
 import { ExchangeInboundSection } from "./exchange-inbound-section.tsx"
 import { ExchangeOutboundSection } from "./exchange-outbound-section"
+import {
+  fetchVariantInventoryMap,
+  findOutboundQuantityViolation,
+} from "../../../../../lib/rma-inventory"
 
 type ReturnCreateFormProps = {
   order: AdminOrder
@@ -233,6 +237,30 @@ export const ExchangeCreateForm = ({
 
       if (!res) {
         return
+      }
+
+      const locationId = data.location_id
+      const outboundItems = data.outbound_items ?? []
+      if (locationId && outboundItems.length) {
+        const variantIds = outboundItems
+          .map((i) => i.variant_id)
+          .filter(Boolean) as string[]
+        const inventoryMap = await fetchVariantInventoryMap(variantIds)
+        const violation = findOutboundQuantityViolation(
+          outboundItems,
+          inventoryMap,
+          locationId,
+          {
+            skipVariant: (variantId) => {
+              const line = order.items?.find((i) => i.variant_id === variantId)
+              return line?.variant?.manage_inventory === false
+            },
+          },
+        )
+        if (violation) {
+          toast.error(t("orders.returns.noInventoryLevelDesc"))
+          return
+        }
       }
 
       await confirmExchangeRequest({ no_notification: !data.send_notification })

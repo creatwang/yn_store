@@ -55,6 +55,7 @@ import {
 import { useUpdateOrderChange } from "../../../../../hooks/api/orders"
 import { useUpdateReturn } from "../../../../../hooks/api/returns"
 import { sdk } from "../../../../../lib/client"
+import { findOutboundQuantityViolation } from "../../../../../lib/rma-inventory"
 import { currencies } from "../../../../../lib/data/currencies"
 import { ReturnShippingPlaceholder } from "../../../common/placeholders"
 import { ClaimOutboundSection } from "./claim-outbound-section"
@@ -109,14 +110,11 @@ export const ClaimCreateForm = ({
   /**
    * MUTATIONS
    */
-  // TODO: implement confirm claim request
   const { mutateAsync: confirmClaimRequest, isPending: isConfirming } =
     useClaimConfirmRequest(claim.id, order.id)
 
   const { mutateAsync: cancelClaimRequest, isPending: isCanceling } =
     useCancelClaimRequest(claim.id, order.id)
-
-  // TODO: implement update claim request
 
   const { mutateAsync: updateReturn, isPending: isUpdating } = useUpdateReturn(
     preview?.order_change?.return_id!,
@@ -409,6 +407,27 @@ export const ClaimCreateForm = ({
     })
 
     if (!res) {
+      return
+    }
+
+    if (showLevelsWarning) {
+      toast.error(t("orders.returns.noInventoryLevel"))
+      return
+    }
+
+    const violation = findOutboundQuantityViolation(
+      form.getValues("outbound_items") ?? [],
+      inventoryMap,
+      locationId,
+      {
+        skipVariant: (variantId) => {
+          const line = order.items?.find((i) => i.variant_id === variantId)
+          return line?.variant?.manage_inventory === false
+        },
+      },
+    )
+    if (violation) {
+      toast.error(t("orders.returns.noInventoryLevelDesc"))
       return
     }
 

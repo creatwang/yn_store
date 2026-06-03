@@ -152,10 +152,22 @@ export const exchangeService = {
   },
 
   // ── Actions ──────────────────────────────────────────
-  async request(exchangeId: string) {
+  async request(
+    exchangeId: string,
+    input?: { no_notification?: boolean },
+  ) {
     const db = getDb()
+    const { exchange: existing } = await this.getById(exchangeId)
+    const meta = {
+      ...(((existing as { metadata?: Record<string, unknown> }).metadata) ??
+        {}),
+      requested_at: new Date().toISOString(),
+    }
+    if (input?.no_notification != null) {
+      meta.no_notification = input.no_notification
+    }
     const [updated] = await db.update(orderExchange).set({
-      metadata: sql`jsonb_set(COALESCE(metadata, '{}'::jsonb), '{requested_at}', to_jsonb(now()::text))`,
+      metadata: meta,
     }).where(and(eq(orderExchange.id, exchangeId), isNull(orderExchange.deleted_at))).returning()
     if (!updated) throw new HTTPException(404, { message: "Exchange not found" })
     return { exchange: updated }

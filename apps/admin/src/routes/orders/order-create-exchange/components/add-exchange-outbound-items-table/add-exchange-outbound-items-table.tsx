@@ -1,2 +1,2 @@
 // @ts-nocheck
-export const stub = {}
+export { AddOutboundVariantItemsTable as AddExchangeOutboundItemsTable } from "../../../common/add-outbound-variant-items-table"

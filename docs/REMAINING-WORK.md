@@ -90,9 +90,16 @@
 | `apps/server` 全量 `tsc --noEmit` 零错 | 🟡 有历史 TS 债 |
 | Vitest Loader（storefront） | ❌ 可选 |
 
-### Admin UI（Medusa 拷贝 TODO，API 已通）
+### Admin UI 迭代 01（2026-06-01）
 
-- 履约状态筛选、Claim confirm UI、换货 outbound 表单等 — 需逐页改 React，非本轮范围
+| 切片 | 状态 |
+|------|:----:|
+| S1 备注 + 列表筛选 | ✅ |
+| S2 订单编辑 + 退货 | ✅ 核心 |
+| S3 Claim 全流程 | ✅ |
+| S4 Exchange + 分配库存 UX | ✅ |
+
+详见 [ADMIN-UI-ITERATION-01.md](./ADMIN-UI-ITERATION-01.md)。剩余：shipping options API 级 boolean 筛选、bulk allocate 端点（迭代 02）。
 
 ---
 

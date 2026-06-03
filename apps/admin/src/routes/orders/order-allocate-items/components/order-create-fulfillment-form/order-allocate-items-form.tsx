@@ -70,8 +70,7 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
     )
   }, [itemsToAllocate, filterTerm])
 
-  // TODO - empty state UI
-  // const noItemsToAllocate = !itemsToAllocate.length
+  const noItemsToAllocate = !itemsToAllocate.length
 
   const form = useForm<AllocateItemsSchemaType>({
     defaultValues: {
@@ -230,6 +229,13 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
             <div className="flex w-full max-w-[736px] flex-col justify-center px-2 pb-2">
               <div className="flex flex-col gap-8 divide-y divide-dashed">
                 <Heading>{t("orders.allocateItems.title")}</Heading>
+                {noItemsToAllocate ? (
+                  <Alert className="mt-8" variant="warning">
+                    <Text size="small" className="text-ui-fg-subtle">
+                      {t("orders.allocateItems.noItemsToAllocate")}
+                    </Text>
+                  </Alert>
+                ) : null}
                 <div className="flex-1 divide-y divide-dashed pt-8">
                   <Form.Field
                     control={form.control}
@@ -329,7 +335,9 @@ export function OrderAllocateItemsForm({ order }: OrderAllocateItemsFormProps) {
               size="small"
               type="submit"
               isLoading={isMutating}
-              disabled={!selectedLocationId || disableSubmit}
+              disabled={
+                noItemsToAllocate || !selectedLocationId || disableSubmit
+              }
             >
               {t("orders.allocateItems.action")}
             </Button>

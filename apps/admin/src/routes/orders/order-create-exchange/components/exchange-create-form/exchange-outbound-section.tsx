@@ -25,6 +25,7 @@ import {
   useUpdateExchangeOutboundItems,
 } from "../../../../../hooks/api/exchanges"
 import { sdk } from "../../../../../lib/client"
+import { getAvailableAtLocation } from "../../../../../lib/rma-inventory"
 import { OutboundShippingPlaceholder } from "../../../common/placeholders"
 import { ItemPlaceholder } from "../../../order-create-claim/components/claim-create-form/item-placeholder"
 import { AddExchangeOutboundItemsTable } from "../add-exchange-outbound-items-table"
@@ -62,7 +63,6 @@ export const ExchangeOutboundSection = ({
    */
   const { shipping_options = [] } = useOrderShippingOptions(order.id)
 
-  // TODO: filter in the API when boolean filter is supported and fulfillment module support partial rule SO filtering
   const outboundShippingOptions = shipping_options.filter(
     (so) =>
       !so.rules?.find((r) => r.attribute === "is_return" && r.value === "true")
@@ -322,6 +322,7 @@ export const ExchangeOutboundSection = ({
                   .filter(Boolean) as string[]
               }
               currencyCode={order.currency_code}
+              locationId={locationId}
               onSelectionChange={(finalSelection) => {
                 const alreadySelected = outboundItems
                   .map((i) => i.variant_id)
@@ -385,7 +386,7 @@ export const ExchangeOutboundSection = ({
                   })
                 }
               }}
-              onUpdate={(payload) => {
+              onUpdate={(payload: { quantity?: number }) => {
                 const actionId = previewOutboundItems
                   .find((i) => i.id === item.item_id)
                   ?.actions?.find((a) => a.action === "ITEM_ADD")?.id
@@ -401,6 +402,14 @@ export const ExchangeOutboundSection = ({
                   )
                 }
               }}
+              maxQuantity={
+                item.variant_id
+                  ? getAvailableAtLocation(
+                      inventoryMap[item.variant_id],
+                      locationId,
+                    )
+                  : undefined
+              }
               index={index}
             />
           )

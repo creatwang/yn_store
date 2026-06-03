@@ -1375,7 +1375,8 @@
       },
       "error": {
         "quantityNotAllocated": "There are unallocated items."
-      }
+      },
+      "noItemsToAllocate": "No order lines need inventory allocation (already fulfilled or not inventory-managed)."
     },
     "shipment": {
       "title": "Mark fulfillment shipped",

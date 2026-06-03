@@ -84,10 +84,18 @@ export const adminExchanges = new Hono<{ Variables: AuthVariables }>()
     return c.json(result)
   })
   // ── Actions ───────────────────────────────────────────
-  .post("/:id/request", async (c) => {
-    const result = await exchangeService.request(c.req.param("id"))
-    return c.json(result)
-  })
+  .post(
+    "/:id/request",
+    zValidator(
+      "json",
+      z.object({ no_notification: z.boolean().optional() }).default({}),
+    ),
+    async (c) => {
+      const body = c.req.valid("json")
+      const result = await exchangeService.request(c.req.param("id"), body)
+      return c.json(result)
+    },
+  )
   .post("/:id/request/cancel", async (c) => {
     const result = await exchangeService.cancelRequest(c.req.param("id"))
     return c.json(result)

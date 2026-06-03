@@ -1338,7 +1338,8 @@
       },
       "error": {
         "quantityNotAllocated": "有未分配的商品。"
-      }
+      },
+      "noItemsToAllocate": "当前订单没有可分配库存的行项目（可能已全部履约或不管理库存）。"
     },
     "shipment": {
       "title": "标记履行已发货",

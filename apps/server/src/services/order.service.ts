@@ -329,9 +329,7 @@ export const orderService = {
       },
     )
 
-    const [updated] = await db.select().from(order).where(eq(order.id, id)).limit(1)
-    if (!updated) throw new HTTPException(404, { message: "Order not found" })
-    return { order: updated }
+    return this.getById(id)
   },
 
   async cancel(id: string) {

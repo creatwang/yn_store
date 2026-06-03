@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { ReceiptPercent, XCircle } from "@medusajs/icons"
 import { AdminOrderLineItem, HttpTypes } from "@medusajs/types"
-import { Input, Text, Tooltip } from "@medusajs/ui"
+import { Input, Text, Tooltip, toast } from "@medusajs/ui"
 import { UseFormReturn } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
@@ -15,10 +15,10 @@ type ExchangeOutboundItemProps = {
   previewItem: AdminOrderLineItem
   currencyCode: string
   index: number
+  maxQuantity?: number
 
   onRemove: () => void
-  // TODO: create a payload type for outbound updates
-  onUpdate: (payload: HttpTypes.AdminUpdateReturnItems) => void
+  onUpdate: (payload: { quantity?: number }) => void
 
   form: UseFormReturn<CreateExchangeSchemaType>
 }
@@ -30,6 +30,7 @@ function ExchangeOutboundItem({
   onRemove,
   onUpdate,
   index,
+  maxQuantity,
 }: ExchangeOutboundItemProps) {
   const { t } = useTranslation()
 
@@ -87,12 +88,28 @@ function ExchangeOutboundItem({
                         {...field}
                         className="bg-ui-bg-base txt-small w-[67px] rounded-lg"
                         min={1}
-                        // TODO: add max available inventory quantity if present
-                        // max={previewItem.quantity}
+                        max={
+                          maxQuantity != null && maxQuantity > 0
+                            ? maxQuantity
+                            : undefined
+                        }
                         type="number"
                         onBlur={(e) => {
                           const val = e.target.value
                           const payload = val === "" ? null : Number(val)
+
+                          if (
+                            payload != null &&
+                            maxQuantity != null &&
+                            payload > maxQuantity
+                          ) {
+                            field.onChange(maxQuantity)
+                            toast.error(
+                              t("orders.returns.noInventoryLevelDesc"),
+                            )
+                            onUpdate({ quantity: maxQuantity })
+                            return
+                          }
 
                           field.onChange(payload)
 

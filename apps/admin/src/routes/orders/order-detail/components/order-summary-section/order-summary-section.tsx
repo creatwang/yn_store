@@ -1271,7 +1271,7 @@ const Total = ({ order }: { order: AdminOrder }) => {
           leading="compact"
         >
           {getStylizedAmount(
-            order.summary.pending_difference || 0,
+            order.summary?.pending_difference || 0,
             order.currency_code
           )}
         </Text>
