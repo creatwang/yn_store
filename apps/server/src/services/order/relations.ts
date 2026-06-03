@@ -1,5 +1,4 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
-import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   customer,
   getDb,

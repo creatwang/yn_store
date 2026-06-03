@@ -33,17 +33,16 @@ export const ActivitySection = ({ order, changes }: ActivitySectionProps) => {
       <div className="px-6 py-4">
         <Heading>{t("orders.activity.header")}</Heading>
       </div>
-      <ActivityItemList items={activityItems} t={t} />
+      <ActivityItemList items={activityItems} />
     </Container>
   )
 }
 
 interface ActivityItemListProps {
   items: ActivityItem[]
-  t: TFunction
 }
 
-const ActivityItemList = ({ items, t }: ActivityItemListProps) => {
+const ActivityItemList = ({ items }: ActivityItemListProps) => {
   if (items.length <= 3) {
     return (
       <div className="flex flex-col gap-y-0.5 px-6 pb-6">
@@ -67,7 +66,7 @@ const ActivityItemList = ({ items, t }: ActivityItemListProps) => {
       {lastItems.map((item, idx) => (
         <ActivityItem key={idx} item={item} />
       ))}
-      <CollapsibleActivityItemList items={collapsibleItems} t={t} />
+      <CollapsibleActivityItemList items={collapsibleItems} />
       <ActivityItem key={items.length - 1} item={firstItem} isFirst />
     </div>
   )
@@ -80,6 +79,7 @@ interface CollapsibleActivityItemListProps {
 const CollapsibleActivityItemList = ({
   items,
 }: CollapsibleActivityItemListProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (

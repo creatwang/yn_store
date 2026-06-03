@@ -6,13 +6,11 @@ import { eventBus } from "../lib/events"
 import { providers } from "../lib/providers"
 import { createCompanionReturn } from "../services/order/admin-order-preview"
 
-type Input = { order_id: string; order_version?: number; difference_due?: number; allow_backorder?: boolean; additional_items?: Array<{ variant_id: string; quantity: number }> }
-
 export const exchangeCreateWorkflow = createWorkflow("exchange-create", [
   step("create-exchange", async ({ input }) => {
     const db = getDb()
     const id = generateId("exchange")
-    const [created] = await db.insert(orderExchange).values({
+    await db.insert(orderExchange).values({
       id, order_id: input.order_id, order_version: input.order_version ?? 1,
       difference_due: input.difference_due ? String(input.difference_due) : null,
       allow_backorder: input.allow_backorder ?? false, created_by: "admin",
@@ -49,7 +47,7 @@ export const exchangeCreateWorkflow = createWorkflow("exchange-create", [
   }),
 
   step("companion-return", async ({ input, output }) => {
-    const { exchangeId, orderId } = output["create-exchange"]
+    const { exchangeId } = output["create-exchange"]
     const returnId = await createCompanionReturn(input.order_id, input.order_version ?? 1)
     const db = getDb()
     await db.update(orderChange).set({ return_id: returnId })

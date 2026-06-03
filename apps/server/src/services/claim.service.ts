@@ -1,5 +1,5 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, orderClaim, orderClaimItem, orderChange, orderChangeAction, orderItem } from "@my-store/db"
+import { generateId, getDb, orderClaim, orderClaimItem, orderChange, orderItem } from "@my-store/db"
 import type { CreateClaimInput } from "@my-store/validators"
 import type { AdminListClaimsParamsType } from "@my-store/validators/admin-list-params"
 import {
@@ -8,8 +8,6 @@ import {
   listLimitOffset,
 } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
-import { createCompanionReturn } from "./order/admin-order-preview"
-import { eventBus } from "../lib/events"
 import { claimCreateWorkflow } from "../workflows/claim-create"
 
 export const claimService = {

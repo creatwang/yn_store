@@ -50,18 +50,22 @@ const invalidateDraft = (id: string) => {
 
 export const useDraftOrder = (
   id: string,
+  query?: Record<string, unknown>,
   options?: Omit<
     UseQueryOptions<{ draft_order: DraftOrderRecord }, FetchError, QueryKey>,
     "queryFn" | "queryKey"
   >,
 ) => {
-  const { data, ...rest } = useQuery({
-    queryFn: async () => sdk.admin.draftOrder.retrieve(id),
-    queryKey: draftOrdersQueryKeys.detail(id),
+  const query = useQuery({
+    queryFn: async () => sdk.admin.draftOrder.retrieve(id, query),
+    queryKey: draftOrdersQueryKeys.detail(id, query),
     ...options,
   })
 
-  return { ...data, ...rest }
+  return {
+    ...query,
+    draft_order: query.data?.draft_order,
+  } as typeof query & { draft_order?: DraftOrderRecord }
 }
 
 export const useDraftOrders = (

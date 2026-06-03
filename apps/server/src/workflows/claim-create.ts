@@ -1,12 +1,10 @@
 /** Workflow: claim.create — 创建索赔 */
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { generateId, getDb, orderClaim, orderClaimItem, orderChange, orderChangeAction, orderItem } from "@my-store/db"
 import { createWorkflow, step } from "../lib/workflow"
 import { eventBus } from "../lib/events"
 import { providers } from "../lib/providers"
 import { createCompanionReturn } from "../services/order/admin-order-preview"
-
-type Input = { order_id: string; order_version?: number; type?: string; refund_amount?: number; claim_items: Array<{ item_id: string; quantity: number; reason?: string; is_additional_item?: boolean; note?: string }>; additional_items?: Array<{ variant_id: string; quantity: number }> }
 
 export const claimCreateWorkflow = createWorkflow("claim-create", [
   step("create-claim", async ({ input }) => {
@@ -14,7 +12,7 @@ export const claimCreateWorkflow = createWorkflow("claim-create", [
     const id = generateId("claim")
     const changeId = generateId("ordch")
 
-    const [created] = await db.insert(orderClaim).values({
+    await db.insert(orderClaim).values({
       id, order_id: input.order_id, order_version: input.order_version ?? 1,
       type: input.type ?? "refund",
       refund_amount: input.refund_amount ? String(input.refund_amount) : null,
@@ -60,7 +58,7 @@ export const claimCreateWorkflow = createWorkflow("claim-create", [
   }),
 
   step("companion-return", async ({ input, output }) => {
-    const { claimId, orderId } = output["create-claim"]
+    const { claimId } = output["create-claim"]
     const returnId = await createCompanionReturn(input.order_id, input.order_version ?? 1)
     const db = getDb()
     await db.update(orderChange).set({ return_id: returnId })

@@ -55,7 +55,6 @@ export const ORDER_ROOT_TOTAL_KEYS = [
 ] as const
 
 type OrderItemRow = OrderLineItemJoinRow["orderItem"]
-type OrderLineItemRow = OrderLineItemJoinRow["lineItem"]
 
 /** order_summary.totals JSON → AdminOrder.summary DTO */
 export function toAdminOrderSummary(

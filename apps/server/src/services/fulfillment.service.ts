@@ -1,13 +1,11 @@
-import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import {
-  generateId,
   getDb,
   fulfillment,
   fulfillmentItem,
   fulfillmentLabel,
   order,
   orderItem,
-  orderLineItem,
 } from "@my-store/db"
 import type {
   CreateFulfillmentInput,
@@ -17,7 +15,7 @@ import type {
   MarkAsDeliveredInput,
 } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
-import { sendFulfillmentCreatedEmail, sendShipmentEmail, sendOrderDeliveredEmail } from "../lib/mail"
+import { sendOrderDeliveredEmail } from "../lib/mail"
 import { notificationService } from "./notification.service"
 import { eventBus } from "../lib/events"
 import { fulfillmentCreateWorkflow } from "../workflows/fulfillment-create"
@@ -96,7 +94,11 @@ export const fulfillmentService = {
     )
   },
 
-  async cancel(orderId: string, fulfillmentId: string, input?: CancelFulfillmentInput) {
+  async cancel(
+    orderId: string,
+    fulfillmentId: string,
+    _input?: CancelFulfillmentInput,
+  ) {
     const db = getDb()
 
     const [f] = await db

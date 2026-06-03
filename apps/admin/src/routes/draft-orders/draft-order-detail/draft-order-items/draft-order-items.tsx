@@ -46,7 +46,7 @@ import {
   useDraftOrderUpdateItem,
 } from "../../../../hooks/api/draft-orders"
 import { useOrderPreview } from "../../../../hooks/api/orders"
-import { useProductVariants } from "../../../../hooks/api/product-variants"
+import { useVariants } from "../../../../hooks/api/product-variants"
 import { useDebouncedSearch } from "../../../../hooks/use-debounced-search"
 import { useQueryParams } from "../../../../hooks/use-query-params"
 import { useCancelOrderEdit } from "../../../../hooks/order-edits/use-cancel-order-edit"
@@ -101,7 +101,10 @@ export const Items = () => {
   return (
     <RouteFocusModal onClose={onCancel}>
       {ready ? (
-        <ItemsForm preview={preview} currencyCode={draft_order.currency_code} />
+        <ItemsForm
+          preview={preview}
+          currencyCode={draft_order.currency_code ?? "usd"}
+        />
       ) : (
         <div>
           <RouteFocusModal.Title asChild>
@@ -846,7 +849,7 @@ const ExistingItemsForm = ({ orderId, items }: ExistingItemsFormProps) => {
     ["q", "order", "offset"],
     VARIANT_PREFIX
   )
-  const { variants, count, isPending, isError, error } = useProductVariants(
+  const { variants, count, isPending, isError, error } = useVariants(
     {
       q,
       order,
@@ -1003,8 +1006,8 @@ const useColumns = () => {
           )
         },
         enableSorting: true,
-        sortAscLabel: t("general.sorting.dateDesc"),
-        sortDescLabel: t("general.sorting.dateAsc"),
+        sortAscLabel: t("general.sorting.dateDesc" as "general.search"),
+        sortDescLabel: t("general.sorting.dateAsc" as "general.search"),
       }),
       columnHelper.accessor("created_at", {
         header: t("fields.createdAt"),
@@ -1018,8 +1021,8 @@ const useColumns = () => {
           )
         },
         enableSorting: true,
-        sortAscLabel: t("general.sorting.dateDesc"),
-        sortDescLabel: t("general.sorting.dateAsc"),
+        sortAscLabel: t("general.sorting.dateDesc" as "general.search"),
+        sortDescLabel: t("general.sorting.dateAsc" as "general.search"),
       }),
     ]
   }, [t])

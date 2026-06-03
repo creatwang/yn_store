@@ -17,7 +17,9 @@ export function useOrders(params: AdminGetOrdersParamsType = defaultListQuery) {
   return useQuery({
     queryKey: ["orders", params],
     queryFn: async () => {
-      const res = await api.admin.orders.$get({ query: toRpcQuery(params) })
+      const res = await api.admin.orders.$get({
+        query: toRpcQuery(params) as never,
+      })
       return parseJsonResponse<OrderListResponse>(res)
     },
   })

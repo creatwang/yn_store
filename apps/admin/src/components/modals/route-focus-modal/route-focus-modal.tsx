@@ -9,9 +9,10 @@ import { StackedModalProvider } from "../stacked-modal-provider"
 
 type RouteFocusModalProps = PropsWithChildren<{
   prev?: string | Partial<Path> | number
+  onClose?: () => Promise<boolean> | boolean | void
 }>
 
-const Root = ({ prev = "..", children }: RouteFocusModalProps) => {
+const Root = ({ prev = "..", onClose, children }: RouteFocusModalProps) => {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [stackedModalOpen, onStackedModalOpen] = useState(false)
@@ -33,9 +34,15 @@ const Root = ({ prev = "..", children }: RouteFocusModalProps) => {
     }
   }, [])
 
-  const handleOpenChange = (open: boolean) => {
+  const handleOpenChange = async (open: boolean) => {
     if (!open) {
       document.body.style.pointerEvents = "auto"
+      if (onClose) {
+        const canClose = await onClose()
+        if (canClose === false) {
+          return
+        }
+      }
       if (typeof to === "number") {
         navigate(to)
       } else {

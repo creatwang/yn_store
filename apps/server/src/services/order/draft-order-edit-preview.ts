@@ -2,7 +2,6 @@
  * 草稿订单编辑 preview — 对齐官方 draft_order_preview / GET orders/:id/preview
  */
 import { and, asc, eq, isNull } from "drizzle-orm"
-import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import { getDb, order, orderChange, orderChangeAction } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import { presentAdminOrderDetail } from "./admin-order"

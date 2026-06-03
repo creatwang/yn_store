@@ -17,7 +17,7 @@ export function bindMedusaPluralLocales(i18n: I18nInstance) {
   const pluralResolver = i18n.services.pluralResolver
   const getRule = pluralResolver.getRule.bind(pluralResolver)
 
-  pluralResolver.getRule = (code, options) => {
+  pluralResolver.getRule = (code: string, options?: { ordinal?: boolean }) => {
     const mappedCode = MEDUSA_PLURAL_LOCALE_MAP[code] ?? code
     return getRule(mappedCode, options)
   }

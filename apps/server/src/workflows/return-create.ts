@@ -1,17 +1,15 @@
 /** Workflow: return.create — 创建退货（预留 PaymentProvider.refund） */
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { generateId, getDb, orderReturn, returnItem, orderItem, orderChange } from "@my-store/db"
 import { createWorkflow, step } from "../lib/workflow"
 import { eventBus } from "../lib/events"
 import { providers } from "../lib/providers"
 
-type Input = { order_id: string; order_version?: number; location_id?: string; refund_amount?: number; items: Array<{ item_id: string; quantity: number; note?: string }> }
-
 export const returnCreateWorkflow = createWorkflow("return-create", [
   step("create-return", async ({ input }) => {
     const db = getDb()
     const id = generateId("ret")
-    const [created] = await db.insert(orderReturn).values({
+    await db.insert(orderReturn).values({
       id, order_id: input.order_id, order_version: input.order_version ?? 1,
       location_id: input.location_id ?? null,
       refund_amount: input.refund_amount ? String(input.refund_amount) : null,

@@ -1,0 +1,75 @@
+﻿apps/server/src/lib/shipping-option-enrich-batch.ts(1,15): error TS6133: 'eq' is declared but its value is never read.
+apps/server/src/routes/admin/batch.ts(2,1): error TS6133: 'zValidator' is declared but its value is never read.
+apps/server/src/routes/admin/batch.ts(5,15): error TS6133: 'eq' is declared but its value is never read.
+apps/server/src/routes/admin/batch.ts(6,29): error TS6133: 'stockLocation' is declared but its value is never read.
+apps/server/src/routes/admin/batch.ts(45,21): error TS6133: 'entity' is declared but its value is never read.
+apps/server/src/routes/admin/product-variants-global.ts(2,1): error TS6133: 'zValidator' is declared but its value is never read.
+apps/server/src/routes/admin/product-variants.ts(2,1): error TS6133: 'sql' is declared but its value is never read.
+apps/server/src/routes/admin/product-variants.ts(3,14): error TS6133: 'and' is declared but its value is never read.
+apps/server/src/routes/admin/product-variants.ts(3,19): error TS6133: 'isNull' is declared but its value is never read.
+apps/server/src/routes/admin/promotions.ts(2,1): error TS6133: 'zValidator' is declared but its value is never read.
+apps/server/src/routes/admin/shipping-options.ts(2,1): error TS6133: 'zValidator' is declared but its value is never read.
+apps/server/src/routes/store/catalog.ts(2,1): error TS6133: 'zValidator' is declared but its value is never read.
+apps/server/src/routes/store/products.ts(2,1): error TS6133: 'zValidator' is declared but its value is never read.
+apps/server/src/routes/store/regions.ts(2,1): error TS6133: 'zValidator' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(4,3): error TS6133: 'cartAddress' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(9,3): error TS6133: 'orderAddress' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(10,3): error TS6133: 'orderLineItem' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(11,3): error TS6133: 'orderItem' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(12,3): error TS6133: 'orderShippingMethod' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(13,3): error TS6133: 'paymentCollection' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(24,1): error TS6133: 'eventBus' is declared but its value is never read.
+apps/server/src/services/cart.service.ts(300,5): error TS6133: 'allocation' is declared but its value is never read.
+apps/server/src/services/claim.service.ts(2,70): error TS6133: 'orderChangeAction' is declared but its value is never read.
+apps/server/src/services/claim.service.ts(11,1): error TS6133: 'createCompanionReturn' is declared but its value is never read.
+apps/server/src/services/claim.service.ts(12,1): error TS6133: 'eventBus' is declared but its value is never read.
+apps/server/src/services/draft-order.service.ts(495,11): error TS6133: 'ord' is declared but its value is never read.
+apps/server/src/services/draft-order.service.ts(499,13): error TS6133: 'actionId' is declared but its value is never read.
+apps/server/src/services/exchange.service.ts(2,57): error TS6133: 'orderChangeAction' is declared but its value is never read.
+apps/server/src/services/exchange.service.ts(11,1): error TS6133: 'createCompanionReturn' is declared but its value is never read.
+apps/server/src/services/exchange.service.ts(12,1): error TS6133: 'eventBus' is declared but its value is never read.
+apps/server/src/services/fulfillment.service.ts(1,15): error TS6133: 'count' is declared but its value is never read.
+apps/server/src/services/fulfillment.service.ts(3,3): error TS6133: 'generateId' is declared but its value is never read.
+apps/server/src/services/fulfillment.service.ts(10,3): error TS6133: 'orderLineItem' is declared but its value is never read.
+apps/server/src/services/fulfillment.service.ts(20,10): error TS6133: 'sendFulfillmentCreatedEmail' is declared but its value is never read.
+apps/server/src/services/fulfillment.service.ts(20,39): error TS6133: 'sendShipmentEmail' is declared but its value is never read.
+apps/server/src/services/fulfillment.service.ts(99,56): error TS6133: 'input' is declared but its value is never read.
+apps/server/src/services/image.service.ts(3,1): error TS6133: 'HTTPException' is declared but its value is never read.
+apps/server/src/services/order.service.ts(10,3): error TS6133: 'orderChangeAction' is declared but its value is never read.
+apps/server/src/services/order.service.ts(15,3): error TS6133: 'orderShippingMethod' is declared but its value is never read.
+apps/server/src/services/order.service.ts(47,1): error TS6133: 'buildAdminOrderPreview' is declared but its value is never read.
+apps/server/src/services/order/admin-order-preview.ts(5,1): error TS6133: 'NodePgDatabase' is declared but its value is never read.
+apps/server/src/services/order/admin-order.ts(11,1): error TS6133: 'NodePgDatabase' is declared but its value is never read.
+apps/server/src/services/order/admin-order.ts(22,3): error TS6133: 'orderPromotion' is declared but its value is never read.
+apps/server/src/services/order/admin-order.ts(28,3): error TS6133: 'productVariantInventoryItem' is declared but its value is never read.
+apps/server/src/services/order/draft-order-edit-preview.ts(5,1): error TS6133: 'NodePgDatabase' is declared but its value is never read.
+apps/server/src/services/payment.service.ts(1,47): error TS6133: 'sql' is declared but its value is never read.
+apps/server/src/services/payment.service.ts(2,10): error TS6133: 'generateId' is declared but its value is never read.
+apps/server/src/services/payment.service.ts(2,38): error TS6133: 'capture' is declared but its value is never read.
+apps/server/src/services/payment.service.ts(2,47): error TS6133: 'refund' is declared but its value is never read.
+apps/server/src/services/payment.service.ts(6,1): error TS6133: 'HTTPException' is declared but its value is never read.
+apps/server/src/services/settings.service.ts(1,47): error TS6133: 'or' is declared but its value is never read.
+apps/server/src/services/settings.service.ts(3,1): error TS6192: All imports in import declaration are unused.
+apps/server/src/services/settings.service.ts(15,1): error TS6192: All imports in import declaration are unused.
+apps/server/src/services/stock-location.service.ts(15,3): error TS6133: 'shippingProfile' is declared but its value is never read.
+apps/server/src/workflows/claim-create.ts(2,19): error TS6133: 'isNull' is declared but its value is never read.
+apps/server/src/workflows/claim-create.ts(9,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/claim-create.ts(17,12): error TS6133: 'created' is declared but its value is never read.
+apps/server/src/workflows/claim-create.ts(63,22): error TS6133: 'orderId' is declared but its value is never read.
+apps/server/src/workflows/exchange-create.ts(9,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/exchange-create.ts(15,12): error TS6133: 'created' is declared but its value is never read.
+apps/server/src/workflows/exchange-create.ts(52,25): error TS6133: 'orderId' is declared but its value is never read.
+apps/server/src/workflows/fulfillment-create.ts(8,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/fulfillment-ship.ts(8,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/order-confirm.ts(2,14): error TS6133: 'isNull' is declared but its value is never read.
+apps/server/src/workflows/order-confirm.ts(8,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/order-confirm.ts(52,15): error TS6133: 'input' is declared but its value is never read.
+apps/server/src/workflows/order-confirm.ts(59,33): error TS6133: 'input' is declared but its value is never read.
+apps/server/src/workflows/payment-capture.ts(2,14): error TS6133: 'isNull' is declared but its value is never read.
+apps/server/src/workflows/payment-capture.ts(7,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/payment-capture.ts(47,35): error TS6133: 'output' is declared but its value is never read.
+apps/server/src/workflows/payment-refund.ts(7,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/return-create.ts(2,19): error TS6133: 'isNull' is declared but its value is never read.
+apps/server/src/workflows/return-create.ts(8,6): error TS6196: 'Input' is declared but never used.
+apps/server/src/workflows/return-create.ts(14,12): error TS6133: 'created' is declared but its value is never read.
+packages/db/src/schema/file.ts(1,19): error TS6133: 'jsonb' is declared but its value is never read.

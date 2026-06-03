@@ -32,7 +32,6 @@ interface ShippingSectionProps {
 }
 
 export const ShippingSection = ({ order }: ShippingSectionProps) => {
-  const { t } = useTranslation()
   const orderHasShipping = order.shipping_methods.length > 0
 
   const {

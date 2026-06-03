@@ -5,8 +5,6 @@ import { createWorkflow, step } from "../lib/workflow"
 import { eventBus } from "../lib/events"
 import { providers } from "../lib/providers"
 
-type Input = { order_id: string; location_id?: string; items: Array<{ item_id: string; quantity: number }>; shipping_option_id?: string; tracking_numbers?: string[]; tracking_url?: string; metadata?: Record<string, unknown>; no_notification?: boolean }
-
 export const fulfillmentCreateWorkflow = createWorkflow("fulfillment-create", [
   step("validate-order", async ({ input }) => {
     const db = getDb()

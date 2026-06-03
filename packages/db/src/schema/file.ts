@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text } from "drizzle-orm/pg-core"
+import { integer, pgTable, text } from "drizzle-orm/pg-core"
 import { timestamps } from "./timestamps"
 
 /** file — 文件记录表（Medusa File Module 对齐） */

@@ -8,7 +8,6 @@
  * 对外 API：presentAdminOrders / presentAdminOrderDetail
  */
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
-import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   customer,
   getDb,
@@ -19,13 +18,11 @@ import {
   orderLineItem,
   orderLineItemAdjustment,
   orderLineItemTaxLine,
-  orderPromotion,
   orderShippingMethodAdjustment,
   orderShippingMethodTaxLine,
   orderSummary,
   product,
   productVariant,
-  productVariantInventoryItem,
   region,
   salesChannel,
 } from "@my-store/db"

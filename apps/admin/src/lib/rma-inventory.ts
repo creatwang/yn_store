@@ -74,10 +74,10 @@ export async function fetchVariantInventoryMap(
     return ret
   }
 
-  const { variants } = await sdk.admin.productVariant.list({
+  const { variants } = (await sdk.admin.productVariant.list({
     id: variantIds,
     fields: "*inventory.location_levels",
-  })
+  })) as { variants?: Array<{ id: string; inventory?: { location_levels?: AdminInventoryLevel[] }[] }> }
 
   for (const variant of variants ?? []) {
     const levels =

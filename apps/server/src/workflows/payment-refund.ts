@@ -4,8 +4,6 @@ import { generateId, getDb, payment, refund } from "@my-store/db"
 import { createWorkflow, step } from "../lib/workflow"
 import { providers } from "../lib/providers"
 
-type Input = { paymentId: string; amount: number; reason?: string }
-
 export const paymentRefundWorkflow = createWorkflow("payment-refund", [
   step("validate", async ({ input }) => {
     const db = getDb()

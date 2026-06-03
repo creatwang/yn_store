@@ -41,20 +41,27 @@ export const CreateShippingOptionDetailsForm = ({
   const isPickup = type === FulfillmentSetType.Pickup
 
   const shippingProfiles = useComboboxData({
-    queryFn: (params) => sdk.admin.shippingProfile.list(params),
+    queryFn: (params) =>
+      sdk.admin.shippingProfile.list(params) as Promise<
+        HttpTypes.AdminShippingProfileListResponse
+      >,
     queryKey: ["shipping_profiles"],
     getOptions: (data) =>
-      data.shipping_profiles.map((profile) => ({
+      data.shipping_profiles.map((profile: HttpTypes.AdminShippingProfile) => ({
         label: profile.name,
         value: profile.id,
       })),
   })
 
   const shippingOptionTypes = useComboboxData({
-    queryFn: (params) => sdk.admin.shippingOptionType.list(params),
+    queryFn: (params) =>
+      sdk.admin.shippingOptionType.list(params) as Promise<
+        HttpTypes.AdminShippingOptionTypeListResponse
+      >,
     queryKey: ["shipping_option_types"],
     getOptions: (data) =>
-      data.shipping_option_types.map((type) => ({
+      data.shipping_option_types.map(
+        (type: HttpTypes.AdminShippingOptionType) => ({
         label: type.label,
         value: type.id,
       })),
@@ -65,10 +72,11 @@ export const CreateShippingOptionDetailsForm = ({
       sdk.admin.fulfillmentProvider.list({
         ...params,
         stock_location_id: locationId,
-      }),
+      }) as Promise<HttpTypes.AdminFulfillmentProviderListResponse>,
     queryKey: ["fulfillment_providers"],
     getOptions: (data) =>
-      data.fulfillment_providers.map((provider) => ({
+      data.fulfillment_providers.map(
+        (provider: HttpTypes.AdminFulfillmentProvider) => ({
         label: formatProvider(provider.id),
         value: provider.id,
       })),

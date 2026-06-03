@@ -1,10 +1,8 @@
 /** Workflow: payment.capture — 支付捕获 */
-import { eq, isNull, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { generateId, getDb, payment, capture } from "@my-store/db"
 import { createWorkflow, step } from "../lib/workflow"
 import { providers } from "../lib/providers"
-
-type Input = { paymentId: string; amount?: number }
 
 export const paymentCaptureWorkflow = createWorkflow("payment-capture", [
   step("validate", async ({ input }) => {
@@ -44,7 +42,7 @@ export const paymentCaptureWorkflow = createWorkflow("payment-capture", [
     if (captureId) await db.delete(capture).where(eq(capture.id, captureId))
   }),
 
-  step("confirm", async ({ input, output }) => {
+  step("confirm", async ({ input }) => {
     const db = getDb()
     await db.update(payment).set({ captured_at: sql`now()`, updated_at: sql`now()` })
       .where(eq(payment.id, input.paymentId))

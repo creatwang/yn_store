@@ -1,9 +1,8 @@
 ﻿import { Hono } from "hono"
-import { zValidator } from "@hono/zod-validator"
 import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import type { z } from "zod"
-import { sql, eq } from "drizzle-orm"
-import { generateId, getDb, stockLocation } from "@my-store/db"
+import { sql } from "drizzle-orm"
+import { generateId, getDb } from "@my-store/db"
 import {
   AdminGetApiKeysParams,
   AdminGetCampaignsParams,
@@ -42,7 +41,7 @@ import {
 import { serviceZoneService } from "../../services/service-zone.service"
 import { notificationService } from "../../services/notification.service"
 
-function crudRoutes(entity: string, svc: any, listParams: z.ZodTypeAny) {
+function crudRoutes(_entity: string, svc: any, listParams: z.ZodTypeAny) {
   return new Hono<{ Variables: AuthVariables }>()
     .use("*", adminAuth)
     .get("/", rpcQueryValidator(listParams), async (c) => {

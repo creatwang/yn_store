@@ -1,16 +1,10 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import {
   cart,
-  cartAddress,
   cartLineItem,
   cartLineItemAdjustment,
   cartShippingMethod,
   order,
-  orderAddress,
-  orderLineItem,
-  orderItem,
-  orderShippingMethod,
-  paymentCollection,
   promotion,
   applicationMethod,
   promotionRule,
@@ -21,7 +15,6 @@ import {
 import { HTTPException } from "hono/http-exception"
 import type { CreateCartInput, AddToCartInput, UpdateCartInput } from "@my-store/validators"
 import { sendOrderConfirmationEmail } from "../lib/mail"
-import { eventBus } from "../lib/events"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
 import { runInTransaction, type DbTx } from "../lib/transaction"
@@ -297,7 +290,7 @@ export const cartService = {
     discountType: string,
     discountValue: number,
     maxQty?: number | null,
-    allocation?: string,
+    _allocation?: string,
   ) {
     // Reload items fresh within db context if called externally — but we already have them
     const lineItems = items.length > 0 ? items : await db

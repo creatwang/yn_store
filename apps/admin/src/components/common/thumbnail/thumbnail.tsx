@@ -3,11 +3,19 @@ import { clx } from "@medusajs/ui"
 
 type ThumbnailProps = {
   src?: string | null
+  /** Medusa dashboard 兼容别名 */
+  thumbnail?: string | null
   alt?: string
   size?: "small" | "base"
 }
 
-export const Thumbnail = ({ src, alt, size = "base" }: ThumbnailProps) => {
+export const Thumbnail = ({
+  src,
+  thumbnail,
+  alt,
+  size = "base",
+}: ThumbnailProps) => {
+  const imageSrc = src ?? thumbnail
   return (
     <div
       className={clx(
@@ -18,9 +26,9 @@ export const Thumbnail = ({ src, alt, size = "base" }: ThumbnailProps) => {
         }
       )}
     >
-      {src ? (
+      {imageSrc ? (
         <img
-          src={src}
+          src={imageSrc}
           alt={alt}
           className="h-full w-full object-cover object-center"
         />

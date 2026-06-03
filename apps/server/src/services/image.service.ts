@@ -1,7 +1,5 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, productImage, productVariantProductImage } from "@my-store/db"
-import { HTTPException } from "hono/http-exception"
-
 export const imageService = {
   async listImages(productId: string) {
     const db = getDb()

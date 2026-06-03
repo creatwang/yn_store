@@ -1,11 +1,9 @@
 /** Workflow: order.confirm — 下单（cart → order + 支付授权） */
-import { eq, isNull, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { generateId, getDb, cart, cartAddress, cartLineItem, cartShippingMethod, order, orderAddress, orderItem, orderLineItem, orderShippingMethod, paymentCollection } from "@my-store/db"
 import { createWorkflow, step } from "../lib/workflow"
 import { eventBus } from "../lib/events"
 import { providers } from "../lib/providers"
-
-type Input = { cartId: string }
 
 export const orderConfirmWorkflow = createWorkflow("order-confirm", [
   step("validate-and-load-cart", async ({ input }) => {
@@ -49,14 +47,14 @@ export const orderConfirmWorkflow = createWorkflow("order-confirm", [
       if (!shipping) shipping = aid; else billing = aid
     }
     return { shippingAddressId: shipping, billingAddressId: billing }
-  }, async ({ input, output }) => {
+  }, async ({ output }) => {
     const db = getDb()
     const { shippingAddressId, billingAddressId } = output["migrate-addresses"] ?? {}
     if (shippingAddressId) await db.delete(orderAddress).where(eq(orderAddress.id, shippingAddressId))
     if (billingAddressId) await db.delete(orderAddress).where(eq(orderAddress.id, billingAddressId))
   }),
 
-  step("create-order", async ({ input, output }) => {
+  step("create-order", async ({ output }) => {
     const db = getDb()
     const { cartData, items, shipping } = output["validate-and-load-cart"]
     const { shippingAddressId, billingAddressId } = output["migrate-addresses"]

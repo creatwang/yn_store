@@ -1,24 +1,5 @@
-import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
+import { and, count, desc, eq, ilike, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, productTag, productType, taxRegion, returnReason, refundReason } from "@my-store/db"
-import type {
-  CreateProductTagInput,
-  UpdateProductTagInput,
-  CreateProductTypeInput,
-  UpdateProductTypeInput,
-  CreateTaxRegionInput,
-  UpdateTaxRegionInput,
-  CreateReturnReasonInput,
-  UpdateReturnReasonInput,
-  CreateRefundReasonInput,
-  UpdateRefundReasonInput,
-} from "@my-store/validators"
-import type {
-  AdminGetProductTagsParamsType,
-  AdminGetProductTypesParamsType,
-  AdminGetTaxRegionsParamsType,
-  AdminGetReturnReasonsParamsType,
-  AdminGetRefundReasonsParamsType,
-} from "@my-store/validators/admin-list-params"
 import { listLimitOffset } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
 

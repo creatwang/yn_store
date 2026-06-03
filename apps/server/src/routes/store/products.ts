@@ -1,5 +1,4 @@
 ﻿import { Hono } from "hono"
-import { zValidator } from "@hono/zod-validator"
 import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { StoreGetProductsParams } from "@my-store/validators/admin-list-params"
 import { productService } from "../../services/product.service"

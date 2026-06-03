@@ -1,6 +1,5 @@
 ﻿import { Hono } from "hono"
-import { sql } from "drizzle-orm"
-import { eq, and, isNull } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { generateId, getDb, productVariantInventoryItem } from "@my-store/db"
 import { variantService } from "../../services/variant.service"
 import { imageService } from "../../services/image.service"

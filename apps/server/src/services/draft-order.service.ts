@@ -492,11 +492,10 @@ export const draftOrderService = {
     }[],
   ) {
     const db = getDb()
-    const ord = await requireDraftOrder(db, id)
+    await requireDraftOrder(db, id)
     const change = await ensureEdit(db, id)
 
     for (const item of items) {
-      const actionId = generateId("ordchact")
       const lineItemId = generateId("olitm")
       const orderItemId = generateId("orditm")
 

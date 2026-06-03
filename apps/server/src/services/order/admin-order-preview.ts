@@ -2,7 +2,6 @@
  * Admin 订单 Preview DTO — RMA 向导（退货/换货/索赔）依赖
  */
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
-import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   generateId,
   getDb,

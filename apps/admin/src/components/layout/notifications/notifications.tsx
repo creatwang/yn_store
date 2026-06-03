@@ -93,7 +93,7 @@ export const Notifications = () => {
               sdk.admin.notification.list({
                 ...params,
                 channel: "feed",
-              })
+              }) as Promise<HttpTypes.AdminNotificationListResponse>
             }
             queryOptions={{ enabled: open }}
             renderEmpty={() => <NotificationsEmptyState t={t} />}

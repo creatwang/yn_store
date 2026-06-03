@@ -1,5 +1,5 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, orderExchange, orderChange, orderChangeAction } from "@my-store/db"
+import { generateId, getDb, orderExchange, orderChange } from "@my-store/db"
 import type { CreateExchangeInput } from "@my-store/validators"
 import type { AdminListExchangesParamsType } from "@my-store/validators/admin-list-params"
 import {
@@ -8,8 +8,6 @@ import {
   listLimitOffset,
 } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
-import { createCompanionReturn } from "./order/admin-order-preview"
-import { eventBus } from "../lib/events"
 import { exchangeCreateWorkflow } from "../workflows/exchange-create"
 
 export const exchangeService = {

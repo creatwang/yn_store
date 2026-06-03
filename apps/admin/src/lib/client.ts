@@ -346,7 +346,6 @@ function linkProductsClient(entity: "product-categories" | "collections") {
 /** draft orders 客户端 */
 function draftOrderClient() {
   const rpc = (api as any).admin["draft-orders"]
-  const editRpc = (id: string) => rpc[":id"].edit
   return {
     list: (query?: any) => rpcGet(rpc, undefined, query),
     retrieve: (id: string, query?: any) => rpcGet(rpc[":id"], { id }, query),

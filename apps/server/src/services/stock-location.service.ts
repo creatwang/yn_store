@@ -12,7 +12,6 @@ import {
   serviceZone,
   geoZone,
   shippingOptionRule,
-  shippingProfile,
   shippingOptionType,
   salesChannel,
   priceSet,
