@@ -342,7 +342,7 @@ function draftOrderClient() {
   const editRpc = (id: string) => rpc[":id"].edit
   return {
     list: (query?: any) => rpcGet(rpc, undefined, query),
-    retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
+    retrieve: (id: string, query?: any) => rpcGet(rpc[":id"], { id }, query),
     create: (body?: any) => rpcPost(rpc, body),
     update: (id: string, body?: any) => rpcPost(rpc[":id"], body, { id }),
     delete: (id: string) => rpcDelete(rpc[":id"], { id }),
@@ -356,14 +356,36 @@ function draftOrderClient() {
     // ── Items ──
     addItems: (id: string, body?: any) => rpcPost(rpc[":id"].edit.items, body, { id }),
     updateItem: (id: string, actionId: string, body?: any) => rpcPost(rpc[":id"].edit.items[":actionId"], body, { id, actionId }),
-    removeItem: (id: string, actionId: string) => rpcDelete(rpc[":id"].edit.items[":actionId"], { id, actionId }),
+    removeItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit.items[":actionId"], { id, actionId }),
+    removeActionItem: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit.items[":actionId"], { id, actionId }),
+    updateActionItem: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit.items[":actionId"], body, { id, actionId }),
     // ── Shipping ──
     addShippingMethod: (id: string, body?: any) => rpcPost(rpc[":id"].edit["shipping-methods"], body, { id }),
     updateShippingMethod: (id: string, actionId: string, body?: any) => rpcPost(rpc[":id"].edit["shipping-methods"][":actionId"], body, { id, actionId }),
-    removeShippingMethod: (id: string, actionId: string) => rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
+    removeShippingMethod: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
+    removeActionShippingMethod: (id: string, actionId: string) =>
+      rpcDelete(rpc[":id"].edit["shipping-methods"][":actionId"], { id, actionId }),
+    updateActionShippingMethod: (id: string, actionId: string, body?: any) =>
+      rpcPost(rpc[":id"].edit["shipping-methods"][":actionId"], body, {
+        id,
+        actionId,
+      }),
     // ── Promotions ──
     addPromotions: (id: string, body?: any) => rpcPost(rpc[":id"].edit.promotions, body, { id }),
-    removePromotions: (id: string, actionId: string) => rpcDelete(rpc[":id"].edit.promotions[":actionId"], { id, actionId }),
+    removePromotions: (id: string, actionOrBody?: any) => {
+      const actionId =
+        typeof actionOrBody === "string"
+          ? actionOrBody
+          : actionOrBody?.action_id ?? actionOrBody?.promotion_id
+      return rpcDelete(rpc[":id"].edit.promotions[":actionId"], {
+        id,
+        actionId,
+      })
+    },
     // ── Aliases for compatibility ──
     addItemsAction: (id: string, body?: any) => rpcPost(rpc[":id"].edit.items, body, { id }),
     updateItemAction: (id: string, actionId: string, body?: any) =>
@@ -458,6 +480,7 @@ export const sdk = {
   admin: {
     // ── 核心实体 ──────────────────────────────────────────────
     product: productEntity(),
+    productVariant: entityClient("product-variants"),
     order: ordersClient(),
     region: entityClient("regions"),
     customer: {

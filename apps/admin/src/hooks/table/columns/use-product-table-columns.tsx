@@ -31,7 +31,13 @@ export const useProductTableColumns = () => {
       columnHelper.display({
         id: "product",
         header: () => <ProductHeader />,
-        cell: ({ row }) => <ProductCell product={row.original} />,
+        cell: ({ row }) => (
+          <ProductCell
+            product={row.original}
+            fallbackTitle={row.original?.title}
+            fallbackThumbnail={row.original?.thumbnail}
+          />
+        ),
       }),
       columnHelper.accessor("collection", {
         header: () => <CollectionHeader />,

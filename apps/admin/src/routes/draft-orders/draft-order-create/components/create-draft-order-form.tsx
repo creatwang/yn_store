@@ -531,8 +531,8 @@ const AddressField = ({ type, control, setValue }: AddressFieldProps) => {
 
   const addressHint =
     type === "shipping_address"
-      ? t("draftOrders.create.addressUsedForShipping")
-      : t("draftOrders.create.addressUsedForBilling")
+      ? t("addresses.shippingAddress.usageHint")
+      : t("addresses.billingAddress.usageHint")
 
   return (
     <div className="grid grid-cols-2 gap-x-3">
@@ -575,7 +575,7 @@ const AddressField = ({ type, control, setValue }: AddressFieldProps) => {
                         {t("addresses.billingAddress.sameAsShipping")}
                       </Form.Label>
                       <Form.Hint>
-                        {t("draftOrders.create.sameAsShippingHint")}
+                        {t("addresses.billingAddress.sameAsShippingHint")}
                       </Form.Hint>
                     </div>
                   </div>

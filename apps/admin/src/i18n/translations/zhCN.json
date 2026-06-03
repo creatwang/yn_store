@@ -368,14 +368,17 @@
       "header": "配送地址",
       "editHeader": "编辑配送地址",
       "editLabel": "配送地址",
-      "label": "配送地址"
+      "label": "配送地址",
+      "usageHint": "用于配送的地址"
     },
     "billingAddress": {
       "header": "账单地址",
       "editHeader": "编辑账单地址",
       "editLabel": "账单地址",
       "label": "账单地址",
-      "sameAsShipping": "与配送地址相同"
+      "sameAsShipping": "与配送地址相同",
+      "usageHint": "用于账单的地址",
+      "sameAsShippingHint": "账单地址与配送地址相同"
     },
     "contactHeading": "联系方式",
     "locationHeading": "位置"

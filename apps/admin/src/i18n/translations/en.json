@@ -368,14 +368,17 @@
       "header": "Shipping Address",
       "editHeader": "Edit Shipping Address",
       "editLabel": "Shipping address",
-      "label": "Shipping address"
+      "label": "Shipping address",
+      "usageHint": "Address used for shipping"
     },
     "billingAddress": {
       "header": "Billing Address",
       "editHeader": "Edit Billing Address",
       "editLabel": "Billing address",
       "label": "Billing address",
-      "sameAsShipping": "Same as shipping address"
+      "sameAsShipping": "Same as shipping address",
+      "usageHint": "Address used for billing",
+      "sameAsShippingHint": "Use the same address for billing and shipping"
     },
     "contactHeading": "Contact",
     "locationHeading": "Location"

@@ -4,17 +4,39 @@ import { Thumbnail } from "../../../../common/thumbnail"
 import { HttpTypes } from "@medusajs/types"
 
 type ProductCellProps = {
-  product: Pick<HttpTypes.AdminProduct, "thumbnail" | "title">
+  product?: Pick<HttpTypes.AdminProduct, "thumbnail" | "title"> | null
+  fallbackTitle?: string | null
+  fallbackThumbnail?: string | null
 }
 
-export const ProductCell = ({ product }: ProductCellProps) => {
+const resolveDisplay = ({
+  product,
+  fallbackTitle,
+  fallbackThumbnail,
+}: ProductCellProps) => {
+  if (product != null) {
+    return {
+      title: product.title ?? fallbackTitle ?? "-",
+      thumbnail: product.thumbnail ?? fallbackThumbnail ?? undefined,
+    }
+  }
+
+  return {
+    title: fallbackTitle ?? "-",
+    thumbnail: fallbackThumbnail ?? undefined,
+  }
+}
+
+export const ProductCell = (props: ProductCellProps) => {
+  const { title, thumbnail } = resolveDisplay(props)
+
   return (
     <div className="flex h-full w-full max-w-[250px] items-center gap-x-3 overflow-hidden">
       <div className="w-fit flex-shrink-0">
-        <Thumbnail src={product.thumbnail} />
+        <Thumbnail src={thumbnail} />
       </div>
-      <span title={product.title} className="truncate">
-        {product.title}
+      <span title={title} className="truncate">
+        {title}
       </span>
     </div>
   )

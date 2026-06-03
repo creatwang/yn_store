@@ -11,6 +11,7 @@ import {
 import { runInTransaction } from "../lib/transaction"
 import type { CreateOrderInput, UpdateOrderInput } from "@my-store/validators"
 import { HTTPException } from "hono/http-exception"
+import { variantService } from "./variant.service"
 
 export const draftOrderService = {
   async list(query: { limit?: number; offset?: number; q?: string; status?: string }) {
@@ -268,19 +269,48 @@ export const draftOrderService = {
       const lineItemId = generateId("olitm")
       const orderItemId = generateId("orditm")
 
+      let lineTitle = item.title?.trim() ?? ""
+      let productId: string | null = null
+
+      if (item.variant_id) {
+        try {
+          const variant = await variantService.getVariantById(item.variant_id)
+          if (!lineTitle) {
+            lineTitle = variant.title
+          }
+          productId = variant.product_id ?? null
+        } catch {
+          // 变体已删除时仍允许写入 variant_id
+        }
+      }
+
+      const resolvedUnitPrice =
+        item.unit_price != null && Number.isFinite(item.unit_price)
+          ? item.unit_price
+          : 0
+      const rawUnitPrice = {
+        amount: resolvedUnitPrice,
+        precision: 2,
+      }
+
       await db.insert(orderLineItem).values({
-        id: lineItemId, title: item.title ?? "",
+        id: lineItemId,
+        title: lineTitle || "Item",
         variant_id: item.variant_id ?? null,
-        requires_shipping: true, is_giftcard: false, is_discountable: true, is_tax_inclusive: false,
-        unit_price: item.unit_price ? String(item.unit_price) : null,
-        raw_unit_price: item.unit_price ? { amount: item.unit_price, precision: 2 } : null,
+        product_id: productId,
+        requires_shipping: true,
+        is_giftcard: false,
+        is_discountable: true,
+        is_tax_inclusive: false,
+        unit_price: String(resolvedUnitPrice),
+        raw_unit_price: rawUnitPrice,
       })
 
       await db.insert(orderItem).values({
         id: orderItemId, version: 1, order_id: id, item_id: lineItemId,
         quantity: String(item.quantity), raw_quantity: { amount: item.quantity, precision: 0 },
-        unit_price: item.unit_price ? String(item.unit_price) : null,
-        raw_unit_price: item.unit_price ? { amount: item.unit_price, precision: 2 } : null,
+        unit_price: String(resolvedUnitPrice),
+        raw_unit_price: rawUnitPrice,
         fulfilled_quantity: "0",
         shipped_quantity: "0",
         delivered_quantity: "0",

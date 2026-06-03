@@ -41,6 +41,7 @@ export const AddOrderEditItemsTable = ({
 
   const { variants = [], count } = useVariants({
     ...searchParams,
+    inventory_quantity: true,
     fields: "*inventory_items.inventory.location_levels,+inventory_quantity",
   })
 
@@ -55,11 +56,22 @@ export const AddOrderEditItemsTable = ({
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
     enableRowSelection: (row) => {
-      if (!row.original.manage_inventory) {
+      if (!row.original.manage_inventory || row.original.allow_backorder) {
         return true
       }
+
+      const inventoryQty = Number(row.original.inventory_quantity)
+      if (Number.isFinite(inventoryQty) && inventoryQty > 0) {
+        return true
+      }
+
       const levels =
         row.original.inventory_items?.[0]?.inventory?.location_levels ?? []
+
+      if (levels.length === 0) {
+        return true
+      }
+
       return levels.some((l) => Number(l.available_quantity) > 0)
     },
     rowSelection: {

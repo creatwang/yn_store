@@ -1418,9 +1418,12 @@
             },
             "label": {
               "type": "string"
+            },
+            "usageHint": {
+              "type": "string"
             }
           },
-          "required": ["header", "editHeader", "editLabel", "label"],
+          "required": ["header", "editHeader", "editLabel", "label", "usageHint"],
           "additionalProperties": false
         },
         "billingAddress": {
@@ -1440,6 +1443,12 @@
             },
             "sameAsShipping": {
               "type": "string"
+            },
+            "usageHint": {
+              "type": "string"
+            },
+            "sameAsShippingHint": {
+              "type": "string"
             }
           },
           "required": [
@@ -1447,7 +1456,9 @@
             "editHeader",
             "editLabel",
             "label",
-            "sameAsShipping"
+            "sameAsShipping",
+            "usageHint",
+            "sameAsShippingHint"
           ],
           "additionalProperties": false
         },
@@ -5998,6 +6009,30 @@
             },
             "sendNotificationHint": {
               "type": "string"
+            },
+            "emailOrderHint": {
+              "type": "string"
+            },
+            "savedAddressesLabel": {
+              "type": "string"
+            },
+            "savedAddressesHint": {
+              "type": "string"
+            },
+            "addressUsedForShipping": {
+              "type": "string"
+            },
+            "addressUsedForBilling": {
+              "type": "string"
+            },
+            "sameAsShippingHint": {
+              "type": "string"
+            },
+            "customerEmailDisabledHint": {
+              "type": "string"
+            },
+            "chooseSalesChannelHint": {
+              "type": "string"
             }
           },
           "required": [
@@ -6021,7 +6056,15 @@
             "shippingPriceOverrideLabel",
             "shippingPriceOverrideHint",
             "sendNotificationLabel",
-            "sendNotificationHint"
+            "sendNotificationHint",
+            "emailOrderHint",
+            "savedAddressesLabel",
+            "savedAddressesHint",
+            "addressUsedForShipping",
+            "addressUsedForBilling",
+            "sameAsShippingHint",
+            "customerEmailDisabledHint",
+            "chooseSalesChannelHint"
           ],
           "additionalProperties": false
         },
@@ -6036,12 +6079,24 @@
             },
             "invalidEmail": {
               "type": "string"
+            },
+            "shippingRequired": {
+              "type": "string"
+            },
+            "billingRequired": {
+              "type": "string"
+            },
+            "formInvalid": {
+              "type": "string"
             }
           },
           "required": [
             "requiredEmailOrCustomer",
             "requiredItems",
-            "invalidEmail"
+            "invalidEmail",
+            "shippingRequired",
+            "billingRequired",
+            "formInvalid"
           ],
           "additionalProperties": false
         }

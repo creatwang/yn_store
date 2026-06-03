@@ -12,6 +12,7 @@ import { adminCarts } from "./routes/admin/carts"
 import { adminRegions } from "./routes/admin/regions"
 import { adminSalesChannels } from "./routes/admin/sales-channels"
 import { adminProductVariants } from "./routes/admin/product-variants"
+import { adminProductVariantsGlobal } from "./routes/admin/product-variants-global"
 import { adminProductOptions } from "./routes/admin/product-options"
 import { adminProductImages } from "./routes/admin/product-images"
 import { adminStockLocationsFull } from "./routes/admin/batch"
@@ -60,6 +61,7 @@ const apiRoutes = new Hono()
   .route("/admin/carts", adminCarts)
   .route("/admin/regions", adminRegions)
   .route("/admin/sales-channels", adminSalesChannels)
+  .route("/admin/product-variants", adminProductVariantsGlobal)
   .route("/admin/products", adminProductVariants)
   .route("/admin/products", adminProductOptions)
   .route("/admin/products", adminProductImages)

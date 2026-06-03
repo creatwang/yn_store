@@ -161,7 +161,17 @@ const BadgeListRenderer: CellRenderer = (value, row, column, t) => {
 }
 
 const ProductInfoRenderer: CellRenderer = (_, row, _column, _t) => {
-  return <ProductCell product={row} />
+  if (!row) {
+    return <ProductCell />
+  }
+
+  return (
+    <ProductCell
+      product={row}
+      fallbackTitle={row.title}
+      fallbackThumbnail={row.thumbnail}
+    />
+  )
 }
 
 const CollectionRenderer: CellRenderer = (_, row, _column, _t) => {

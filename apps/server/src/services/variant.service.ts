@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { and, count, eq, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, productVariant } from "@my-store/db"
+import { and, count, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import { generateId, getDb, product, productVariant } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 
 /**
@@ -30,7 +30,130 @@ async function getVariantsInventoryQuantity(db: any, variantIds: string[]): Prom
   return result
 }
 
+const parseIdFilter = (id?: string | string[]) => {
+  if (!id) {
+    return undefined
+  }
+
+  if (Array.isArray(id)) {
+    return id.filter(Boolean)
+  }
+
+  if (id.includes(",")) {
+    return id.split(",").map((s) => s.trim()).filter(Boolean)
+  }
+
+  return [id]
+}
+
 export const variantService = {
+  /** 对齐官方 GET /admin/product-variants（草稿/订单编辑选品） */
+  async listAll(query?: {
+    limit?: number
+    offset?: number
+    q?: string
+    id?: string | string[]
+    product_id?: string
+    inventory_quantity?: boolean
+  }) {
+    const db = getDb()
+    const limit = query?.limit ?? 50
+    const offset = query?.offset ?? 0
+    const ids = parseIdFilter(query?.id)
+
+    const conditions = [isNull(productVariant.deleted_at)]
+
+    if (query?.q?.trim()) {
+      const term = `%${query.q.trim()}%`
+      conditions.push(
+        or(
+          ilike(productVariant.title, term),
+          ilike(productVariant.sku, term),
+        )!,
+      )
+    }
+
+    if (ids?.length) {
+      conditions.push(inArray(productVariant.id, ids))
+    }
+
+    if (query?.product_id) {
+      conditions.push(eq(productVariant.product_id, query.product_id))
+    }
+
+    const where = and(...conditions)
+
+    const [variants, [{ total }]] = await Promise.all([
+      db
+        .select()
+        .from(productVariant)
+        .where(where)
+        .orderBy(productVariant.variant_rank)
+        .limit(limit)
+        .offset(offset),
+      db.select({ total: count() }).from(productVariant).where(where),
+    ])
+
+    const productIds = [...new Set(variants.map((v) => v.product_id))]
+    const products =
+      productIds.length > 0
+        ? await db
+            .select({
+              id: product.id,
+              title: product.title,
+              thumbnail: product.thumbnail,
+              status: product.status,
+            })
+            .from(product)
+            .where(
+              and(inArray(product.id, productIds), isNull(product.deleted_at)),
+            )
+        : []
+
+    const productById = Object.fromEntries(products.map((p) => [p.id, p]))
+
+    let enriched = variants.map((variant) => {
+      const linked = productById[variant.product_id]
+      return {
+        ...variant,
+        product: linked ?? {
+          id: variant.product_id,
+          title: variant.title,
+          thumbnail: variant.thumbnail ?? null,
+          status: "draft",
+        },
+      }
+    })
+
+    if (query?.inventory_quantity) {
+      enriched = await this.withInventoryQuantity(enriched)
+    }
+
+    return {
+      variants: enriched,
+      count: Number(total),
+      limit,
+      offset,
+    }
+  },
+
+  async getVariantById(variantId: string) {
+    const db = getDb()
+    const [item] = await db
+      .select()
+      .from(productVariant)
+      .where(
+        and(eq(productVariant.id, variantId), isNull(productVariant.deleted_at)),
+      )
+      .limit(1)
+
+    if (!item) {
+      throw new HTTPException(404, { message: "Variant not found" })
+    }
+
+    return item
+  },
+
   async listVariants(productId: string, query?: { limit?: number; offset?: number }) {
     const db = getDb()
     const limit = query?.limit ?? 50

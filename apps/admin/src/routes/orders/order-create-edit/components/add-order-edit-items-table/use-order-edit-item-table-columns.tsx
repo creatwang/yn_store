@@ -51,7 +51,13 @@ export const useOrderEditItemsTableColumns = (currencyCode: string) => {
         id: "product",
         header: () => <ProductHeader />,
         cell: ({ row }) => {
-          return <ProductCell product={row.original.product} />
+          return (
+            <ProductCell
+              product={row.original.product}
+              fallbackTitle={row.original.title}
+              fallbackThumbnail={row.original.thumbnail}
+            />
+          )
         },
       }),
       columnHelper.accessor("sku", {

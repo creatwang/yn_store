@@ -1,81 +1,51 @@
 // @ts-nocheck
 import { FetchError } from "@medusajs/js-sdk"
+import { HttpTypes } from "@medusajs/types"
 import {
   QueryKey,
   useMutation,
   UseMutationOptions,
   useQuery,
+  useQueryClient,
   UseQueryOptions,
 } from "@tanstack/react-query"
 import { sdk } from "../../lib/client"
-import { queryClient } from "../../lib/query-client"
-import { queryKeysFactory } from "../../lib/query-key-factory"
 import { ordersQueryKeys } from "./orders"
+import { shippingOptionsQueryKeys } from "./shipping-options"
+const DRAFT_ORDERS_QUERY_KEY = "draft-orders"
 
-const DRAFT_ORDERS_QUERY_KEY = "draft_orders" as const
-export const draftOrdersQueryKeys = queryKeysFactory(DRAFT_ORDERS_QUERY_KEY)
-
-export type DraftOrderRecord = Record<string, unknown> & {
-  id: string
-  email?: string | null
-  currency_code?: string
-  region_id?: string | null
-  customer_id?: string | null
-  items?: DraftOrderItemRecord[]
-  draft_shipping_methods?: DraftShippingMethodRecord[]
-}
-
-export type DraftOrderItemRecord = {
-  id: string
-  line_item_id: string
-  title?: string | null
-  variant_id?: string | null
-  quantity: number
-  unit_price?: number | null
-  edit_action_id?: string | null
-}
-
-export type DraftShippingMethodRecord = {
-  id: string
-  shipping_option_id: string
-  amount?: number
-}
-
-const invalidateDraft = (id: string) => {
-  queryClient.invalidateQueries({ queryKey: draftOrdersQueryKeys.detail(id) })
-  queryClient.invalidateQueries({ queryKey: ordersQueryKeys.detail(id) })
-  queryClient.invalidateQueries({ queryKey: ordersQueryKeys.preview(id) })
-}
-
-export const useDraftOrder = (
-  id: string,
-  options?: Omit<
-    UseQueryOptions<{ draft_order: DraftOrderRecord }, FetchError, QueryKey>,
-    "queryFn" | "queryKey"
-  >,
-) => {
-  const { data, ...rest } = useQuery({
-    queryFn: async () => sdk.admin.draftOrder.retrieve(id),
-    queryKey: draftOrdersQueryKeys.detail(id),
-    ...options,
-  })
-
-  return { ...data, ...rest }
+export const draftOrdersQueryKeys = {
+  detail: (id: string, query?: Record<string, any>) => [
+    DRAFT_ORDERS_QUERY_KEY,
+    "details",
+    id,
+    query ? { query } : undefined,
+  ],
+  details: () => [DRAFT_ORDERS_QUERY_KEY, "details"],
+  list: (query?: Record<string, any>) => [
+    DRAFT_ORDERS_QUERY_KEY,
+    "lists",
+    query ? { query } : undefined,
+  ],
+  lists: () => [DRAFT_ORDERS_QUERY_KEY, "lists"],
 }
 
 export const useDraftOrders = (
-  query?: Record<string, unknown>,
+  query?: HttpTypes.AdminOrderFilters,
   options?: Omit<
     UseQueryOptions<
-      { draft_orders: DraftOrderRecord[]; count?: number },
+      HttpTypes.AdminDraftOrderListResponse,
       FetchError,
+      HttpTypes.AdminDraftOrderListResponse,
       QueryKey
     >,
     "queryFn" | "queryKey"
-  >,
+  >
 ) => {
   const { data, ...rest } = useQuery({
-    queryFn: async () => sdk.admin.draftOrder.list(query),
+    queryFn: async () => {
+      return await sdk.admin.draftOrder.list(query)
+    },
     queryKey: draftOrdersQueryKeys.list(query),
     ...options,
   })
@@ -83,35 +53,57 @@ export const useDraftOrders = (
   return { ...data, ...rest }
 }
 
-export const useCreateDraftOrder = (
-  options?: UseMutationOptions<
-    { draft_order: DraftOrderRecord },
-    FetchError,
-    Record<string, unknown>
-  >,
+export const useDraftOrder = (
+  id: string,
+  query?: HttpTypes.AdminDraftOrderParams,
+  options?: Omit<
+    UseQueryOptions<
+      HttpTypes.AdminDraftOrderResponse,
+      FetchError,
+      HttpTypes.AdminDraftOrderResponse,
+      QueryKey
+    >,
+    "queryFn" | "queryKey"
+  >
 ) => {
-  return useMutation({
-    mutationFn: (payload) => sdk.admin.draftOrder.create(payload),
-    onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: draftOrdersQueryKeys.lists() })
-      options?.onSuccess?.(data, variables, context)
+  const { data, ...rest } = useQuery({
+    queryFn: async () => {
+      return await sdk.admin.draftOrder.retrieve(id, query)
     },
+    queryKey: draftOrdersQueryKeys.detail(id, query),
     ...options,
   })
+
+  return { ...data, ...rest }
 }
 
-export const useUpdateDraftOrder = (
-  id: string,
-  options?: UseMutationOptions<
-    { draft_order: DraftOrderRecord },
-    FetchError,
-    Record<string, unknown>
-  >,
+export const useCreateDraftOrder = (
+  options?: Omit<
+    UseMutationOptions<
+      HttpTypes.AdminDraftOrderResponse,
+      FetchError,
+      HttpTypes.AdminCreateDraftOrder
+    >,
+    "mutationFn" | "mutationKey"
+  >
 ) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (payload) => sdk.admin.draftOrder.update(id, payload),
+    mutationFn: async (payload) => {
+      return await sdk.admin.draftOrder.create(payload)
+    },
     onSuccess: (data, variables, context) => {
-      invalidateDraft(id)
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.lists(),
+      })
+
+      // NOTE: Invalidate shipping options since we have a lot of places where we enable SO fetching
+      // depending on a condition but RQ will return stale data from cache which will render wrong UI.
+      queryClient.invalidateQueries({
+        queryKey: shippingOptionsQueryKeys.list(),
+      })
+
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -119,13 +111,60 @@ export const useUpdateDraftOrder = (
 }
 
 export const useDeleteDraftOrder = (
-  id: string,
-  options?: UseMutationOptions<{ id: string }, FetchError, void>,
+  options?: Omit<
+    UseMutationOptions<
+      HttpTypes.DeleteResponse<"draft-order">,
+      FetchError,
+      string
+    >,
+    "mutationFn" | "mutationKey"
+  >
 ) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: () => sdk.admin.draftOrder.delete(id),
+    mutationFn: async (id: string) => {
+      return await sdk.admin.draftOrder.delete(id)
+    },
+    onSuccess: (data, undefined, context) => {
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.lists(),
+      })
+
+      options?.onSuccess?.(data, undefined, context)
+    },
+    ...options,
+  })
+}
+
+export const useUpdateDraftOrder = (
+  id: string,
+  options?: Omit<
+    UseMutationOptions<
+      HttpTypes.AdminDraftOrderResponse,
+      FetchError,
+      HttpTypes.AdminUpdateDraftOrder
+    >,
+    "mutationFn" | "mutationKey"
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload) => {
+      return await sdk.admin.draftOrder.update(id, payload)
+    },
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: draftOrdersQueryKeys.lists() })
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.details(),
+      })
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.details(),
+      })
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.lists(),
+      })
+
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
@@ -134,91 +173,408 @@ export const useDeleteDraftOrder = (
 
 export const useConvertDraftOrder = (
   id: string,
-  options?: UseMutationOptions<
-    { order: Record<string, unknown> },
-    FetchError,
-    void
-  >,
+  options?: UseMutationOptions<HttpTypes.AdminOrderResponse, FetchError, void>
 ) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: () => sdk.admin.draftOrder.convertToOrder(id),
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: draftOrdersQueryKeys.lists() })
-      invalidateDraft(id)
-      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.lists() })
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.detail(id),
+      })
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.lists(),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.detail(id),
+      })
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.lists(),
+      })
+
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
   })
 }
 
-export const useAddDraftOrderItems = (
+export const useDraftOrderAddItems = (
   id: string,
   options?: UseMutationOptions<
-    Record<string, unknown>,
+    HttpTypes.AdminDraftOrderPreviewResponse,
     FetchError,
-    {
-      items: {
-        variant_id?: string
-        quantity: number
-        unit_price?: number
-        title?: string
-      }[]
-    }
-  >,
+    HttpTypes.AdminAddDraftOrderItems
+  >
 ) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: (payload) => sdk.admin.draftOrder.addItems(id, payload),
     onSuccess: (data, variables, context) => {
-      invalidateDraft(id)
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
   })
 }
 
-export const useRemoveDraftOrderItem = (
-  id: string,
-  options?: UseMutationOptions<Record<string, unknown>, FetchError, string>,
-) => {
-  return useMutation({
-    mutationFn: (actionId) => sdk.admin.draftOrder.removeItem(id, actionId),
-    onSuccess: (data, variables, context) => {
-      invalidateDraft(id)
-      options?.onSuccess?.(data, variables, context)
-    },
-    ...options,
-  })
-}
-
-export const useAddDraftOrderShippingMethod = (
+export const useDraftOrderUpdateItem = (
   id: string,
   options?: UseMutationOptions<
-    Record<string, unknown>,
+    HttpTypes.AdminDraftOrderPreviewResponse,
     FetchError,
-    { shipping_option_id: string; amount?: number }
-  >,
+    HttpTypes.AdminUpdateDraftOrderItem & { item_id: string }
+  >
 ) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ item_id, ...payload }) =>
+      sdk.admin.draftOrder.updateItem(id, item_id, payload),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderRemoveActionItem = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    string
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (action_id: string) =>
+      sdk.admin.draftOrder.removeActionItem(id, action_id),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderUpdateActionItem = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    HttpTypes.AdminUpdateDraftOrderItem & { action_id: string }
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ action_id, ...payload }) =>
+      sdk.admin.draftOrder.updateActionItem(id, action_id, payload),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderAddPromotions = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    HttpTypes.AdminAddDraftOrderPromotions
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload) => sdk.admin.draftOrder.addPromotions(id, payload),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderRemovePromotions = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    HttpTypes.AdminRemoveDraftOrderPromotions
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload) => sdk.admin.draftOrder.removePromotions(id, payload),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderAddShippingMethod = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    HttpTypes.AdminAddDraftOrderShippingMethod
+  >
+) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: (payload) =>
       sdk.admin.draftOrder.addShippingMethod(id, payload),
     onSuccess: (data, variables, context) => {
-      invalidateDraft(id)
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
   })
 }
 
-export const useRemoveDraftOrderShippingMethod = (
+export const useDraftOrderUpdateActionShippingMethod = (
   id: string,
-  options?: UseMutationOptions<Record<string, unknown>, FetchError, string>,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    HttpTypes.AdminUpdateDraftOrderActionShippingMethod & { action_id: string }
+  >
 ) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
-    mutationFn: (actionId) =>
-      sdk.admin.draftOrder.removeShippingMethod(id, actionId),
+    mutationFn: ({ action_id, ...payload }) =>
+      sdk.admin.draftOrder.updateActionShippingMethod(id, action_id, payload),
     onSuccess: (data, variables, context) => {
-      invalidateDraft(id)
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderRemoveActionShippingMethod = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    string
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (action_id: string) =>
+      sdk.admin.draftOrder.removeActionShippingMethod(id, action_id),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderRemoveShippingMethod = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    string
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (shipping_method_id: string) =>
+      sdk.admin.draftOrder.removeShippingMethod(id, shipping_method_id),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderUpdateShippingMethod = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    HttpTypes.AdminUpdateDraftOrderShippingMethod & { method_id: string }
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ method_id, ...payload }) =>
+      sdk.admin.draftOrder.updateShippingMethod(id, method_id, payload),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderBeginEdit = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    void
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => sdk.admin.draftOrder.beginEdit(id),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderCancelEdit = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.DeleteResponse<"draft-order-edit">,
+    FetchError,
+    void
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => sdk.admin.draftOrder.cancelEdit(id),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.details(),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.details(),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderRequestEdit = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    void
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => sdk.admin.draftOrder.requestEdit(id),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      options?.onSuccess?.(data, variables, context)
+    },
+    ...options,
+  })
+}
+
+export const useDraftOrderConfirmEdit = (
+  id: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminDraftOrderPreviewResponse,
+    FetchError,
+    void
+  >
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => sdk.admin.draftOrder.confirmEdit(id),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.preview(id),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.changes(id),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: ordersQueryKeys.details(),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.detail(id),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.details(),
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: draftOrdersQueryKeys.lists(),
+      })
+
       options?.onSuccess?.(data, variables, context)
     },
     ...options,
