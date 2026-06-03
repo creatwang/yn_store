@@ -21,6 +21,12 @@ import { HTTPException } from "hono/http-exception"
 import { eventBus } from "../lib/events"
 import { returnCreateWorkflow } from "../workflows/return-create"
 import { runInTransaction } from "../lib/transaction"
+import {
+  addChangeShippingAction,
+  getPendingChangeByReturnId,
+  removeChangeShippingAction,
+  updateChangeShippingAction,
+} from "../lib/order-change-shipping"
 
 type ReturnItemInput = {
   item_id: string
@@ -29,9 +35,12 @@ type ReturnItemInput = {
   reason_id?: string | null
 }
 
-function shippingFromMetadata(metadata: unknown) {
-  const meta = (metadata ?? {}) as Record<string, unknown>
-  return Array.isArray(meta.shipping_methods) ? meta.shipping_methods : []
+function resolveShippingOptionId(input: Record<string, unknown>) {
+  const id = input.shipping_option_id ?? input.option_id
+  if (id == null || String(id).trim() === "") {
+    throw new HTTPException(400, { message: "shipping_option_id is required" })
+  }
+  return String(id)
 }
 
 export const returnService = {
@@ -216,59 +225,34 @@ export const returnService = {
   },
 
   async addReturnShipping(id: string, input: Record<string, unknown>) {
-    const db = getDb()
-    const current = await this.getById(id)
-    const ret = current.return
-    const actionId = generateId("retshp")
-    const methods = [
-      ...shippingFromMetadata(ret.metadata),
-      { id: actionId, ...input },
-    ]
-
-    await db
-      .update(orderReturn)
-      .set({
-        metadata: { ...((ret.metadata as Record<string, unknown>) ?? {}), shipping_methods: methods },
-        updated_at: sql`now()`,
-      })
-      .where(eq(orderReturn.id, id))
-
+    const change = await getPendingChangeByReturnId(id)
+    await addChangeShippingAction({
+      change,
+      shipping_option_id: resolveShippingOptionId(input),
+      isInbound: true,
+    })
     return this.getById(id)
   },
 
-  async updateReturnShipping(id: string, actionId: string, input: Record<string, unknown>) {
-    const db = getDb()
-    const current = await this.getById(id)
-    const ret = current.return
-    const methods = shippingFromMetadata(ret.metadata).map((m: any) =>
-      m.id === actionId ? { ...m, ...input } : m,
-    )
-
-    await db
-      .update(orderReturn)
-      .set({
-        metadata: { ...((ret.metadata as Record<string, unknown>) ?? {}), shipping_methods: methods },
-        updated_at: sql`now()`,
-      })
-      .where(eq(orderReturn.id, id))
-
+  async updateReturnShipping(
+    id: string,
+    actionId: string,
+    input: Record<string, unknown>,
+  ) {
+    const change = await getPendingChangeByReturnId(id)
+    const patch: { shipping_option_id?: string } = {}
+    if (input.shipping_option_id != null) {
+      patch.shipping_option_id = String(input.shipping_option_id)
+    } else if (input.option_id != null) {
+      patch.shipping_option_id = String(input.option_id)
+    }
+    await updateChangeShippingAction(change.id, actionId, patch)
     return this.getById(id)
   },
 
   async deleteReturnShipping(id: string, actionId: string) {
-    const db = getDb()
-    const current = await this.getById(id)
-    const ret = current.return
-    const methods = shippingFromMetadata(ret.metadata).filter((m: any) => m.id !== actionId)
-
-    await db
-      .update(orderReturn)
-      .set({
-        metadata: { ...((ret.metadata as Record<string, unknown>) ?? {}), shipping_methods: methods },
-        updated_at: sql`now()`,
-      })
-      .where(eq(orderReturn.id, id))
-
+    const change = await getPendingChangeByReturnId(id)
+    await removeChangeShippingAction(change.id, actionId)
     return this.getById(id)
   },
 

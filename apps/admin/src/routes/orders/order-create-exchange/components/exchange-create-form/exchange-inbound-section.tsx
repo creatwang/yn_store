@@ -121,22 +121,16 @@ export const ExchangeInboundSection = ({
    * HOOKS
    */
   const { stock_locations = [] } = useStockLocations({ limit: 999 })
-  const { shipping_options = [] } = useShippingOptions(
+  const { shipping_options: inboundShippingOptions = [] } = useShippingOptions(
     {
       limit: 999,
       fields: "*prices,+service_zone.fulfillment_set.location.id",
       stock_location_id: locationId,
+      is_return: true,
     },
     {
       enabled: !!locationId,
     }
-  )
-
-  const inboundShippingOptions = shipping_options.filter(
-    (shippingOption) =>
-      !!shippingOption.rules.find(
-        (r) => r.attribute === "is_return" && r.value === "true"
-      )
   )
 
   const {

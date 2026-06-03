@@ -43,7 +43,7 @@
 | 订单导出分页（500/批） | ✅ |
 | `POST /admin/orders/:id/notes` | ✅ metadata.admin_notes |
 | Admin 通知路由 → `notification.service` + resend | ✅ |
-| claim/exchange shipping → action 表 | 🟡 仍部分 metadata（低优先） |
+| claim/exchange/return shipping → `order_change_action` | ✅（2026-06-03） |
 
 ### P3 — fields
 
@@ -99,7 +99,7 @@
 | S3 Claim 全流程 | ✅ |
 | S4 Exchange + 分配库存 UX | ✅ |
 
-详见 [ADMIN-UI-ITERATION-01.md](./ADMIN-UI-ITERATION-01.md)。**Admin 建单**：草稿订单 UI + 订单子路由已接（2026-06-01）。剩余：shipping options API 级 boolean 筛选、bulk allocate 端点（迭代 02）。
+详见 [ADMIN-UI-ITERATION-01.md](./ADMIN-UI-ITERATION-01.md)。**Admin 建单**：草稿订单 UI + 订单子路由已接（2026-06-01）。**迭代 02（2026-06-03）**：`GET /admin/shipping-options?is_return` / `admin_only` 服务端筛选、`POST /admin/reservations/batch` + workflow 回滚、`GET /admin/orders/:id/shipping-options` 带筛选。
 
 ---
 

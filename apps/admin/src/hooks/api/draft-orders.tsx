@@ -56,16 +56,17 @@ export const useDraftOrder = (
     "queryFn" | "queryKey"
   >,
 ) => {
-  const query = useQuery({
+  const { data, ...rest } = useQuery({
     queryFn: async () => sdk.admin.draftOrder.retrieve(id, query),
     queryKey: draftOrdersQueryKeys.detail(id, query),
     ...options,
   })
 
   return {
-    ...query,
-    draft_order: query.data?.draft_order,
-  } as typeof query & { draft_order?: DraftOrderRecord }
+    ...data,
+    ...rest,
+    draft_order: data?.draft_order,
+  }
 }
 
 export const useDraftOrders = (

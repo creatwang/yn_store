@@ -1,6 +1,6 @@
 /** Auto-synced from medusajs/medusa v2.15.3 — do not edit manually */
 import { z } from "zod"
-import { AddressPayload } from "../../../helpers/common-validators"
+import { AddressPayload, booleanString } from "../../../helpers/common-validators"
 import {
   createFindParams,
   createOperatorMap,
@@ -41,7 +41,11 @@ export type AdminGetOrdersOrderItemsParamsType = z.infer<
   typeof AdminGetOrdersOrderItemsParams
 >
 
-export const AdminGetOrderShippingOptionList = z.object({})
+export const AdminGetOrderShippingOptionList = z.object({
+  is_return: booleanString().optional(),
+  admin_only: booleanString().optional(),
+  stock_location_id: z.union([z.string(), z.array(z.string())]).optional(),
+})
 
 export type AdminGetOrderShippingOptionListType = z.infer<
   typeof AdminGetOrderShippingOptionList

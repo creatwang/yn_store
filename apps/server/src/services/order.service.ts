@@ -22,8 +22,12 @@ import type {
 import type {
   AdminGetOrdersParamsType,
   AdminOrderChangesType,
+  AdminGetShippingOptionsParamsType,
   StoreGetOrdersParamsType,
 } from "@my-store/validators/admin-list-params"
+import type { AdminGetOrderShippingOptionListType } from "@my-store/validators/medusa/admin/orders/validators"
+import { listShippingOptionRowsFiltered } from "../lib/shipping-option-list-filter"
+import { enrichShippingOptionsBatch } from "../lib/shipping-option-enrich-batch"
 import { HTTPException } from "hono/http-exception"
 import { sendOrderCanceledEmail } from "../lib/mail"
 import { loadActionsGroupedByChangeId } from "../lib/order-change-actions-batch"
@@ -738,8 +742,35 @@ export const orderService = {
   },
 
   // ── Shipping Options ──────────────────────────────────
-  async listShippingOptions(_orderId: string) {
-    return { shipping_options: [] }
+  async listShippingOptions(
+    orderId: string,
+    query: AdminGetOrderShippingOptionListType = {},
+  ) {
+    const db = getDb()
+    const [ord] = await db
+      .select({ id: order.id })
+      .from(order)
+      .where(and(eq(order.id, orderId), isNull(order.deleted_at)))
+      .limit(1)
+
+    if (!ord) {
+      throw new HTTPException(404, { message: "Order not found" })
+    }
+
+    const listQuery = {
+      limit: 200,
+      offset: 0,
+      is_return: query.is_return,
+      admin_only: query.admin_only,
+      stock_location_id: query.stock_location_id,
+    } as AdminGetShippingOptionsParamsType
+
+    const { rows } = await listShippingOptionRowsFiltered(listQuery, {
+      limit: 200,
+      offset: 0,
+    })
+    const shipping_options = await enrichShippingOptionsBatch(db, rows)
+    return { shipping_options }
   },
 
   // ── Order Change Update ─────────────────────────────

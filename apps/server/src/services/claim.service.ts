@@ -139,7 +139,7 @@ export const claimService = {
     return this.getById(claimId)
   },
 
-  // ── Outbound Items / Shipping (stored in metadata for action tracking) ──
+  // ── Outbound shipping → order_change_action；outbound items 仍用 metadata ──
 
   async addOutboundShipping(claimId: string, payload: { shipping_option_id: string }) {
     const change = await getPendingChangeByClaimId(claimId)

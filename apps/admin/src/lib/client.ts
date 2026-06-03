@@ -158,7 +158,8 @@ function ordersClient() {
     cancelTransfer: (orderId: string) => rpcPost(rpc[":id"].transfer.cancel, undefined, { id: orderId }),
     // ── Line Items / Shipping Options ─────────────────────
     listLineItems: (id: string) => rpcGet(rpc[":id"]["line-items"], { id }),
-    listShippingOptions: (id: string) => rpcGet(rpc[":id"]["shipping-options"], { id }),
+    listShippingOptions: (id: string, query?: Record<string, unknown>) =>
+      rpcGet(rpc[":id"]["shipping-options"], { id }, query),
     // ── Payments (delegate to payments client) ──────────────
     capturePayment: (id: string, body?: any) => rpcPost(paymentsRpc[":id"].capture, body, { id }),
     refundPayment: (id: string, body?: any) => rpcPost(paymentsRpc[":id"].refund, body, { id }),

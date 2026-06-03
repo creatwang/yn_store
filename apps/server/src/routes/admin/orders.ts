@@ -20,6 +20,7 @@ import {
   AdminGetOrdersParams,
   AdminOrderChangesParams,
 } from "@my-store/validators/admin-list-params"
+import { AdminGetOrderShippingOptionList } from "@my-store/validators/medusa/admin/orders/validators"
 import { orderService } from "../../services/order.service"
 import { fulfillmentService } from "../../services/fulfillment.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
@@ -126,10 +127,17 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
     const result = await orderService.addLineItem(c.req.param("id"), body)
     return c.json(result, 201)
   })
-  .get("/:id/shipping-options", async (c) => {
-    const result = await orderService.listShippingOptions(c.req.param("id"))
-    return c.json(result)
-  })
+  .get(
+    "/:id/shipping-options",
+    rpcQueryValidator(AdminGetOrderShippingOptionList),
+    async (c) => {
+      const result = await orderService.listShippingOptions(
+        c.req.param("id"),
+        c.req.valid("query"),
+      )
+      return c.json(result)
+    },
+  )
   .post("/:id/shipping-options", zValidator("json", addShippingMethodToOrderSchema), async (c) => {
     const body = c.req.valid("json")
     const result = await orderService.addShippingMethod(c.req.param("id"), body)

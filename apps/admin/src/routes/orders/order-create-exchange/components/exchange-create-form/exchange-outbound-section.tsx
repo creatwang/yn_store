@@ -61,12 +61,8 @@ export const ExchangeOutboundSection = ({
   /**
    * HOOKS
    */
-  const { shipping_options = [] } = useOrderShippingOptions(order.id)
-
-  const outboundShippingOptions = shipping_options.filter(
-    (so) =>
-      !so.rules?.find((r) => r.attribute === "is_return" && r.value === "true")
-  )
+  const { shipping_options: outboundShippingOptions = [] } =
+    useOrderShippingOptions(order.id, { is_return: false })
 
   const { mutateAsync: addOutboundShipping } = useAddExchangeOutboundShipping(
     exchange.id,
