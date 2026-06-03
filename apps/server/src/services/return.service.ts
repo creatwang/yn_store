@@ -258,6 +258,31 @@ export const returnService = {
     return this.getById(id)
   },
 
+  async dismissItems(id: string, input: ReceiveReturnInput) {
+    const db = getDb()
+    const current = await this.getById(id)
+    const ret = current.return
+
+    if (input.items?.length) {
+      for (const item of input.items) {
+        const qty = item.received_quantity ?? item.quantity
+        await db
+          .update(orderItem)
+          .set({
+            return_dismissed_quantity: sql`COALESCE(return_dismissed_quantity::numeric, 0) + ${qty}`,
+          })
+          .where(
+            and(
+              eq(orderItem.item_id, item.item_id),
+              eq(orderItem.order_id, ret.order_id),
+            ),
+          )
+      }
+    }
+
+    return this.getById(id)
+  },
+
   async receiveItems(id: string, input: ReceiveReturnInput) {
     const db = getDb()
     const current = await this.getById(id)

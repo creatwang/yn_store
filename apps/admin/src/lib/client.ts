@@ -232,7 +232,7 @@ function returnClient() {
     cancel: (id: string) => rpcPost(rpc[":id"].cancel, undefined, { id }),
     receive: (id: string, body?: any) => rpcPost(rpc[":id"]["receive/confirm"], body, { id }),
     request: (id: string, body?: any) => rpcPost(rpc[":id"].request, body, { id }),
-    dismiss: (id: string, body?: any) => rpcPost(rpc[":id"]["receive-items"], body, { id }),
+    dismiss: (id: string, body?: any) => rpcPost(rpc[":id"]["dismiss-items"], body, { id }),
     cancelRequest: (id: string) => rpcPost(rpc[":id"].request.cancel, undefined, { id }),
     addReturnItem: (id: string, body?: any) => rpcPost(rpc[":id"]["request-items"], body, { id }),
     updateReturnItem: (id: string, actionId: string, body?: any) =>
@@ -253,11 +253,11 @@ function returnClient() {
       rpcPost(rpc[":id"]["receive-items"][":actionId"], body, { id, actionId }),
     removeReceiveItem: (id: string, actionId: string) =>
       rpcDelete(rpc[":id"]["receive-items"][":actionId"], { id, actionId }),
-    dismissItems: (id: string, body?: any) => rpcPost(rpc[":id"]["receive-items"], body, { id }),
+    dismissItems: (id: string, body?: any) => rpcPost(rpc[":id"]["dismiss-items"], body, { id }),
     updateDismissItem: (id: string, actionId: string, body?: any) =>
-      rpcPost(rpc[":id"]["receive-items"][":actionId"], body, { id, actionId }),
+      rpcPost(rpc[":id"]["dismiss-items"][":actionId"], body, { id, actionId }),
     removeDismissItem: (id: string, actionId: string) =>
-      rpcDelete(rpc[":id"]["receive-items"][":actionId"], { id, actionId }),
+      rpcDelete(rpc[":id"]["dismiss-items"][":actionId"], { id, actionId }),
     confirmReceive: (id: string, body?: any) => rpcPost(rpc[":id"]["receive/confirm"], body, { id }),
     cancelReceive: (id: string) => rpcPost(rpc[":id"].receive.cancel, undefined, { id }),
   }

@@ -8,6 +8,7 @@ import { eventBus } from "../lib/events"
 import { runInTransaction } from "../lib/transaction"
 import { notificationService } from "./notification.service"
 import { sendOrderUpdatedEmail } from "../lib/mail"
+import { buildAdminOrderPreview } from "./order/admin-order-preview"
 
 // ── helpers ─────────────────────────────────────────────────
 
@@ -116,7 +117,7 @@ export const orderEditService = {
       created.push({ id: actionId, action: "ITEM_ADD", reference_id: item.variant_id })
     }
 
-    return loadEdit(editId).then(r => ({ order_edit: r.order_change }))
+    return buildAdminOrderPreview(edit.order_id)
   },
 
   /** Update an original item's quantity/price (creates ITEM_UPDATE action) */

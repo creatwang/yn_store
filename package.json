@@ -22,6 +22,8 @@
     "init": "powershell -ExecutionPolicy Bypass -File ./scripts/init.ps1",
     "check:db": "powershell -ExecutionPolicy Bypass -File ./scripts/check-db.ps1",
     "check:runtime-db": "node scripts/check-runtime-db.mjs",
+    "check:orders-products-1to1": "node scripts/audit-orders-products-1to1.mjs",
+    "port:orders-products-stubs": "node scripts/port-orders-products-stubs.mjs",
     "seed:admin": "pnpm --filter @my-store/server seed:admin",
     "sync:handoff": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-handoff-from-old.ps1",
     "migrate": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-from-legacy.ps1",

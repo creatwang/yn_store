@@ -140,7 +140,12 @@ const ItemsForm = ({ preview, currencyCode }: ItemsFormProps) => {
     preview.items?.reduce((acc, item) => acc + item.quantity, 0) || 0
 
   const matches = useMemo(() => {
-    return matchSorter(preview.items, query, {
+    const list = preview.items ?? []
+    // match-sorter 在 query 为 undefined 时返回 []，与官方 UI 行为不一致
+    if (!query) {
+      return list
+    }
+    return matchSorter(list, query, {
       keys: ["product_title", "variant_title", "variant_sku", "title"],
     })
   }, [preview.items, query])

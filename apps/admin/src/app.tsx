@@ -116,7 +116,7 @@ const router = createBrowserRouter(
                 lazy={() => import("./routes/orders/order-create-fulfillment")}
               />
               <Route
-                path=":fulfillmentId/create-shipment"
+                path=":f_id/create-shipment"
                 lazy={() => import("./routes/orders/order-create-shipment")}
               />
               <Route

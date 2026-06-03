@@ -18,6 +18,7 @@ import {
   Tooltip,
 } from "@medusajs/ui"
 import { Accordion } from "radix-ui"
+import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
 import { useShippingOptions } from "../../hooks/api/shipping-options"
@@ -31,6 +32,7 @@ interface ShippingSectionProps {
 }
 
 export const ShippingSection = ({ order }: ShippingSectionProps) => {
+  const { t } = useTranslation()
   const orderHasShipping = order.shipping_methods.length > 0
 
   const {
@@ -345,11 +347,15 @@ interface FooterProps {
 }
 
 const Footer = ({ isSomeProfilesAssigned }: FooterProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className="px-6 py-4 flex items-center justify-end bg-ui-bg-component">
       <Button size="small" variant="secondary" asChild>
         <Link to="shipping">
-          {isSomeProfilesAssigned ? "Edit shipping" : "Add shipping"}
+          {isSomeProfilesAssigned
+            ? t("draftOrders.detail.editShipping")
+            : t("draftOrders.detail.addShipping")}
         </Link>
       </Button>
     </div>

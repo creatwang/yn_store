@@ -386,6 +386,9 @@ function formatLineItem(
 
   const item = {
     ...lineItem,
+    product_title: productRow?.title ?? lineItem.title ?? null,
+    variant_title: variant?.title ?? null,
+    variant_sku: variant?.sku ?? null,
     unit_price: unitPrice,
     compare_at_unit_price: toAmount(
       detailRow.compare_at_unit_price ??

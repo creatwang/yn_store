@@ -44,21 +44,25 @@ export const OrderEditItemsSection = ({
    * CALLBACKS
    */
   const onItemsSelected = async () => {
-    await addItems(
-      {
-        items: addedVariants.map((i) => ({
+    if (addedVariants.length === 0) {
+      setIsOpen("inbound-items", false)
+      return
+    }
+
+    const variantIds = [...addedVariants]
+
+    try {
+      await addItems({
+        items: variantIds.map((i) => ({
           variant_id: i,
           quantity: 1,
         })),
-      },
-      {
-        onError: (e) => {
-          toast.error(e.message)
-        },
-      }
-    )
-
-    setIsOpen("inbound-items", false)
+      })
+      addedVariants = []
+      setIsOpen("inbound-items", false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("general.error"))
+    }
   }
 
   const filteredItems = useMemo(() => {

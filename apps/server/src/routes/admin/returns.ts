@@ -111,6 +111,25 @@ export const adminReturns = new Hono<{ Variables: AuthVariables }>()
     )
     return c.json(result)
   })
+  .post("/:id/dismiss-items", zValidator("json", receiveReturnSchema), async (c) => {
+    const result = await returnService.dismissItems(c.req.param("id"), c.req.valid("json"))
+    return c.json(result)
+  })
+  .post("/:id/dismiss-items/:actionId", returnItemUpdateSchema, async (c) => {
+    const result = await returnService.updateReturnItem(
+      c.req.param("id"),
+      c.req.param("actionId"),
+      c.req.valid("json"),
+    )
+    return c.json(result)
+  })
+  .delete("/:id/dismiss-items/:actionId", async (c) => {
+    const result = await returnService.removeReturnItem(
+      c.req.param("id"),
+      c.req.param("actionId"),
+    )
+    return c.json(result)
+  })
   .post("/:id/receive-items", zValidator("json", receiveReturnSchema), async (c) => {
     const result = await returnService.receiveItems(c.req.param("id"), c.req.valid("json"))
     return c.json(result)

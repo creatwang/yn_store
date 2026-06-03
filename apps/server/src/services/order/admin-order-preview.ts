@@ -1,13 +1,14 @@
 /**
  * Admin 订单 Preview DTO — RMA 向导（退货/换货/索赔）依赖
  */
-import { and, desc, eq, isNull } from "drizzle-orm"
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm"
 import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 import {
   generateId,
   getDb,
   order,
   orderChange,
+  orderChangeAction,
   orderClaim,
   orderClaimItem,
   orderExchange,
@@ -17,7 +18,7 @@ import {
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import { toAmount } from "../../lib/big-number"
-import { presentAdminOrderDetail } from "./admin-order"
+import { decorateOrderTotals, presentAdminOrderDetail } from "./admin-order"
 
 type Db = NodePgDatabase<Record<string, never>>
 
@@ -34,6 +35,175 @@ type PreviewAction = {
 function num(v: unknown): number {
   if (v == null) return 0
   return toAmount(v as string | number | { amount?: number })
+}
+
+function sqlRows(result: unknown): unknown[] {
+  return Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+}
+
+function mapEditChangeAction(row: typeof orderChangeAction.$inferSelect) {
+  return {
+    id: row.id,
+    order_id: row.order_id,
+    order_change_id: row.order_change_id,
+    action: row.action,
+    reference: row.reference,
+    reference_id: row.reference_id,
+    details: row.details ?? {},
+    amount: row.amount != null ? Number(row.amount) : null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }
+}
+
+async function loadOrderEditActions(db: Db, changeId: string) {
+  return db
+    .select()
+    .from(orderChangeAction)
+    .where(eq(orderChangeAction.order_change_id, changeId))
+    .orderBy(asc(orderChangeAction.ordering))
+}
+
+async function loadVariantsForEditPreview(db: Db, variantIds: string[]) {
+  const map = new Map<
+    string,
+    { title: string; sku: string | null; thumbnail: string | null; product_title: string | null }
+  >()
+  if (variantIds.length === 0) return map
+
+  const rows = await db.execute(sql`
+    SELECT pv.id, pv.title, pv.sku, p.thumbnail, p.title AS product_title
+    FROM product_variant pv
+    LEFT JOIN product p ON p.id = pv.product_id AND p.deleted_at IS NULL
+    WHERE pv.id = ANY(${variantIds}::text[]) AND pv.deleted_at IS NULL
+  `)
+
+  for (const row of sqlRows(rows) as Array<Record<string, unknown>>) {
+    map.set(String(row.id), {
+      title: String(row.title ?? row.id),
+      sku: row.sku != null ? String(row.sku) : null,
+      thumbnail: row.thumbnail != null ? String(row.thumbnail) : null,
+      product_title: row.product_title != null ? String(row.product_title) : null,
+    })
+  }
+  return map
+}
+
+async function loadVariantUnitPrices(
+  db: Db,
+  variantIds: string[],
+  currencyCode: string,
+) {
+  const map = new Map<string, number>()
+  if (variantIds.length === 0) return map
+
+  try {
+    const rows = await db.execute(sql`
+      SELECT pvps.variant_id, MIN(pr.amount)::numeric AS amount
+      FROM product_variant_price_set pvps
+      JOIN price_set ps ON ps.id = pvps.price_set_id
+      JOIN price pr ON pr.price_set_id = ps.id
+      WHERE pvps.variant_id = ANY(${variantIds}::text[])
+        AND pr.currency_code = ${currencyCode}
+      GROUP BY pvps.variant_id
+    `)
+    for (const row of sqlRows(rows) as Array<Record<string, unknown>>) {
+      map.set(String(row.variant_id), num(row.amount))
+    }
+  } catch {
+    try {
+      const rows = await db.execute(sql`
+        SELECT variant_id, MIN(amount)::numeric AS amount
+        FROM price
+        WHERE variant_id = ANY(${variantIds}::text[])
+          AND currency_code = ${currencyCode}
+        GROUP BY variant_id
+      `)
+      for (const row of sqlRows(rows) as Array<Record<string, unknown>>) {
+        map.set(String(row.variant_id), num(row.amount))
+      }
+    } catch { /* no prices */ }
+  }
+
+  return map
+}
+
+/** 将 order edit 的 change actions 合并进 preview items（对齐官方 orders/:id/preview） */
+async function applyOrderEditToPreview(
+  db: Db,
+  items: Record<string, unknown>[],
+  activeChange: typeof orderChange.$inferSelect,
+  currencyCode: string,
+) {
+  const actionRows = await loadOrderEditActions(db, activeChange.id)
+  const changeActions = actionRows.map(mapEditChangeAction)
+
+  for (const item of items) {
+    const lineId = item.id as string
+    const updates = changeActions.filter(
+      (a) => a.reference_id === lineId && a.action === "ITEM_UPDATE",
+    )
+    if (!updates.length) continue
+
+    item.actions = [...((item.actions as PreviewAction[]) ?? []), ...updates]
+    const latest = updates[updates.length - 1]
+    const newQty = num((latest.details as Record<string, unknown>)?.quantity)
+    if (newQty <= 0) continue
+
+    const oldQty = num(item.quantity) || 1
+    const unitTotal = num(item.total) / oldQty
+    item.quantity = newQty
+    item.total = unitTotal * newQty
+    item.subtotal = unitTotal * newQty
+    item.detail = {
+      ...(item.detail as object),
+      quantity: newQty,
+    }
+  }
+
+  const addActions = changeActions.filter((a) => a.action === "ITEM_ADD")
+  const variantIds = addActions
+    .map((a) => a.reference_id)
+    .filter((id): id is string => Boolean(id))
+  const variantMap = await loadVariantsForEditPreview(db, variantIds)
+  const priceMap = await loadVariantUnitPrices(db, variantIds, currencyCode)
+
+  for (const action of addActions) {
+    const variantId = action.reference_id!
+    const info = variantMap.get(variantId)
+    const qty = num((action.details as Record<string, unknown>)?.quantity) || 1
+    const unitPrice =
+      action.amount != null ? num(action.amount) : (priceMap.get(variantId) ?? 0)
+
+    items.push({
+      id: action.id,
+      variant_id: variantId,
+      title: info?.title ?? variantId,
+      product_title: info?.product_title ?? info?.title ?? variantId,
+      variant_sku: info?.sku ?? "",
+      subtitle: info?.title ?? "",
+      thumbnail: info?.thumbnail ?? null,
+      quantity: qty,
+      unit_price: unitPrice,
+      total: unitPrice * qty,
+      subtotal: unitPrice * qty,
+      detail: {
+        id: action.id,
+        quantity: qty,
+        fulfilled_quantity: 0,
+        shipped_quantity: 0,
+        delivered_quantity: 0,
+        unit_price: unitPrice,
+      },
+      adjustments: [],
+      actions: [action],
+    })
+  }
+
+  return {
+    ...activeChange,
+    actions: changeActions,
+  }
 }
 
 function cloneItem(item: Record<string, unknown>) {
@@ -314,19 +484,30 @@ export async function buildAdminOrderPreview(orderId: string) {
     }))
   }
 
-  const summary = {
-    ...((base.summary as object) ?? {}),
-    pending_difference: num((base.summary as any)?.pending_difference),
+  let orderChangeDto: Record<string, unknown> | null = activeChange
+    ? { ...activeChange }
+    : null
+
+  if (activeChange?.change_type === "edit") {
+    orderChangeDto = await applyOrderEditToPreview(
+      db,
+      items,
+      activeChange,
+      String(base.currency_code ?? "usd"),
+    )
   }
+
+  const decorated = decorateOrderTotals({
+    ...base,
+    id: orderId,
+    items,
+    shipping_methods,
+  })
 
   return {
     order: {
-      ...base,
-      id: orderId,
-      items,
-      shipping_methods,
-      summary,
-      order_change: activeChange ?? null,
+      ...decorated,
+      order_change: orderChangeDto,
       return_requested_total: sumReturnRequested(items),
     },
   }

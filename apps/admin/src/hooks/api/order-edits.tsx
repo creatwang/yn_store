@@ -122,6 +122,9 @@ export const useAddOrderEditItems = (
     mutationFn: (payload: HttpTypes.AdminAddOrderEditItems) =>
       sdk.admin.orderEdit.addItems(editId, payload),
     onSuccess: (data: any, variables: any, context: any) => {
+      if (data?.order) {
+        queryClient.setQueryData(ordersQueryKeys.preview(orderId), data)
+      }
       invalidateOrderEditQueries(orderId)
       options?.onSuccess?.(data, variables, context)
     },

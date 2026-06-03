@@ -10,6 +10,7 @@ import {
   productImage,
   productCollection,
   productType,
+  shippingProfile,
 } from "@my-store/db"
 import type {
   CreateProductInput,
@@ -31,8 +32,101 @@ const defaultAdminProductFields = [
   "weight", "length", "height", "width", "hs_code", "origin_country",
   "mid_code", "material", "created_at", "updated_at", "deleted_at", "metadata",
   "*type", "*collection", "*options", "*options.values", "*tags", "*images",
-  "*variants", "*sales_channels", "*categories",
+  "*variants", "*sales_channels", "*categories", "*shipping_profile",
 ]
+
+async function loadProductShippingProfile(db: any, productId: string, item: any) {
+  try {
+    const rows = await db.execute(sql`
+      SELECT sp.id, sp.name, sp.type, sp.metadata, sp.created_at, sp.updated_at, sp.deleted_at
+      FROM shipping_profile sp
+      INNER JOIN product_shipping_profile psp ON psp.shipping_profile_id = sp.id
+      WHERE psp.product_id = ${productId} AND sp.deleted_at IS NULL
+      LIMIT 1
+    `)
+    const profile = sqlRows(rows)[0]
+    if (profile) return profile
+  } catch {
+    /* link table may be absent */
+  }
+
+  const profileId = (item.metadata as Record<string, unknown> | null)
+    ?.shipping_profile_id as string | undefined
+  if (!profileId) return null
+
+  const [row] = await db
+    .select()
+    .from(shippingProfile)
+    .where(eq(shippingProfile.id, profileId))
+    .limit(1)
+  return row ?? null
+}
+
+async function setProductShippingProfile(
+  db: any,
+  productId: string,
+  profileId: string | null,
+  existingMetadata: unknown,
+) {
+  try {
+    await db.execute(sql`
+      DELETE FROM product_shipping_profile WHERE product_id = ${productId}
+    `)
+    if (profileId) {
+      await db.execute(sql`
+        INSERT INTO product_shipping_profile (product_id, shipping_profile_id)
+        VALUES (${productId}, ${profileId})
+      `)
+    }
+    return
+  } catch {
+    /* fallback: metadata */
+  }
+
+  const meta = {
+    ...((existingMetadata as Record<string, unknown>) ?? {}),
+    shipping_profile_id: profileId,
+  }
+  await db
+    .update(product)
+    .set({ metadata: meta, updated_at: sql`now()` })
+    .where(eq(product.id, productId))
+}
+
+async function loadVariantPrices(db: any, variantIds: string[]) {
+  const priceMap = new Map<string, unknown[]>()
+  if (!variantIds.length) return priceMap
+
+  try {
+    const priceRows = await db.execute(sql`
+      SELECT pvps.variant_id, pr.id, pr.currency_code, pr.amount, pr.rules, pr.created_at, pr.updated_at
+      FROM product_variant_price_set pvps
+      JOIN price_set ps ON ps.id = pvps.price_set_id
+      JOIN price pr ON pr.price_set_id = ps.id
+      WHERE pvps.variant_id = ANY(${variantIds}::text[])
+    `)
+    for (const row of sqlRows(priceRows) as { variant_id: string }[]) {
+      const list = priceMap.get(row.variant_id) ?? []
+      list.push(row)
+      priceMap.set(row.variant_id, list)
+    }
+  } catch {
+    try {
+      const priceRows = await db.execute(sql`
+        SELECT variant_id, id, currency_code, amount, rules, created_at, updated_at
+        FROM price
+        WHERE variant_id = ANY(${variantIds}::text[])
+      `)
+      for (const row of sqlRows(priceRows) as { variant_id: string }[]) {
+        const list = priceMap.get(row.variant_id) ?? []
+        list.push(row)
+        priceMap.set(row.variant_id, list)
+      }
+    } catch { /* no price rows */ }
+  }
+
+  return priceMap
+}
 
 /** 按 fields 列表加载关联数据（对齐 Medusa refetchEntity 语义）
  *  - 仅有负值字段（如 "-type,-variants"）→ 用默认字段，排除负值
@@ -59,9 +153,28 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
   const result: Record<string, any> = {}
 
   if (wants("variants")) {
-    result.variants = await db.select().from(productVariant).where(
-      and(eq(productVariant.product_id, id), isNull(productVariant.deleted_at))
+    const variants = await db.select().from(productVariant).where(
+      and(eq(productVariant.product_id, id), isNull(productVariant.deleted_at)),
     )
+    const wantsVariantPrices = effectiveFields.some(
+      (f) => f === "*variants.prices" || f.includes("variants.prices"),
+    )
+    if (wantsVariantPrices && variants.length) {
+      const priceMap = await loadVariantPrices(
+        db,
+        variants.map((v: { id: string }) => v.id),
+      )
+      result.variants = variants.map((v: { id: string }) => ({
+        ...v,
+        prices: priceMap.get(v.id) ?? [],
+      }))
+    } else {
+      result.variants = variants
+    }
+  }
+
+  if (wants("shipping_profile")) {
+    result.shipping_profile = await loadProductShippingProfile(db, id, item)
   }
 
   if (wants("options")) {
@@ -580,7 +693,52 @@ export const productService = {
       }
     }
 
-    return { product: updated }
+    if (input.shipping_profile_id !== undefined) {
+      await setProductShippingProfile(
+        db,
+        id,
+        input.shipping_profile_id ?? null,
+        updated.metadata,
+      )
+    }
+
+    if (input.categories !== undefined) {
+      await db.execute(sql`
+        DELETE FROM product_category_product WHERE product_id = ${id}
+      `)
+      for (const cat of input.categories) {
+        await db.execute(sql`
+          INSERT INTO product_category_product (product_id, product_category_id)
+          VALUES (${id}, ${cat.id})
+        `)
+      }
+    }
+
+    if (input.sales_channels !== undefined) {
+      await db.execute(sql`
+        DELETE FROM product_sales_channel WHERE product_id = ${id}
+      `)
+      for (const sc of input.sales_channels) {
+        await db.execute(sql`
+          INSERT INTO product_sales_channel (id, product_id, sales_channel_id)
+          VALUES (${generateId("psc")}, ${id}, ${sc.id})
+        `)
+      }
+    }
+
+    if (input.tags !== undefined) {
+      await db.execute(sql`
+        DELETE FROM product_tags WHERE product_id = ${id}
+      `)
+      for (const tag of input.tags) {
+        await db.execute(sql`
+          INSERT INTO product_tags (product_id, product_tag_id)
+          VALUES (${id}, ${tag.id})
+        `)
+      }
+    }
+
+    return this.getById(id)
   },
 
   async batchLinkCategories(productId: string, input: { category_ids: string[] }) {
