@@ -8,7 +8,7 @@ import { getLinkedFields } from "../../../dashboard-app"
 
 export const PRODUCT_DETAIL_FIELDS = getLinkedFields(
   "product",
-  "*categories,*shipping_profile,*images,-variants"
+  "*categories,*shipping_profile,*images,*options,*options.values,*type,*collection,*tags,-variants"
 )
 
 export type ExtendedProduct = AdminProduct & {

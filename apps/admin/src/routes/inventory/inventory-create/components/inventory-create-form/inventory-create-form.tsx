@@ -36,6 +36,7 @@ import {
 } from "../../../../../lib/form-helpers"
 import { queryClient } from "../../../../../lib/query-client"
 import { InventoryAvailabilityForm } from "./inventory-availability-form"
+import { InventoryVariantSkuPicker } from "../inventory-variant-sku-picker"
 import { CreateInventoryItemSchema } from "./schema"
 import { useDocumentDirection } from "../../../../../hooks/use-document-direction"
 
@@ -81,11 +82,13 @@ export function InventoryCreateForm({ locations }: InventoryCreateFormProps) {
 
   const {
     trigger,
-    formState: { isDirty },
+    formState: { isDirty, isSubmitting },
   } = form
 
-  const { mutateAsync: createInventoryItem, isPending: isLoading } =
+  const { mutateAsync: createInventoryItem, isPending: isCreating } =
     useCreateInventoryItem()
+
+  const isLoading = isCreating || isSubmitting
 
   const handleSubmit = form.handleSubmit(async (data) => {
     const { locations, weight, length, height, width, ...payload } = data
@@ -275,10 +278,38 @@ export function InventoryCreateForm({ locations }: InventoryCreateFormProps) {
                         render={({ field }) => {
                           return (
                             <Form.Item>
-                              <Form.Label>{t("fields.sku")}</Form.Label>
+                              <Form.Label optional>
+                                {t("fields.sku")}
+                              </Form.Label>
                               <Form.Control>
-                                <Input {...field} placeholder="sku-123" />
+                                <div className="flex items-center gap-x-2">
+                                  <Input
+                                    {...field}
+                                    size="small"
+                                    className="flex-1"
+                                    placeholder={t(
+                                      "inventory.create.skuPlaceholder",
+                                      {
+                                        defaultValue: "例如 sku-123",
+                                      },
+                                    )}
+                                  />
+                                  <InventoryVariantSkuPicker
+                                    onSelectSku={(sku) => {
+                                      form.setValue("sku", sku, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      })
+                                    }}
+                                  />
+                                </div>
                               </Form.Control>
+                              <Form.Hint>
+                                {t("inventory.create.skuLinkHint", {
+                                  defaultValue:
+                                    "填写与变体一致的 SKU，或在右侧选择变体自动填入；保存后打开详情将自动关联。创建/编辑变体时勾选 管理库存",
+                                })}
+                              </Form.Hint>
                               <Form.ErrorMessage />
                             </Form.Item>
                           )

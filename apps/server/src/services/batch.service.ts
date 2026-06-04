@@ -1,4 +1,15 @@
-import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm"
 import {
   generateId,
   getDb,
@@ -35,12 +46,17 @@ import type {
   AdminFulfillmentProvidersParamsType,
   AdminGetCollectionsParamsType,
   AdminGetInventoryItemsParamsType,
+  AdminGetPromotionsParamsType,
+  AdminGetPriceListsParamsType,
   AdminProductCategoriesParamsType,
 } from "@my-store/validators/admin-list-params"
 import {
   applyDateRangeConditions,
+  applyInArrayCondition,
+  applyNumberOperatorConditions,
   asDateRange,
   listLimitOffset,
+  normalizeFilterIds,
 } from "../lib/query-filters"
 import { stockLocationService, shippingOptionService } from "./stock-location.service"
 import { getPromotionDetail } from "./promotion-detail.service"
@@ -281,9 +297,104 @@ export const customerGroupService = {
   delete: mkdel(customerGroup),
 }
 
+async function listPriceListsFiltered(query: AdminGetPriceListsParamsType) {
+  const db = getDb()
+  const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
+  const conditions: unknown[] = [isNull(priceList.deleted_at)]
+
+  if (query.q) {
+    conditions.push(ilike(priceList.title, `%${query.q}%`))
+  }
+
+  applyInArrayCondition(priceList.id, query.id, conditions)
+  applyDateRangeConditions(
+    priceList.starts_at,
+    asDateRange(query.starts_at),
+    conditions,
+    sql,
+  )
+  applyDateRangeConditions(
+    priceList.ends_at,
+    asDateRange(query.ends_at),
+    conditions,
+    sql,
+  )
+
+  if (query.status?.length) {
+    conditions.push(inArray(priceList.status, query.status))
+  }
+
+  const where = and(...(conditions as Parameters<typeof and>[0][]))
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(priceList)
+      .where(where)
+      .orderBy(desc(priceList.created_at))
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(priceList).where(where),
+  ])
+
+  return {
+    price_lists: rows,
+    count: Number(total),
+    limit,
+    offset,
+  }
+}
+
+async function listPromotionsFiltered(query: AdminGetPromotionsParamsType) {
+  const db = getDb()
+  const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
+  const conditions: unknown[] = [isNull(promotion.deleted_at)]
+
+  if (query.q) {
+    const term = `%${query.q}%`
+    conditions.push(
+      or(ilike(promotion.code, term), ilike(promotion.id, term))!,
+    )
+  }
+
+  applyInArrayCondition(promotion.id, query.id, conditions)
+  applyInArrayCondition(promotion.code, query.code, conditions)
+  applyInArrayCondition(promotion.campaign_id, query.campaign_id, conditions)
+  applyDateRangeConditions(
+    promotion.created_at,
+    asDateRange(query.created_at),
+    conditions,
+    sql,
+  )
+  applyDateRangeConditions(
+    promotion.updated_at,
+    asDateRange(query.updated_at),
+    conditions,
+    sql,
+  )
+
+  const where = and(...(conditions as Parameters<typeof and>[0][]))
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(promotion)
+      .where(where)
+      .orderBy(desc(promotion.created_at))
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(promotion).where(where),
+  ])
+
+  return {
+    promotions: rows,
+    count: Number(total),
+    limit,
+    offset,
+  }
+}
+
 // ── Price Lists ─────────────────────────────────────────────
 export const priceListService = {
-  list: mkl(priceList, "price_lists"),
+  list: listPriceListsFiltered,
   getById: mkg(priceList, "price_lists"),
   async create(input: Record<string, unknown>) {
     const db = getDb()
@@ -342,7 +453,7 @@ export const inventoryItemService = {
   async list(query: AdminGetInventoryItemsParamsType) {
     const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const db = getDb()
-    const conditions = [isNull(inventoryItem.deleted_at)]
+    const conditions: unknown[] = [isNull(inventoryItem.deleted_at)]
 
     if (typeof query.q === "string" && query.q.trim()) {
       const term = `%${query.q.trim()}%`
@@ -355,13 +466,71 @@ export const inventoryItemService = {
       )
     }
 
-    const where = and(...conditions)
+    applyInArrayCondition(inventoryItem.id, query.id, conditions)
+    applyInArrayCondition(inventoryItem.sku, query.sku, conditions)
+    applyInArrayCondition(inventoryItem.material, query.material, conditions)
+    applyInArrayCondition(inventoryItem.mid_code, query.mid_code, conditions)
+    applyInArrayCondition(inventoryItem.hs_code, query.hs_code, conditions)
+    applyInArrayCondition(
+      inventoryItem.origin_country,
+      query.origin_country,
+      conditions,
+    )
+
+    if (query.requires_shipping !== undefined) {
+      const requiresShipping =
+        query.requires_shipping === true ||
+        query.requires_shipping === "true"
+      conditions.push(eq(inventoryItem.requires_shipping, requiresShipping))
+    }
+
+    applyNumberOperatorConditions(inventoryItem.weight, query.weight, conditions)
+    applyNumberOperatorConditions(inventoryItem.width, query.width, conditions)
+    applyNumberOperatorConditions(
+      inventoryItem.length,
+      query.length,
+      conditions,
+    )
+    applyNumberOperatorConditions(inventoryItem.height, query.height, conditions)
+
+    const locationIds = normalizeFilterIds(
+      query.location_levels?.location_id as never,
+    )
+    if (locationIds?.length) {
+      conditions.push(
+        inArray(
+          inventoryItem.id,
+          db
+            .select({ id: inventoryLevel.inventory_item_id })
+            .from(inventoryLevel)
+            .where(
+              and(
+                inArray(inventoryLevel.location_id, locationIds),
+                isNull(inventoryLevel.deleted_at),
+              ),
+            ),
+        ),
+      )
+    }
+
+    const orderParam = query.order ?? "-created_at"
+    const orderDesc = orderParam.startsWith("-")
+    const orderKey = orderDesc ? orderParam.slice(1) : orderParam
+    const orderColumns: Record<string, typeof inventoryItem.created_at> = {
+      created_at: inventoryItem.created_at,
+      updated_at: inventoryItem.updated_at,
+      title: inventoryItem.title,
+      sku: inventoryItem.sku,
+    }
+    const orderColumn = orderColumns[orderKey] ?? inventoryItem.created_at
+
+    const where = and(...(conditions as Parameters<typeof and>[0][]))
     const [rows, [{ total }]] = await Promise.all([
       db
         .select()
         .from(inventoryItem)
         .where(where)
-        .orderBy(desc(inventoryItem.created_at))
+        .orderBy(orderDesc ? desc(orderColumn) : asc(orderColumn))
         .limit(limit)
         .offset(offset),
       db.select({ total: count() }).from(inventoryItem).where(where),
@@ -484,7 +653,7 @@ export const currencyService = {
 
 // ── Promotions ────────────────────────────────────────────
 export const promotionService = {
-  list: mkl(promotion, "promotions"),
+  list: listPromotionsFiltered,
   getById: getPromotionDetail,
   delete: mkdel(promotion),
 

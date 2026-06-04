@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm"
+import { eq, gt, gte, inArray, lt, lte } from "drizzle-orm"
 
 /** 将 query 中的 id 筛选规范为 string[]（支持逗号分隔或数组） */
 export function normalizeIdFilter(
@@ -138,6 +138,39 @@ export function applyOrderTotalSummaryFilter(
       and ${sql.join(parts as Parameters<typeof sql.join>[0], sql` and `)}
     )`,
   )
+}
+
+type NumberOperatorMap = {
+  $eq?: number
+  $gte?: number
+  $lte?: number
+  $gt?: number
+  $lt?: number
+}
+
+export function asNumberOperatorMap(
+  value: unknown,
+): NumberOperatorMap | undefined {
+  if (value == null) return undefined
+  if (typeof value === "number") return { $eq: value }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value as NumberOperatorMap
+  }
+  return undefined
+}
+
+export function applyNumberOperatorConditions(
+  col: Parameters<typeof eq>[0],
+  value: unknown,
+  conditions: unknown[],
+) {
+  const map = asNumberOperatorMap(value)
+  if (!map) return
+  if (map.$eq != null) conditions.push(eq(col, map.$eq))
+  if (map.$gte != null) conditions.push(gte(col, map.$gte))
+  if (map.$lte != null) conditions.push(lte(col, map.$lte))
+  if (map.$gt != null) conditions.push(gt(col, map.$gt))
+  if (map.$lt != null) conditions.push(lt(col, map.$lt))
 }
 
 export function listLimitOffset(query: {

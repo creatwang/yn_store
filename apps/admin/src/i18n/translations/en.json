@@ -876,7 +876,17 @@
       "attributes": "Attributes",
       "requiresShipping": "Requires shipping",
       "requiresShippingHint": "Does the inventory item require shipping?",
-      "successToast": "Inventory item was successfully created."
+      "successToast": "Inventory item was successfully created.",
+      "pickVariant": "Fill SKU from variant",
+      "pickVariantTitle": "Select variant",
+      "pickVariantHint": "The variant SKU will be filled into the field above. The item links to the variant by SKU after save.",
+      "noVariantsFound": "No variants found",
+      "variantWithoutSku": "This variant has no SKU",
+      "skuPlaceholder": "e.g. sku-123",
+      "skuLinkHint": "Enter a SKU matching a variant, or use + to pick a variant and auto-fill. Linking happens by SKU when you open the item.",
+      "variantRowSku": "SKU: {{sku}}",
+      "variantRowMeta": "{{skuPart}} · {{product}}",
+      "selectVariantItem": "Select variant {{title}}"
     },
     "reservation": {
       "header": "Reservation of {{itemName}}",

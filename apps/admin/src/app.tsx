@@ -15,6 +15,7 @@ import { ExtensionProvider } from "./providers/extension-provider"
 import { I18nProvider } from "./providers/i18n-provider"
 import { ThemeProvider } from "./providers/theme-provider"
 import "./index.css"
+import { lazyDetailRoute } from "./lib/lazy-route"
 
 function Loading() {
   return (
@@ -248,10 +249,18 @@ const router = createBrowserRouter(
           </Route>
 
           {/* Customers */}
-          <Route path="customers">
+          <Route
+            path="customers"
+            handle={{ breadcrumb: () => i18n.t("customers.domain") }}
+          >
             <Route index lazy={() => import("./routes/customers/customer-list")} />
             <Route path="create" lazy={() => import("./routes/customers/customer-create")} />
-            <Route path=":id" lazy={() => import("./routes/customers/customer-detail")} />
+            <Route
+              path=":id"
+              lazy={lazyDetailRoute(
+                () => import("./routes/customers/customer-detail"),
+              )}
+            />
           </Route>
 
           {/* Collections */}
@@ -269,7 +278,10 @@ const router = createBrowserRouter(
           </Route>
 
           {/* Promotions */}
-          <Route path="promotions">
+          <Route
+            path="promotions"
+            handle={{ breadcrumb: () => i18n.t("promotions.domain") }}
+          >
             <Route
               index
               lazy={() => import("./routes/promotions/promotion-list")}
@@ -280,7 +292,9 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() => import("./routes/promotions/promotion-detail")}
+              lazy={lazyDetailRoute(
+                () => import("./routes/promotions/promotion-detail"),
+              )}
             >
               <Route
                 path="edit"
@@ -302,7 +316,10 @@ const router = createBrowserRouter(
           </Route>
 
           {/* Campaigns */}
-          <Route path="campaigns">
+          <Route
+            path="campaigns"
+            handle={{ breadcrumb: () => i18n.t("campaigns.domain") }}
+          >
             <Route
               index
               lazy={() => import("./routes/campaigns/campaign-list")}
@@ -313,7 +330,9 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() => import("./routes/campaigns/campaign-detail")}
+              lazy={lazyDetailRoute(
+                () => import("./routes/campaigns/campaign-detail"),
+              )}
             >
               <Route
                 path="edit"
@@ -341,7 +360,10 @@ const router = createBrowserRouter(
           </Route>
 
           {/* Price Lists */}
-          <Route path="price-lists">
+          <Route
+            path="price-lists"
+            handle={{ breadcrumb: () => i18n.t("priceLists.domain") }}
+          >
             <Route
               index
               lazy={() => import("./routes/price-lists/price-list-list")}
@@ -352,7 +374,9 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() => import("./routes/price-lists/price-list-detail")}
+              lazy={lazyDetailRoute(
+                () => import("./routes/price-lists/price-list-detail"),
+              )}
             >
               <Route
                 path="edit"
@@ -389,7 +413,10 @@ const router = createBrowserRouter(
           />
 
           {/* Inventory */}
-          <Route path="inventory">
+          <Route
+            path="inventory"
+            handle={{ breadcrumb: () => i18n.t("inventory.domain") }}
+          >
             <Route
               index
               lazy={() => import("./routes/inventory/inventory-list")}
@@ -404,7 +431,9 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() => import("./routes/inventory/inventory-detail")}
+              lazy={lazyDetailRoute(
+                () => import("./routes/inventory/inventory-detail"),
+              )}
             >
               <Route
                 path="edit"
@@ -501,6 +530,102 @@ const router = createBrowserRouter(
           <Route path="locations" lazy={() => import("./routes/locations/location-list")} />
           <Route path="return-reasons" lazy={() => import("./routes/return-reasons/return-reason-list")} />
           <Route path="refund-reasons" lazy={() => import("./routes/refund-reasons/refund-reason-list")} />
+
+          <Route path="publishable-api-keys">
+            <Route
+              index
+              lazy={() =>
+                import("./routes/api-key-management/api-key-management-list")
+              }
+            />
+            <Route
+              path="create"
+              lazy={() =>
+                import("./routes/api-key-management/api-key-management-create")
+              }
+            />
+            <Route
+              path=":id"
+              lazy={() =>
+                import("./routes/api-key-management/api-key-management-detail")
+              }
+            >
+              <Route
+                path="edit"
+                lazy={() =>
+                  import("./routes/api-key-management/api-key-management-edit")
+                }
+              />
+              <Route
+                path="sales-channels"
+                lazy={() =>
+                  import(
+                    "./routes/api-key-management/api-key-management-sales-channels"
+                  )
+                }
+              />
+            </Route>
+          </Route>
+
+          <Route path="secret-api-keys">
+            <Route
+              index
+              lazy={() =>
+                import("./routes/api-key-management/api-key-management-list")
+              }
+            />
+            <Route
+              path="create"
+              lazy={() =>
+                import("./routes/api-key-management/api-key-management-create")
+              }
+            />
+            <Route
+              path=":id"
+              lazy={() =>
+                import("./routes/api-key-management/api-key-management-detail")
+              }
+            >
+              <Route
+                path="edit"
+                lazy={() =>
+                  import("./routes/api-key-management/api-key-management-edit")
+                }
+              />
+              <Route
+                path="sales-channels"
+                lazy={() =>
+                  import(
+                    "./routes/api-key-management/api-key-management-sales-channels"
+                  )
+                }
+              />
+            </Route>
+          </Route>
+
+          <Route path="workflows">
+            <Route
+              index
+              lazy={() =>
+                import(
+                  "./routes/workflow-executions/workflow-execution-list"
+                )
+              }
+            />
+            <Route
+              path=":id"
+              lazy={() =>
+                import(
+                  "./routes/workflow-executions/workflow-execution-detail"
+                )
+              }
+            />
+          </Route>
+
+          <Route path="profile">
+            <Route index lazy={() => import("./routes/profile/profile-detail")} />
+            <Route path="edit" lazy={() => import("./routes/profile/profile-edit")} />
+          </Route>
         </Route>
         <Route path="*" lazy={() => import("./routes/no-match")} />
       </Route>

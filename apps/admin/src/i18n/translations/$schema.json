@@ -3272,6 +3272,36 @@
             },
             "successToast": {
               "type": "string"
+            },
+            "pickVariant": {
+              "type": "string"
+            },
+            "pickVariantTitle": {
+              "type": "string"
+            },
+            "pickVariantHint": {
+              "type": "string"
+            },
+            "noVariantsFound": {
+              "type": "string"
+            },
+            "variantWithoutSku": {
+              "type": "string"
+            },
+            "skuPlaceholder": {
+              "type": "string"
+            },
+            "skuLinkHint": {
+              "type": "string"
+            },
+            "variantRowSku": {
+              "type": "string"
+            },
+            "variantRowMeta": {
+              "type": "string"
+            },
+            "selectVariantItem": {
+              "type": "string"
             }
           },
           "required": [
@@ -3282,7 +3312,17 @@
             "attributes",
             "requiresShipping",
             "requiresShippingHint",
-            "successToast"
+            "successToast",
+            "pickVariant",
+            "pickVariantTitle",
+            "pickVariantHint",
+            "noVariantsFound",
+            "variantWithoutSku",
+            "skuPlaceholder",
+            "skuLinkHint",
+            "variantRowSku",
+            "variantRowMeta",
+            "selectVariantItem"
           ],
           "additionalProperties": false
         },

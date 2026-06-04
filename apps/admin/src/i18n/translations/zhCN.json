@@ -875,7 +875,17 @@
       "attributes": "属性",
       "requiresShipping": "需要配送",
       "requiresShippingHint": "该库存项目是否需要配送？",
-      "successToast": "库存项目创建成功。"
+      "successToast": "库存项目创建成功。",
+      "pickVariant": "从变体填入 SKU",
+      "pickVariantTitle": "选择变体",
+      "pickVariantHint": "选择后将把变体 SKU 填入上方输入框，保存后通过 SKU 自动关联变体。",
+      "noVariantsFound": "未找到变体",
+      "variantWithoutSku": "该变体没有 SKU",
+      "skuPlaceholder": "例如 sku-123",
+      "skuLinkHint": "填写与变体一致的 SKU，或在右侧选择变体自动填入；保存后打开详情将自动关联。创建/编辑变体时勾选 管理库存",
+      "variantRowSku": "SKU：{{sku}}",
+      "variantRowMeta": "{{skuPart}} · {{product}}",
+      "selectVariantItem": "选择变体 {{title}}"
     },
     "reservation": {
       "header": "预留 {{itemName}}",

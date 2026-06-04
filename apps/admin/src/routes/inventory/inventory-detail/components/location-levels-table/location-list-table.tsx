@@ -77,11 +77,13 @@ export const ItemLocationListTable = ({
     [inventory_levels, raw],
   )
 
+  const rowCount = filteredLevels.length
+
   const { table } = useDataTable({
     data: filteredLevels,
     columns,
-    count: filteredLevels.length,
-    pageSize: Math.max(filteredLevels.length, 1),
+    count: rowCount,
+    pageSize: rowCount || 20,
     enablePagination: false,
     getRowId: (row) => row.id,
     prefix: PREFIX,
@@ -95,8 +97,8 @@ export const ItemLocationListTable = ({
     <_DataTable
       table={table}
       columns={columns}
-      count={filteredLevels.length}
-      pageSize={filteredLevels.length || 1}
+      count={rowCount}
+      pageSize={rowCount || 20}
       isLoading={isLoading}
       filters={filters}
       queryObject={raw}
