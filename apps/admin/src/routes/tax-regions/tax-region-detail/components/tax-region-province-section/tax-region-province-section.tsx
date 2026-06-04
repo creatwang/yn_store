@@ -46,7 +46,9 @@ export const TaxRegionProvinceSection = ({
 
   const provinceObject = getCountryProvinceObjectByIso2(taxRegion.country_code!)
 
-  if (!provinceObject && !showSublevelRegions && !taxRegion.children.length) {
+  const childCount = taxRegion.children?.length ?? 0
+
+  if (!provinceObject && !showSublevelRegions && childCount === 0) {
     return null
   }
 

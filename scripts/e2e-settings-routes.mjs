@@ -79,7 +79,9 @@ try {
       (e) =>
         e.includes("is not defined") ||
         e.includes("ReferenceError") ||
-        e.includes("__BACKEND_URL__"),
+        e.includes("__BACKEND_URL__") ||
+        e.includes("Cannot read properties of undefined") ||
+        e.includes("TypeError"),
     )
     results.push({ ...r, runtimeErrors })
   }

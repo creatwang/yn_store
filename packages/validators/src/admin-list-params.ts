@@ -121,6 +121,8 @@ export {
 export {
   AdminGetPaymentsParams,
   type AdminGetPaymentsParamsType,
+  AdminGetPaymentProvidersParams,
+  type AdminGetPaymentProvidersParamsType,
 } from "./medusa/admin/payments/validators"
 
 export {

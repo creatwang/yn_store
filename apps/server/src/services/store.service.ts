@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import { getDb, store, storeCurrency, generateId } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 
@@ -22,8 +22,30 @@ export const storeService = {
       .limit(1)
 
     const count = rows.length
+    const storeIds = rows.map((r) => r.id)
+    const currencies =
+      storeIds.length > 0
+        ? await db
+            .select()
+            .from(storeCurrency)
+            .where(inArray(storeCurrency.store_id, storeIds))
+        : []
+    const currenciesByStore = new Map<string, typeof currencies>()
+    for (const c of currencies) {
+      const list = currenciesByStore.get(c.store_id) ?? []
+      list.push(c)
+      currenciesByStore.set(c.store_id, list)
+    }
 
-    return { stores: rows, count, offset: 0, limit: 1 }
+    return {
+      stores: rows.map((row) => ({
+        ...row,
+        supported_currencies: currenciesByStore.get(row.id) ?? [],
+      })),
+      count,
+      offset: 0,
+      limit: 1,
+    }
   },
 
   // 参考: @medusajs/medusa/dist/api/admin/stores/[id]/route.js (GET)

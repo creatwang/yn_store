@@ -5,6 +5,7 @@ import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
 import { logDbPoolAtStartup } from "./src/lib/log-db-pool"
 import { app, appMount } from "./src/app"
 import { logServerStartup } from "./src/lib/log-startup"
+import { ensureDefaultPaymentProviders } from "./src/lib/ensure-payment-providers"
 
 // Node 不会自动读 .env，须在 import app 之前加载（app 依赖 DATABASE_URL 等）
 loadEnv()
@@ -13,6 +14,10 @@ const dbUrl = process.env.DATABASE_URL
 if (dbUrl) {
   logDbPoolAtStartup(dbUrl)
 }
+
+void ensureDefaultPaymentProviders().catch((err) => {
+  console.warn("[startup] ensureDefaultPaymentProviders:", err)
+})
 
 void getHealthStatus().then(({ payload }) => {
   logHealthToConsole(payload, "startup")

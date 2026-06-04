@@ -4,6 +4,7 @@ import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
 import { logDbPoolAtStartup } from "./src/lib/log-db-pool"
 import { app, appMount } from "./src/app"
 import { logServerStartup } from "./src/lib/log-startup"
+import { ensureDefaultPaymentProviders } from "./src/lib/ensure-payment-providers"
 
 // Bun 会自动读 .env；显式调用以便与 Node 入口行为一致，且不覆盖已有 env
 loadEnv()
@@ -16,6 +17,10 @@ if (dbUrl) {
 }
 
 process.on("beforeExit", () => void closeDb())
+
+void ensureDefaultPaymentProviders().catch((err) => {
+  console.warn("[startup] ensureDefaultPaymentProviders:", err)
+})
 
 void getHealthStatus().then(({ payload }) => {
   logHealthToConsole(payload, "startup")

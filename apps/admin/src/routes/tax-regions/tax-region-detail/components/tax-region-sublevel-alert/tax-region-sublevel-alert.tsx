@@ -25,7 +25,7 @@ export const TaxRegionSublevelAlert = ({
     provinceObject ||
     showSublevelRegions ||
     dismissed ||
-    taxRegion.children.length
+    (taxRegion.children?.length ?? 0) > 0
   ) {
     return null
   }

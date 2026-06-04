@@ -11,5 +11,5 @@
       "@my-store/config": ["../../packages/config/src"]
     }
   },
-  "include": ["src/**/*", "entry.*.ts"]
+  "include": ["src/**/*", "entry.*.ts", "../admin/src/lib/data/countries.ts"]
 }

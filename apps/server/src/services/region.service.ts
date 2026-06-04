@@ -1,5 +1,12 @@
-import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
-import { generateId, getDb, region, salesChannel } from "@my-store/db"
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import {
+  generateId,
+  getDb,
+  paymentProvider,
+  region,
+  regionPaymentProvider,
+  salesChannel,
+} from "@my-store/db"
 import type {
   CreateRegionInput,
   UpdateRegionInput,
@@ -12,7 +19,94 @@ import type {
   StoreGetRegionsParamsType,
 } from "@my-store/validators/admin-list-params"
 import { listLimitOffset } from "../lib/query-filters"
+import {
+  loadCountriesByRegionIds,
+  syncRegionCountries,
+  type RegionCountryDto,
+} from "../lib/region-country-sync"
 import { HTTPException } from "hono/http-exception"
+
+type RegionPaymentProviderDto = { id: string; is_enabled: boolean }
+
+async function loadPaymentProvidersByRegionIds(
+  regionIds: string[],
+): Promise<Map<string, RegionPaymentProviderDto[]>> {
+  const map = new Map<string, RegionPaymentProviderDto[]>()
+  if (!regionIds.length) return map
+
+  const db = getDb()
+  const links = await db
+    .select()
+    .from(regionPaymentProvider)
+    .where(inArray(regionPaymentProvider.region_id, regionIds))
+
+  const providerIds = [...new Set(links.map((l) => l.payment_provider_id))]
+  const providers =
+    providerIds.length > 0
+      ? await db
+          .select()
+          .from(paymentProvider)
+          .where(inArray(paymentProvider.id, providerIds))
+      : []
+  const providerById = new Map(providers.map((p) => [p.id, p]))
+
+  for (const link of links) {
+    const p = providerById.get(link.payment_provider_id)
+    if (!p) continue
+    const list = map.get(link.region_id) ?? []
+    list.push({ id: p.id, is_enabled: p.is_enabled })
+    map.set(link.region_id, list)
+  }
+  return map
+}
+
+async function replaceRegionPaymentProviders(
+  regionId: string,
+  providerIds: string[],
+) {
+  const db = getDb()
+  await db
+    .delete(regionPaymentProvider)
+    .where(eq(regionPaymentProvider.region_id, regionId))
+  if (!providerIds.length) return
+  await db.insert(regionPaymentProvider).values(
+    providerIds.map((payment_provider_id) => ({
+      region_id: regionId,
+      payment_provider_id,
+    })),
+  )
+}
+
+function attachPaymentProviders<T extends { id: string }>(
+  rows: T[],
+  byRegion: Map<string, RegionPaymentProviderDto[]>,
+) {
+  return rows.map((row) => ({
+    ...row,
+    payment_providers: byRegion.get(row.id) ?? [],
+  }))
+}
+
+function attachCountries<T extends { id: string }>(
+  rows: T[],
+  byRegion: Map<string, RegionCountryDto[]>,
+) {
+  return rows.map((row) => ({
+    ...row,
+    countries: byRegion.get(row.id) ?? [],
+  }))
+}
+
+function enrichRegions<T extends { id: string }>(
+  rows: T[],
+  countriesByRegion: Awaited<ReturnType<typeof loadCountriesByRegionIds>>,
+  providersByRegion: Map<string, RegionPaymentProviderDto[]>,
+) {
+  return attachPaymentProviders(
+    attachCountries(rows, countriesByRegion),
+    providersByRegion,
+  )
+}
 
 export const regionService = {
   async listRegions(
@@ -21,6 +115,16 @@ export const regionService = {
     const db = getDb()
     const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [isNull(region.deleted_at)]
+
+    const idFilter = query.id
+    if (idFilter !== undefined) {
+      const ids = Array.isArray(idFilter) ? idFilter : [idFilter]
+      if (ids.length) conditions.push(inArray(region.id, ids))
+    }
+
+    if (typeof query.q === "string" && query.q.trim()) {
+      conditions.push(ilike(region.name, `%${query.q.trim()}%`))
+    }
 
     const where = and(...conditions)
 
@@ -35,8 +139,14 @@ export const regionService = {
       db.select({ total: count() }).from(region).where(where),
     ])
 
+    const regionIds = regions.map((r) => r.id)
+    const [providersByRegion, countriesByRegion] = await Promise.all([
+      loadPaymentProvidersByRegionIds(regionIds),
+      loadCountriesByRegionIds(regionIds),
+    ])
+
     return {
-      regions,
+      regions: enrichRegions(regions, countriesByRegion, providersByRegion),
       count: Number(total),
       limit,
       offset,
@@ -55,7 +165,17 @@ export const regionService = {
       throw new HTTPException(404, { message: "Region not found" })
     }
 
-    return { region: item }
+    const [providersByRegion, countriesByRegion] = await Promise.all([
+      loadPaymentProvidersByRegionIds([id]),
+      loadCountriesByRegionIds([id]),
+    ])
+    return {
+      region: {
+        ...item,
+        payment_providers: providersByRegion.get(id) ?? [],
+        countries: countriesByRegion.get(id) ?? [],
+      },
+    }
   },
 
   async createRegion(input: CreateRegionInput) {
@@ -75,7 +195,24 @@ export const regionService = {
       })
       .returning()
 
-    return { region: created }
+    if (input.payment_providers?.length) {
+      await replaceRegionPaymentProviders(id, input.payment_providers)
+    }
+    if (input.countries?.length) {
+      await syncRegionCountries(id, input.countries)
+    }
+
+    const [providersByRegion, countriesByRegion] = await Promise.all([
+      loadPaymentProvidersByRegionIds([id]),
+      loadCountriesByRegionIds([id]),
+    ])
+    return {
+      region: {
+        ...created,
+        payment_providers: providersByRegion.get(id) ?? [],
+        countries: countriesByRegion.get(id) ?? [],
+      },
+    }
   },
 
   async updateRegion(id: string, input: UpdateRegionInput) {
@@ -98,7 +235,24 @@ export const regionService = {
       throw new HTTPException(404, { message: "Region not found" })
     }
 
-    return { region: updated }
+    if (input.payment_providers !== undefined) {
+      await replaceRegionPaymentProviders(id, input.payment_providers)
+    }
+    if (input.countries !== undefined) {
+      await syncRegionCountries(id, input.countries)
+    }
+
+    const [providersByRegion, countriesByRegion] = await Promise.all([
+      loadPaymentProvidersByRegionIds([id]),
+      loadCountriesByRegionIds([id]),
+    ])
+    return {
+      region: {
+        ...updated,
+        payment_providers: providersByRegion.get(id) ?? [],
+        countries: countriesByRegion.get(id) ?? [],
+      },
+    }
   },
 
   async deleteRegion(id: string) {

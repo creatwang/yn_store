@@ -17,6 +17,7 @@ export const region = pgTable("region", {
   ...timestamps,
 })
 
+/** @deprecated Medusa v2 使用 region_country，不再使用独立 country 表 */
 export const country = pgTable("country", {
   iso_2: text("iso_2").primaryKey(),
   iso_3: text("iso_3"),
@@ -25,6 +26,18 @@ export const country = pgTable("country", {
   display_name: text("display_name").notNull(),
   metadata: jsonb("metadata"),
   region_id: text("region_id"),
+})
+
+/** 地区 ↔ 国家（Medusa v2 实际表名） */
+export const regionCountry = pgTable("region_country", {
+  iso_2: text("iso_2").primaryKey(),
+  iso_3: text("iso_3"),
+  num_code: text("num_code"),
+  name: text("name").notNull(),
+  display_name: text("display_name").notNull(),
+  region_id: text("region_id"),
+  metadata: jsonb("metadata"),
+  ...timestamps,
 })
 
 export const currency = pgTable("currency", {

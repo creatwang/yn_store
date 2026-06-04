@@ -121,11 +121,40 @@ async function loadTaxRatesByRegionIds(regionIds: string[]) {
 function attachTaxRates(
   region: typeof taxRegion.$inferSelect,
   ratesByRegion: Map<string, (typeof taxRate.$inferSelect)[]>,
+  childrenByParent: Map<string, (typeof taxRegion.$inferSelect)[]>,
 ) {
+  const children = childrenByParent.get(region.id) ?? []
   return {
     ...region,
     tax_rates: ratesByRegion.get(region.id) ?? [],
+    children: children.map((child) =>
+      attachTaxRates(child, ratesByRegion, childrenByParent),
+    ),
   }
+}
+
+async function loadChildrenByParentIds(parentIds: string[]) {
+  if (!parentIds.length) {
+    return new Map<string, (typeof taxRegion.$inferSelect)[]>()
+  }
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(taxRegion)
+    .where(
+      and(
+        inArray(taxRegion.parent_id, parentIds),
+        isNull(taxRegion.deleted_at),
+      ),
+    )
+  const map = new Map<string, (typeof taxRegion.$inferSelect)[]>()
+  for (const row of rows) {
+    if (!row.parent_id) continue
+    const list = map.get(row.parent_id) ?? []
+    list.push(row)
+    map.set(row.parent_id, list)
+  }
+  return map
 }
 
 // ── Tax Regions ───────────────────────────────────────────────
@@ -175,9 +204,13 @@ export const taxRegionService = {
       db.select({ total: count() }).from(taxRegion).where(where),
     ])
 
-    const ratesByRegion = await loadTaxRatesByRegionIds(rows.map((r) => r.id))
+    const regionIds = rows.map((r) => r.id)
+    const childrenByParent = await loadChildrenByParentIds(regionIds)
+    const ratesByRegion = await loadTaxRatesByRegionIds(regionIds)
     return {
-      tax_regions: rows.map((r) => attachTaxRates(r, ratesByRegion)),
+      tax_regions: rows.map((r) =>
+        attachTaxRates(r, ratesByRegion, childrenByParent),
+      ),
       count: Number(total),
       limit,
       offset,
@@ -191,8 +224,12 @@ export const taxRegionService = {
       .where(and(eq(taxRegion.id, id), isNull(taxRegion.deleted_at)))
       .limit(1)
     if (!item) throw new HTTPException(404, { message: "未找到" })
-    const ratesByRegion = await loadTaxRatesByRegionIds([id])
-    return { tax_region: attachTaxRates(item, ratesByRegion) }
+    const childrenByParent = await loadChildrenByParentIds([id])
+    const childIds = (childrenByParent.get(id) ?? []).map((c) => c.id)
+    const ratesByRegion = await loadTaxRatesByRegionIds([id, ...childIds])
+    return {
+      tax_region: attachTaxRates(item, ratesByRegion, childrenByParent),
+    }
   },
   create: makeCreateFn(taxRegion, "txreg", "tax_regions"),
   update: makeUpdateFn(taxRegion, "tax_regions"),

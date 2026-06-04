@@ -5,12 +5,24 @@ import {
   capturePaymentSchema,
   refundPaymentSchema,
 } from "@my-store/validators"
-import { AdminGetPaymentsParams } from "@my-store/validators/admin-list-params"
+import {
+  AdminGetPaymentProvidersParams,
+  AdminGetPaymentsParams,
+} from "@my-store/validators/admin-list-params"
 import { paymentService } from "../../services/payment.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
 export const adminPayments = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
+  .get(
+    "/payment-providers",
+    rpcQueryValidator(AdminGetPaymentProvidersParams),
+    async (c) => {
+      const query = c.req.valid("query")
+      const result = await paymentService.listPaymentProviders(query)
+      return c.json(result)
+    },
+  )
   .get("/", rpcQueryValidator(AdminGetPaymentsParams), async (c) => {
     const query = c.req.valid("query")
     const result = await paymentService.listPayments(query)
