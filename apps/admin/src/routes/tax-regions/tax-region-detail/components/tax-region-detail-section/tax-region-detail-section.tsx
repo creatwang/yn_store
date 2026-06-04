@@ -15,7 +15,9 @@ export const TaxRegionDetailSection = ({
 }: TaxRegionDetailSectionProps) => {
   const { t } = useTranslation()
 
-  const defaultRates = taxRegion.tax_rates.filter((r) => r.is_default === true)
+  const defaultRates = (taxRegion.tax_rates ?? []).filter(
+    (r) => r.is_default === true,
+  )
   const showBage = defaultRates.length === 0
 
   return (

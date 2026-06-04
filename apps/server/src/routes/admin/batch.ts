@@ -169,7 +169,10 @@ export const adminInventoryItemsFull = new Hono<{ Variables: AuthVariables }>()
   })
   .post("/:id/location-levels/batch", async (c) => {
     const body = await c.req.json()
-    const result = await inventoryLevelService.batch(body)
+    const result = await inventoryLevelService.batchForItem(
+      c.req.param("id"),
+      body,
+    )
     return c.json(result)
   })
 

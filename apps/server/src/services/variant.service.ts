@@ -2,6 +2,7 @@
 import { and, count, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
 import { generateId, getDb, product, productVariant } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import { syncVariantInventoryFromInput } from "./inventory-variant-link.service"
 
 /**
  * 跨模块 Middleware：只算 inventory_quantity 数字，不返回完整 inventory_items 对象。
@@ -209,6 +210,8 @@ export const variantService = {
       updated_at: sql`now()`,
     }).returning()
 
+    await syncVariantInventoryFromInput(created, input)
+
     return { variant: created }
   },
 
@@ -228,6 +231,8 @@ export const variantService = {
       .returning()
 
     if (!updated) throw new HTTPException(404, { message: "Variant not found" })
+
+    await syncVariantInventoryFromInput(updated, input)
 
     return { variant: updated }
   },

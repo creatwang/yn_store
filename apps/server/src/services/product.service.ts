@@ -22,6 +22,7 @@ import type {
 } from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
 import { attachOptionValues } from "../lib/product-option-values-batch"
+import { syncVariantInventoryFromInput } from "./inventory-variant-link.service"
 import {
   applyDateRangeConditions,
   applyInArrayCondition,
@@ -681,17 +682,28 @@ export const productService = {
             `)
           }
         }
-        // 保存 inventory_items 关联
-        if ((v as any).inventory_items?.length) {
-          for (const inv of (v as any).inventory_items) {
-            if (inv.inventory_item_id) {
-              await db.execute(sql`
-                INSERT INTO product_variant_inventory_item (id, variant_id, inventory_item_id, required_quantity, created_at, updated_at)
-                VALUES (${generateId("pvii")}, ${vid}, ${inv.inventory_item_id}, ${inv.required_quantity ?? 1}, now(), now())
-              `)
-            }
-          }
-        }
+        await syncVariantInventoryFromInput(
+          {
+            id: vid,
+            product_id: id,
+            title: v.title ?? null,
+            sku: v.sku ?? null,
+            manage_inventory: v.manage_inventory ?? true,
+            weight: v.weight ?? null,
+            length: v.length ?? null,
+            height: v.height ?? null,
+            width: v.width ?? null,
+            origin_country: v.origin_country ?? null,
+            hs_code: v.hs_code ?? null,
+            mid_code: v.mid_code ?? null,
+            material: v.material ?? null,
+            thumbnail: v.thumbnail ?? null,
+          } as any,
+          {
+            manage_inventory: v.manage_inventory ?? true,
+            inventory_items: (v as any).inventory_items,
+          },
+        )
       }
     }
 

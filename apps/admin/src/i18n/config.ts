@@ -16,4 +16,7 @@ export const defaultI18nOptions: InitOptions = {
   interpolation: {
     escapeValue: false,
   },
+  react: {
+    useSuspense: false,
+  },
 }

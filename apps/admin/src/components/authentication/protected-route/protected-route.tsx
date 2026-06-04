@@ -5,10 +5,10 @@ import { SearchProvider } from "../../../providers/search-provider"
 import { SidebarProvider } from "../../../providers/sidebar-provider"
 
 export const ProtectedRoute = () => {
-  const { data: session, isLoading } = useSession()
+  const { data: session, isPending } = useSession()
   const location = useLocation()
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spinner className="text-ui-fg-interactive animate-spin" />

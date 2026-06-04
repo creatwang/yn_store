@@ -560,11 +560,23 @@ export const sdk = {
     // ── Inventory ──────────────────────────────────────────────
     inventoryItem: {
       ...entityClient("inventory-items"),
-      listLevels: async (id: string) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"].$get({ param: { iid: id } }); return parseJsonResponse(res) },
+      listLevels: async (id: string, query?: Record<string, any>) => {
+        const res = await (api as any).admin["inventory-items"][":id"]["location-levels"].$get({
+          param: { id },
+          query: toRpcQuery(query ?? {}),
+        })
+        return parseJsonResponse(res)
+      },
       retrieveLevel: async (iid: string, lid: string) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"][":lid"].$get({ param: { iid, lid } }); return parseJsonResponse(res) },
       updateLevel: async (iid: string, lid: string, body?: any) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"].$post({ param: { iid }, json: { location_id: lid, ...body } }); return parseJsonResponse(res) },
       deleteLevel: async (iid: string, lid: string) => { const res = await (api as any).admin["inventory-items"][":iid"]["location-levels"][":lid"].$delete({ param: { iid, lid } }); return parseJsonResponse(res) },
-      batchUpdateLevels: async (body?: any) => { const res = await (api as any).admin["inventory-items"]["location-levels"].batch.$post({ json: body }); return parseJsonResponse(res) },
+      batchUpdateLevels: async (inventoryItemId: string, body?: any) => {
+        const res = await (api as any).admin["inventory-items"][":id"]["location-levels"].batch.$post({
+          param: { id: inventoryItemId },
+          json: body,
+        })
+        return parseJsonResponse(res)
+      },
       batchInventoryItemLocationLevels: async (id: string, body?: any) => { const res = await (api as any).admin["inventory-items"][":id"]["location-levels"].batch.$post({ param: { id }, json: body }); return parseJsonResponse(res) },
       batchInventoryItemsLocationLevels: async (body?: any) => { const res = await (api as any).admin["inventory-items"]["location-levels"].batch.$post({ json: body }); return parseJsonResponse(res) },
     },
@@ -619,7 +631,61 @@ export const sdk = {
     currency: entityClient("currencies"),
 
     // ── Promotions ─────────────────────────────────────────────
-    promotion: entityClient("promotions"),
+    promotion: {
+      ...entityClient("promotions"),
+      listRules: (id: string, ruleType: string, query?: Record<string, any>) =>
+        rpcGet(
+          (api as any).admin.promotions[":id"][":rule_type"],
+          { id, rule_type: ruleType },
+          query,
+        ),
+      listRuleAttributes: (
+        ruleType: string,
+        promotionType?: string,
+        applicationMethodTargetType?: string,
+      ) =>
+        rpcGet(
+          (api as any).admin.promotions["rule-attribute-options"][":rule_type"],
+          { rule_type: ruleType },
+          {
+            promotion_type: promotionType,
+            application_method_target_type: applicationMethodTargetType,
+          },
+        ),
+      listRuleValues: (
+        ruleType: string,
+        ruleAttributeId: string,
+        query?: Record<string, any>,
+      ) =>
+        rpcGet(
+          (api as any).admin.promotions["rule-value-options"][":rule_type"][
+            ":rule_attribute_id"
+          ],
+          { rule_type: ruleType, rule_attribute_id: ruleAttributeId },
+          query,
+        ),
+      addRules: (id: string, ruleType: string, body?: any) => {
+        const batch =
+          ruleType === "rules"
+            ? (api as any).admin.promotions[":id"].rules.batch
+            : (api as any).admin.promotions[":id"][ruleType].batch
+        return rpcPost(batch, body, { id })
+      },
+      updateRules: (id: string, ruleType: string, body?: any) => {
+        const batch =
+          ruleType === "rules"
+            ? (api as any).admin.promotions[":id"].rules.batch
+            : (api as any).admin.promotions[":id"][ruleType].batch
+        return rpcPost(batch, body, { id })
+      },
+      removeRules: (id: string, ruleType: string, body?: any) => {
+        const batch =
+          ruleType === "rules"
+            ? (api as any).admin.promotions[":id"].rules.batch
+            : (api as any).admin.promotions[":id"][ruleType].batch
+        return rpcPost(batch, body, { id })
+      },
+    },
     campaign: entityClient("campaigns"),
 
     // ── Orders / Claims / Returns ─────────────────────────────

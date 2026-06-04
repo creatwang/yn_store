@@ -17,6 +17,7 @@ import {
   currency,
   promotion,
   promotionCampaign,
+  campaignBudget,
   applicationMethod,
   promotionRule,
   promotionRuleValue,
@@ -42,6 +43,13 @@ import {
   listLimitOffset,
 } from "../lib/query-filters"
 import { stockLocationService, shippingOptionService } from "./stock-location.service"
+import { getPromotionDetail } from "./promotion-detail.service"
+import {
+  enrichInventoryItemsForList,
+  getInventoryItemDetail,
+  loadInventoryLevelsForItem,
+} from "./inventory-item-detail.service"
+import { linkInventoryItemToVariantId } from "./inventory-variant-link.service"
 
 function mkl<T extends { limit?: number; offset?: number }>(
   table: any,
@@ -140,12 +148,38 @@ async function listCategoriesFiltered(query: AdminProductCategoriesParamsType) {
     offset,
   }
 }
+const ENTITY_SINGULAR: Record<string, string> = {
+  product_categories: "product_category",
+  payment_collections: "payment_collection",
+  workflow_executions: "workflow_execution",
+  price_preferences: "price_preference",
+  property_labels: "property_label",
+  shipping_profiles: "shipping_profile",
+  shipping_option_types: "shipping_option_type",
+  customer_groups: "customer_group",
+  price_lists: "price_list",
+  inventory_items: "inventory_item",
+  tax_rates: "tax_rate",
+  api_keys: "api_key",
+  promotions: "promotion",
+  campaigns: "campaign",
+  collections: "collection",
+  reservations: "reservation",
+}
+
+function entitySingular(entityKey: string) {
+  return (
+    ENTITY_SINGULAR[entityKey] ??
+    (entityKey.endsWith("s") ? entityKey.slice(0, -1) : entityKey)
+  )
+}
+
 function mkg(table: any, entityKey: string) {
   return async (id: string) => {
     const db = getDb()
     const [item] = await db.select().from(table).where(and(eq(table.id, id), isNull(table.deleted_at))).limit(1)
     if (!item) throw new HTTPException(404, { message: "未找到" })
-    return { [entityKey.slice(0, -1)]: item }
+    return { [entitySingular(entityKey)]: item }
   }
 }
 function mkc(table: any, prefix: string, entityKey: string) {
@@ -153,7 +187,7 @@ function mkc(table: any, prefix: string, entityKey: string) {
     const db = getDb()
     const id = generateId(prefix)
     const [created] = await db.insert(table).values({ id, ...input, created_at: sql`now()`, updated_at: sql`now()` }).returning()
-    return { [entityKey.slice(0, -1)]: created }
+    return { [entitySingular(entityKey)]: created }
   }
 }
 function mku(table: any, entityKey: string) {
@@ -161,7 +195,7 @@ function mku(table: any, entityKey: string) {
     const db = getDb()
     const [updated] = await db.update(table).set({ ...input, updated_at: sql`now()` }).where(and(eq(table.id, id), isNull(table.deleted_at))).returning()
     if (!updated) throw new HTTPException(404, { message: "未找到" })
-    return { [entityKey.slice(0, -1)]: updated }
+    return { [entitySingular(entityKey)]: updated }
   }
 }
 function mkdel(table: any) {
@@ -251,8 +285,46 @@ export const customerGroupService = {
 export const priceListService = {
   list: mkl(priceList, "price_lists"),
   getById: mkg(priceList, "price_lists"),
-  create: mkc(priceList, "plist", "price_lists"),
-  update: mku(priceList, "price_lists"),
+  async create(input: Record<string, unknown>) {
+    const db = getDb()
+    const id = generateId("plist")
+    const [created] = await db
+      .insert(priceList)
+      .values({
+        id,
+        title: String(input.title ?? "Price list"),
+        description: String(input.description ?? ""),
+        status: String(input.status ?? "draft"),
+        type: String(input.type ?? "sale"),
+        starts_at: (input.starts_at as Date | null | undefined) ?? null,
+        ends_at: (input.ends_at as Date | null | undefined) ?? null,
+        metadata: (input.metadata as Record<string, unknown> | null) ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+      .returning()
+    return { price_list: created }
+  },
+  async update(id: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const set: Record<string, unknown> = { updated_at: sql`now()` }
+    if (input.title !== undefined) set.title = String(input.title)
+    if (input.description !== undefined) {
+      set.description = String(input.description)
+    }
+    if (input.status !== undefined) set.status = String(input.status)
+    if (input.type !== undefined) set.type = String(input.type)
+    if (input.starts_at !== undefined) set.starts_at = input.starts_at
+    if (input.ends_at !== undefined) set.ends_at = input.ends_at
+    if (input.metadata !== undefined) set.metadata = input.metadata
+    const [updated] = await db
+      .update(priceList)
+      .set(set)
+      .where(and(eq(priceList.id, id), isNull(priceList.deleted_at)))
+      .returning()
+    if (!updated) throw new HTTPException(404, { message: "未找到" })
+    return { price_list: updated }
+  },
   delete: mkdel(priceList),
 }
 
@@ -295,19 +367,79 @@ export const inventoryItemService = {
       db.select({ total: count() }).from(inventoryItem).where(where),
     ])
     return {
-      inventory_items: rows,
+      inventory_items: await enrichInventoryItemsForList(rows),
       count: Number(total),
       limit,
       offset,
     }
   },
-  getById: mkg(inventoryItem, "inventory_items"),
-  create: mkc(inventoryItem, "iitem", "inventory_items"),
-  update: mku(inventoryItem, "inventory_items"),
+  getById: getInventoryItemDetail,
+  async create(input: Record<string, unknown>) {
+    const db = getDb()
+    const id = generateId("iitem")
+    const [created] = await db
+      .insert(inventoryItem)
+      .values({
+        id,
+        sku: (input.sku as string | null | undefined) ?? null,
+        title: (input.title as string | null | undefined) ?? null,
+        description: (input.description as string | null | undefined) ?? null,
+        thumbnail: (input.thumbnail as string | null | undefined) ?? null,
+        requires_shipping: Boolean(input.requires_shipping ?? true),
+        hs_code: (input.hs_code as string | null | undefined) ?? null,
+        origin_country: (input.origin_country as string | null | undefined) ?? null,
+        mid_code: (input.mid_code as string | null | undefined) ?? null,
+        material: (input.material as string | null | undefined) ?? null,
+        weight: (input.weight as number | null | undefined) ?? null,
+        length: (input.length as number | null | undefined) ?? null,
+        height: (input.height as number | null | undefined) ?? null,
+        width: (input.width as number | null | undefined) ?? null,
+        metadata: (input.metadata as Record<string, unknown> | null) ?? null,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+      .returning()
+
+    const variantId = input.variant_id as string | undefined
+    if (variantId) {
+      await linkInventoryItemToVariantId(id, variantId)
+    }
+
+    return getInventoryItemDetail(id)
+  },
+  async update(id: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const set: Record<string, unknown> = { updated_at: sql`now()` }
+    const fields = [
+      "sku",
+      "title",
+      "description",
+      "thumbnail",
+      "requires_shipping",
+      "hs_code",
+      "origin_country",
+      "mid_code",
+      "material",
+      "weight",
+      "length",
+      "height",
+      "width",
+      "metadata",
+    ] as const
+    for (const key of fields) {
+      if (input[key] !== undefined) set[key] = input[key]
+    }
+    const [updated] = await db
+      .update(inventoryItem)
+      .set(set)
+      .where(and(eq(inventoryItem.id, id), isNull(inventoryItem.deleted_at)))
+      .returning()
+    if (!updated) throw new HTTPException(404, { message: "未找到" })
+    return getInventoryItemDetail(id)
+  },
   delete: mkdel(inventoryItem),
   async listLevels(inventoryItemId: string) {
-    const db = getDb()
-    const rows = await db.select().from(inventoryLevel).where(eq(inventoryLevel.inventory_item_id, inventoryItemId))
+    const rows = await loadInventoryLevelsForItem(inventoryItemId)
     return { inventory_levels: rows, count: rows.length }
   },
 }
@@ -353,14 +485,14 @@ export const currencyService = {
 // ── Promotions ────────────────────────────────────────────
 export const promotionService = {
   list: mkl(promotion, "promotions"),
-  getById: mkg(promotion, "promotions"),
+  getById: getPromotionDetail,
   delete: mkdel(promotion),
 
   async create(input: Record<string, unknown>) {
     const db = getDb()
     const id = generateId("promo")
     const { application_method, rules, ...promoFields } = input
-    const [created] = await db.insert(promotion).values({
+    await db.insert(promotion).values({
       id,
       code: String(promoFields.code ?? ""),
       type: String(promoFields.type ?? "standard"),
@@ -373,7 +505,7 @@ export const promotionService = {
       metadata: (promoFields.metadata as Record<string, unknown> | null) ?? null,
       created_at: sql`now()`,
       updated_at: sql`now()`,
-    }).returning()
+    })
 
     // Write application_method
     const am = application_method as Record<string, unknown> | undefined
@@ -453,7 +585,7 @@ export const promotionService = {
       }
     }
 
-    return { promotion: created }
+    return getPromotionDetail(id)
   },
 
   async update(id: string, input: Record<string, unknown>) {
@@ -536,12 +668,134 @@ export const promotionService = {
       }
     }
 
-    return { promotion: updated }
+    return getPromotionDetail(id)
   },
 }
 
+async function loadCampaignDetail(id: string) {
+  const db = getDb()
+  const [camp] = await db
+    .select()
+    .from(promotionCampaign)
+    .where(
+      and(eq(promotionCampaign.id, id), isNull(promotionCampaign.deleted_at)),
+    )
+    .limit(1)
+  if (!camp) throw new HTTPException(404, { message: "未找到" })
+  const [budget] = await db
+    .select()
+    .from(campaignBudget)
+    .where(eq(campaignBudget.campaign_id, id))
+    .limit(1)
+  const promos = await db
+    .select()
+    .from(promotion)
+    .where(
+      and(eq(promotion.campaign_id, id), isNull(promotion.deleted_at)),
+    )
+  return {
+    campaign: {
+      ...camp,
+      budget: budget ?? undefined,
+      promotions: promos,
+    },
+  }
+}
+
 // ── Campaigns ──────────────────────────────────────────────
-export const campaignService = { list: mkl(promotionCampaign, "campaigns"), getById: mkg(promotionCampaign, "campaigns"), create: mkc(promotionCampaign, "camp", "campaigns"), update: mku(promotionCampaign, "campaigns"), delete: mkdel(promotionCampaign) }
+export const campaignService = {
+  list: mkl(promotionCampaign, "campaigns"),
+  getById: loadCampaignDetail,
+  async create(input: Record<string, unknown>) {
+    const db = getDb()
+    const id = generateId("camp")
+    const { budget, ...fields } = input
+    await db.insert(promotionCampaign).values({
+      id,
+      name: String(fields.name ?? "Campaign"),
+      description: (fields.description as string | null | undefined) ?? null,
+      campaign_identifier: String(
+        fields.campaign_identifier ?? id.replace("camp_", "camp-"),
+      ),
+      starts_at: (fields.starts_at as Date | null | undefined) ?? null,
+      ends_at: (fields.ends_at as Date | null | undefined) ?? null,
+      created_at: sql`now()`,
+      updated_at: sql`now()`,
+    })
+    const budgetInput = budget as Record<string, unknown> | undefined
+    if (budgetInput?.type) {
+      await db.insert(campaignBudget).values({
+        id: generateId("campbud"),
+        campaign_id: id,
+        type: String(budgetInput.type),
+        currency_code: (budgetInput.currency_code as string | null) ?? null,
+        limit: (budgetInput.limit as number | null | undefined) ?? null,
+        attribute: (budgetInput.attribute as string | null) ?? null,
+        used: 0,
+        created_at: sql`now()`,
+        updated_at: sql`now()`,
+      })
+    }
+    return loadCampaignDetail(id)
+  },
+  async update(id: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const { budget, ...fields } = input
+    const set: Record<string, unknown> = { updated_at: sql`now()` }
+    if (fields.name !== undefined) set.name = String(fields.name)
+    if (fields.description !== undefined) set.description = fields.description
+    if (fields.campaign_identifier !== undefined) {
+      set.campaign_identifier = String(fields.campaign_identifier)
+    }
+    if (fields.starts_at !== undefined) set.starts_at = fields.starts_at
+    if (fields.ends_at !== undefined) set.ends_at = fields.ends_at
+    const [updated] = await db
+      .update(promotionCampaign)
+      .set(set)
+      .where(
+        and(eq(promotionCampaign.id, id), isNull(promotionCampaign.deleted_at)),
+      )
+      .returning()
+    if (!updated) throw new HTTPException(404, { message: "未找到" })
+    const budgetInput = budget as Record<string, unknown> | undefined
+    if (budgetInput) {
+      const [existing] = await db
+        .select()
+        .from(campaignBudget)
+        .where(eq(campaignBudget.campaign_id, id))
+        .limit(1)
+      if (existing) {
+        const bset: Record<string, unknown> = { updated_at: sql`now()` }
+        if (budgetInput.type !== undefined) bset.type = String(budgetInput.type)
+        if (budgetInput.currency_code !== undefined) {
+          bset.currency_code = budgetInput.currency_code
+        }
+        if (budgetInput.limit !== undefined) bset.limit = budgetInput.limit
+        if (budgetInput.attribute !== undefined) {
+          bset.attribute = budgetInput.attribute
+        }
+        await db
+          .update(campaignBudget)
+          .set(bset)
+          .where(eq(campaignBudget.id, existing.id))
+      } else if (budgetInput.type) {
+        await db.insert(campaignBudget).values({
+          id: generateId("campbud"),
+          campaign_id: id,
+          type: String(budgetInput.type),
+          currency_code: (budgetInput.currency_code as string | null) ?? null,
+          limit: (budgetInput.limit as number | null | undefined) ?? null,
+          attribute: (budgetInput.attribute as string | null) ?? null,
+          used: 0,
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+      }
+    }
+    return loadCampaignDetail(id)
+  },
+  delete: mkdel(promotionCampaign),
+}
 
 // ── API Keys ───────────────────────────────────────────────
 export const apiKeyService = { list: mkl(apiKey, "api_keys"), getById: mkg(apiKey, "api_keys"), create: mkc(apiKey, "ak", "api_keys"), update: mku(apiKey, "api_keys"), delete: mkdel(apiKey) }
@@ -561,8 +815,7 @@ export const paymentCollectionService = { list: mkl(paymentCollection, "payment_
 
 export const inventoryLevelService = {
   async list(iid: string) {
-    const db = getDb()
-    const rows = await db.select().from(inventoryLevel).where(eq(inventoryLevel.inventory_item_id, iid))
+    const rows = await loadInventoryLevelsForItem(iid)
     return { inventory_levels: rows, count: rows.length }
   },
   async update(iid: string, lid: string, input: any) {
@@ -577,7 +830,9 @@ export const inventoryLevelService = {
       .where(and(eq(inventoryLevel.inventory_item_id, iid), eq(inventoryLevel.location_id, lid)))
       .returning()
     if (!u) throw new HTTPException(404, { message: "未找到" })
-    return { inventory_level: u }
+    const levels = await loadInventoryLevelsForItem(iid)
+    const level = levels.find((row) => row.location_id === lid)
+    return { inventory_level: level ?? u }
   },
   async delete(iid: string, lid: string) {
     const db = getDb()
@@ -585,6 +840,63 @@ export const inventoryLevelService = {
       and(eq(inventoryLevel.inventory_item_id, iid), eq(inventoryLevel.location_id, lid)),
     )
     return { deleted: true }
+  },
+  async batchForItem(
+    inventoryItemId: string,
+    input: {
+      create?: Array<{ location_id: string; stocked_quantity?: number }>
+      update?: Array<{ location_id: string; stocked_quantity?: number }>
+      /** 官方 UI 传 inventory_level.id 字符串数组 */
+      delete?: Array<string | { location_id: string }>
+    },
+  ) {
+    const db = getDb()
+    const deleteRows: Array<{
+      inventory_item_id: string
+      location_id: string
+    }> = []
+
+    for (const entry of input.delete ?? []) {
+      if (typeof entry === "string") {
+        const [level] = await db
+          .select({ location_id: inventoryLevel.location_id })
+          .from(inventoryLevel)
+          .where(
+            and(
+              eq(inventoryLevel.id, entry),
+              eq(inventoryLevel.inventory_item_id, inventoryItemId),
+            ),
+          )
+          .limit(1)
+        if (level) {
+          deleteRows.push({
+            inventory_item_id: inventoryItemId,
+            location_id: level.location_id,
+          })
+        }
+        continue
+      }
+      if (entry.location_id) {
+        deleteRows.push({
+          inventory_item_id: inventoryItemId,
+          location_id: entry.location_id,
+        })
+      }
+    }
+
+    return this.batch({
+      create: (input.create ?? []).map((row) => ({
+        inventory_item_id: inventoryItemId,
+        location_id: row.location_id,
+        stocked_quantity: row.stocked_quantity,
+      })),
+      update: (input.update ?? []).map((row) => ({
+        inventory_item_id: inventoryItemId,
+        location_id: row.location_id,
+        stocked_quantity: row.stocked_quantity,
+      })),
+      delete: deleteRows,
+    })
   },
   async batch(input: {
     create?: Array<{ inventory_item_id: string; location_id: string; stocked_quantity?: number }>
@@ -596,6 +908,18 @@ export const inventoryLevelService = {
     const updated: typeof inventoryLevel.$inferSelect[] = []
 
     for (const row of input.create ?? []) {
+      const locationId = row.location_id?.trim()
+      if (!locationId) continue
+
+      const [location] = await db
+        .select({ id: stockLocation.id })
+        .from(stockLocation)
+        .where(
+          and(eq(stockLocation.id, locationId), isNull(stockLocation.deleted_at)),
+        )
+        .limit(1)
+      if (!location) continue
+
       const id = generateId("ilev")
       const qty = row.stocked_quantity ?? 0
       const [c] = await db
@@ -603,7 +927,7 @@ export const inventoryLevelService = {
         .values({
           id,
           inventory_item_id: row.inventory_item_id,
-          location_id: row.location_id,
+          location_id: locationId,
           stocked_quantity: String(qty),
           raw_stocked_quantity: { amount: qty, precision: 0 },
         })

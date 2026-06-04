@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 import { RouteDrawer } from "../../../../../components/modals"
 import { useInventoryItem } from "../../../../../hooks/api/inventory"
+import { inventoryDetailQuery } from "../../constants"
 import { EditInventoryItemAttributesForm } from "./components/edit-item-attributes-form"
 
 export const InventoryItemAttributesEdit = () => {
@@ -15,7 +16,7 @@ export const InventoryItemAttributesEdit = () => {
     isPending: isLoading,
     isError,
     error,
-  } = useInventoryItem(id!)
+  } = useInventoryItem(id!, inventoryDetailQuery)
 
   const ready = !isLoading && inventoryItem
 

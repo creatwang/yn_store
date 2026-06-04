@@ -100,6 +100,8 @@ interface DataTableProps<TData> {
     order: string[]
   }
   filterBarContent?: React.ReactNode
+  /** 为 false 时不启用排序（详情内嵌小表等场景） */
+  enableSorting?: boolean
 }
 
 export const DataTable = <TData,>({
@@ -135,6 +137,7 @@ export const DataTable = <TData,>({
   entity,
   currentColumns,
   filterBarContent,
+  enableSorting: enableSortingProp,
 }: DataTableProps<TData>) => {
   const { t } = useTranslation()
   const isViewConfigEnabled = useFeatureFlag("view_configurations")
@@ -145,10 +148,10 @@ export const DataTable = <TData,>({
   const effectiveEnableViewSelector = isViewConfigEnabled && enableViewSelector
 
   const enableFiltering = filters && filters.length > 0
-  const showFilterMenu =
-    enableFilterMenu !== undefined ? enableFilterMenu : enableFiltering
   const enableCommands = commands && commands.length > 0
-  const enableSorting = columns.some((column) => column.enableSorting)
+  const enableSorting =
+    enableSortingProp ??
+    columns.some((column) => column.enableSorting)
 
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(initialColumnVisibility)
@@ -371,6 +374,19 @@ export const DataTable = <TData,>({
   })
 
   const shouldRenderHeading = heading || subHeading
+  const hasToolbarChildrenContent =
+    shouldRenderHeading ||
+    effectiveEnableViewSelector ||
+    enableSearch ||
+    Boolean(actionMenu) ||
+    Boolean(actions?.length) ||
+    Boolean(action)
+  const showFilterBar =
+    enableFiltering ||
+    enableSorting ||
+    effectiveEnableColumnVisibility ||
+    Boolean(filterBarContent)
+  const showToolbar = hasToolbarChildrenContent || showFilterBar
 
   return (
     <UiDataTable
@@ -379,50 +395,64 @@ export const DataTable = <TData,>({
         layout === "fill" ? "h-full [&_tr]:last-of-type:!border-b" : undefined
       }
     >
-      <UiDataTable.Toolbar
-        className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center"
-        translations={toolbarTranslations}
-        filterBarContent={filterBarContent}
-      >
-        <div className="flex w-full items-center justify-between gap-2">
-          <div className="flex items-center gap-x-4">
-            {shouldRenderHeading && (
-              <div>
-                {heading && <Heading level={headingLevel}>{heading}</Heading>}
-                {subHeading && (
-                  <Text size="small" className="text-ui-fg-subtle">
-                    {subHeading}
-                  </Text>
+      {showToolbar && (
+        <UiDataTable.Toolbar
+          className={
+            hasToolbarChildrenContent
+              ? filterBarContent
+                ? "flex flex-col items-start justify-between gap-2 md:flex-row md:items-center"
+                : "flex items-center justify-between gap-2"
+              : "!h-0 !min-h-0 overflow-hidden !p-0"
+          }
+          translations={toolbarTranslations}
+          filterBarContent={filterBarContent}
+        >
+          {hasToolbarChildrenContent && (
+            <>
+              {(shouldRenderHeading || effectiveEnableViewSelector) && (
+                <div className="flex items-center gap-x-4">
+                  {shouldRenderHeading && (
+                    <div>
+                      {heading && (
+                        <Heading level={headingLevel}>{heading}</Heading>
+                      )}
+                      {subHeading && (
+                        <Text size="small" className="text-ui-fg-subtle">
+                          {subHeading}
+                        </Text>
+                      )}
+                    </div>
+                  )}
+                  {effectiveEnableViewSelector && entity && (
+                    <ViewPills
+                      entity={entity}
+                      currentColumns={currentColumns}
+                      currentConfiguration={currentConfiguration}
+                    />
+                  )}
+                </div>
+              )}
+              <div className="flex shrink-0 items-center gap-x-2">
+                {enableSearch && (
+                  <div className="w-full md:w-auto">
+                    <UiDataTable.Search
+                      placeholder={t("filters.searchLabel")}
+                      autoFocus={autoFocusSearch}
+                    />
+                  </div>
                 )}
+                {actionMenu && (
+                  <ActionMenu variant="primary" {...actionMenu} />
+                )}
+                {actions && actions.length > 0 && (
+                  <DataTableActions actions={actions} />
+                )}
+                {!actions && action && <DataTableAction {...action} />}
               </div>
-            )}
-            {effectiveEnableViewSelector && entity && (
-              <ViewPills
-                entity={entity}
-                currentColumns={currentColumns}
-                currentConfiguration={currentConfiguration}
-              />
-            )}
-          </div>
-          <div className="flex items-center gap-x-2">
-            {showFilterMenu && <UiDataTable.FilterMenu />}
-            {enableSorting && <UiDataTable.SortingMenu />}
-            {enableSearch && (
-              <div className="w-full md:w-auto">
-                <UiDataTable.Search
-                  placeholder={t("filters.searchLabel")}
-                  autoFocus={autoFocusSearch}
-                />
-              </div>
-            )}
-            {actionMenu && <ActionMenu variant="primary" {...actionMenu} />}
-            {actions && actions.length > 0 && (
-              <DataTableActions actions={actions} />
-            )}
-            {!actions && action && <DataTableAction {...action} />}
-          </div>
-        </div>
-      </UiDataTable.Toolbar>
+            </>
+          )}
+        </UiDataTable.Toolbar>
+      )}
       <UiDataTable.Table emptyState={emptyState} />
       {enablePagination && (
         <UiDataTable.Pagination translations={paginationTranslations} />

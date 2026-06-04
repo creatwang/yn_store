@@ -76,7 +76,7 @@ export interface DataTableRootProps<TData> {
 /**
  * Table component for rendering a table with pagination, filtering and ordering.
  */
-export const DataTableRoot = <TData,>({
+export function DataTableRoot<TData>({
   table,
   columns,
   pagination,
@@ -86,7 +86,7 @@ export const DataTableRoot = <TData,>({
   noResults = false,
   noHeader = false,
   layout = "fit",
-}: DataTableRootProps<TData>) => {
+}: DataTableRootProps<TData>) {
   const { t } = useTranslation()
   const [showStickyBorder, setShowStickyBorder] = useState(false)
 
@@ -97,7 +97,10 @@ export const DataTableRoot = <TData,>({
   const hasCommandBar = commands && commands.length > 0
 
   const rowSelection = table.getState().rowSelection
-  const { pageIndex, pageSize } = table.getState().pagination
+  const paginationState = table.getState().pagination
+  const pageIndex = paginationState?.pageIndex ?? 0
+  const rowCount = table.getRowModel().rows.length
+  const pageSize = paginationState?.pageSize ?? (rowCount > 0 ? rowCount : 1)
 
   const colCount = columns.length - (hasSelect ? 1 : 0) - (hasActions ? 1 : 0)
   const colWidth = 100 / colCount
@@ -355,6 +358,7 @@ export const DataTableRoot = <TData,>({
     </div>
   )
 }
+
 
 type PaginationProps = Omit<
   ComponentPropsWithoutRef<typeof Table.Pagination>,

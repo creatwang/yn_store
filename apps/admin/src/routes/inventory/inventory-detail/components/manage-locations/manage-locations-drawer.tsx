@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom"
 import { RouteDrawer } from "../../../../../components/modals"
 import { useInventoryItem } from "../../../../../hooks/api/inventory"
 import { useStockLocations } from "../../../../../hooks/api/stock-locations"
+import { inventoryDetailQuery } from "../../constants"
 import { ManageLocationsForm } from "./components/manage-locations-form"
 
 export const ManageLocationsDrawer = () => {
@@ -17,7 +18,7 @@ export const ManageLocationsDrawer = () => {
     isPending: isLoading,
     isError,
     error,
-  } = useInventoryItem(id!)
+  } = useInventoryItem(id!, inventoryDetailQuery)
 
   const { stock_locations, isLoading: loadingLocations } = useStockLocations()
 

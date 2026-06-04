@@ -9,19 +9,20 @@ export const useLocationLevelTableQuery = ({
   pageSize?: number
   prefix?: string
 }) => {
-  const queryObject = useQueryParams(
+  const raw = useQueryParams(
     [
       "order",
       "offset",
+      "q",
       "location_id",
       "stocked_quantity",
       "reserved_quantity",
       "incoming_quantity",
     ],
-    prefix
+    prefix,
   )
 
-  const { offset, ...rest } = queryObject
+  const { offset, ...rest } = raw
 
   const searchParams: HttpTypes.AdminInventoryLevelFilters = {
     limit: pageSize,
@@ -29,5 +30,8 @@ export const useLocationLevelTableQuery = ({
     ...rest,
   }
 
-  return searchParams
+  return {
+    searchParams,
+    raw,
+  }
 }

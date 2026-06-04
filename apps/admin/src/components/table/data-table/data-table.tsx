@@ -84,7 +84,7 @@ export const _DataTable = <TData,>({
         table={table}
         count={count}
         columns={columns}
-        pagination
+        pagination={pagination}
         navigateTo={navigateTo}
         commands={commands}
         noResults={noResults}

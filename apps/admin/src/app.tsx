@@ -34,8 +34,7 @@ const router = createBrowserRouter(
     <Route errorElement={<ErrorBoundary />}>
       {/* Public routes */}
       <Route element={<PublicLayout />}>
-        <Route path="/login" lazy={() => import("./routes/login")} />
-        <Route path="*" lazy={() => import("./routes/no-match")} />
+        <Route path="login" lazy={() => import("./routes/login")} />
       </Route>
 
       {/* Protected + Main Layout */}
@@ -270,12 +269,212 @@ const router = createBrowserRouter(
           </Route>
 
           {/* Promotions */}
-          <Route path="promotions" lazy={() => import("./routes/promotions/promotion-list")} />
-          <Route path="campaigns" lazy={() => import("./routes/campaigns/campaign-list")} />
-          <Route path="price-lists" lazy={() => import("./routes/price-lists/price-list-list")} />
-          <Route path="customer-groups" lazy={() => import("./routes/customer-groups/customer-group-list")} />
-          <Route path="inventory" lazy={() => import("./routes/inventory/inventory-list")} />
-          <Route path="reservations" lazy={() => import("./routes/reservations/reservation-list")} />
+          <Route path="promotions">
+            <Route
+              index
+              lazy={() => import("./routes/promotions/promotion-list")}
+            />
+            <Route
+              path="create"
+              lazy={() => import("./routes/promotions/promotion-create")}
+            />
+            <Route
+              path=":id"
+              lazy={() => import("./routes/promotions/promotion-detail")}
+            >
+              <Route
+                path="edit"
+                lazy={() =>
+                  import("./routes/promotions/promotion-edit-details")
+                }
+              />
+              <Route
+                path="add-to-campaign"
+                lazy={() =>
+                  import("./routes/promotions/promotion-add-campaign")
+                }
+              />
+              <Route
+                path=":ruleType/edit"
+                lazy={() => import("./routes/promotions/common/edit-rules")}
+              />
+            </Route>
+          </Route>
+
+          {/* Campaigns */}
+          <Route path="campaigns">
+            <Route
+              index
+              lazy={() => import("./routes/campaigns/campaign-list")}
+            />
+            <Route
+              path="create"
+              lazy={() => import("./routes/campaigns/campaign-create")}
+            />
+            <Route
+              path=":id"
+              lazy={() => import("./routes/campaigns/campaign-detail")}
+            >
+              <Route
+                path="edit"
+                lazy={() => import("./routes/campaigns/campaign-edit")}
+              />
+              <Route
+                path="edit-budget"
+                lazy={() =>
+                  import("./routes/campaigns/campaign-budget-edit")
+                }
+              />
+              <Route
+                path="configuration"
+                lazy={() =>
+                  import("./routes/campaigns/campaign-configuration")
+                }
+              />
+              <Route
+                path="add-promotions"
+                lazy={() =>
+                  import("./routes/campaigns/add-campaign-promotions")
+                }
+              />
+            </Route>
+          </Route>
+
+          {/* Price Lists */}
+          <Route path="price-lists">
+            <Route
+              index
+              lazy={() => import("./routes/price-lists/price-list-list")}
+            />
+            <Route
+              path="create"
+              lazy={() => import("./routes/price-lists/price-list-create")}
+            />
+            <Route
+              path=":id"
+              lazy={() => import("./routes/price-lists/price-list-detail")}
+            >
+              <Route
+                path="edit"
+                lazy={() => import("./routes/price-lists/price-list-edit")}
+              />
+              <Route
+                path="configuration"
+                lazy={() =>
+                  import("./routes/price-lists/price-list-configuration")
+                }
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() => import("./routes/price-lists/price-list-metadata")}
+              />
+              <Route
+                path="products/add"
+                lazy={() =>
+                  import("./routes/price-lists/price-list-prices-add")
+                }
+              />
+              <Route
+                path="products/edit"
+                lazy={() =>
+                  import("./routes/price-lists/price-list-prices-edit")
+                }
+              />
+            </Route>
+          </Route>
+
+          <Route
+            path="customer-groups"
+            lazy={() => import("./routes/customer-groups/customer-group-list")}
+          />
+
+          {/* Inventory */}
+          <Route path="inventory">
+            <Route
+              index
+              lazy={() => import("./routes/inventory/inventory-list")}
+            />
+            <Route
+              path="create"
+              lazy={() => import("./routes/inventory/inventory-create")}
+            />
+            <Route
+              path="stock"
+              lazy={() => import("./routes/inventory/inventory-stock")}
+            />
+            <Route
+              path=":id"
+              lazy={() => import("./routes/inventory/inventory-detail")}
+            >
+              <Route
+                path="edit"
+                lazy={() =>
+                  import(
+                    "./routes/inventory/inventory-detail/components/edit-inventory-item"
+                  )
+                }
+              />
+              <Route
+                path="attributes"
+                lazy={() =>
+                  import(
+                    "./routes/inventory/inventory-detail/components/edit-inventory-item-attributes"
+                  )
+                }
+              />
+              <Route
+                path="locations"
+                lazy={() =>
+                  import(
+                    "./routes/inventory/inventory-detail/components/manage-locations"
+                  )
+                }
+              />
+              <Route
+                path="locations/:location_id"
+                lazy={() =>
+                  import(
+                    "./routes/inventory/inventory-detail/components/adjust-inventory"
+                  )
+                }
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() => import("./routes/inventory/inventory-metadata")}
+              />
+            </Route>
+          </Route>
+
+          {/* Reservations */}
+          <Route path="reservations">
+            <Route
+              index
+              lazy={() => import("./routes/reservations/reservation-list")}
+            />
+            <Route
+              path="create"
+              lazy={() => import("./routes/reservations/reservation-create")}
+            />
+            <Route
+              path=":id"
+              lazy={() => import("./routes/reservations/reservation-detail")}
+            >
+              <Route
+                path="edit"
+                lazy={() =>
+                  import(
+                    "./routes/reservations/reservation-detail/components/edit-reservation"
+                  )
+                }
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() =>
+                  import("./routes/reservations/reservation-metadata")
+                }
+              />
+            </Route>
+          </Route>
         </Route>
 
         {/* Settings Layout */}
@@ -303,6 +502,7 @@ const router = createBrowserRouter(
           <Route path="return-reasons" lazy={() => import("./routes/return-reasons/return-reason-list")} />
           <Route path="refund-reasons" lazy={() => import("./routes/refund-reasons/refund-reason-list")} />
         </Route>
+        <Route path="*" lazy={() => import("./routes/no-match")} />
       </Route>
     </Route>
   ),
@@ -316,10 +516,14 @@ function App() {
         <ThemeProvider>
           <TooltipProvider>
             <ExtensionProvider>
-              <I18n />
-              <I18nProvider>
-                <RouterProvider router={router} fallbackElement={<Loading />} />
-              </I18nProvider>
+              <I18n>
+                <I18nProvider>
+                  <RouterProvider
+                    router={router}
+                    fallbackElement={<Loading />}
+                  />
+                </I18nProvider>
+              </I18n>
             </ExtensionProvider>
             <Toaster />
           </TooltipProvider>

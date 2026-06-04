@@ -16,15 +16,17 @@ export const InventoryItemVariantsSection = ({
 }: InventoryItemVariantsSectionProps) => {
   const { t } = useTranslation()
 
-  if (!variants?.length) {
-    return null
-  }
-
   return (
     <Container className="p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <Heading level="h2">{t("inventory.associatedVariants")}</Heading>
       </div>
+
+      {!variants?.length ? (
+        <div className="text-ui-fg-subtle px-6 pb-6 text-sm">
+          {t("general.noRecordsTitle")}
+        </div>
+      ) : (
 
       <div className="txt-small flex flex-col gap-2 px-2 pb-2">
         {variants.map((variant) => {
@@ -43,7 +45,7 @@ export const InventoryItemVariantsSection = ({
                     {variant.title}
                   </span>
                   <span className="text-ui-fg-subtle">
-                    {variant.options.map((o) => o.value).join(" ⋅ ")}
+                    {(variant.options ?? []).map((o) => o.value).join(" ⋅ ")}
                   </span>
                 </div>
                 <div className="flex size-7 items-center justify-center">
@@ -68,6 +70,7 @@ export const InventoryItemVariantsSection = ({
           )
         })}
       </div>
+      )}
     </Container>
   )
 }

@@ -107,7 +107,7 @@ export const useDataTable = <TData,>({
     columns,
     state: {
       rowSelection: rowSelection, // We always pass a selection state to the table even if it's not enabled
-      pagination: enablePagination ? pagination : undefined,
+      pagination,
     },
     pageCount: Math.ceil((count ?? 0) / pageSize),
     enableRowSelection,

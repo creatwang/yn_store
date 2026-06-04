@@ -70,9 +70,9 @@ export const TaxRegionCard = ({
     )
   }
 
+  const taxRates = taxRegion.tax_rates ?? []
   const showCreateDefaultTaxRate =
-    !taxRegion.tax_rates.filter((tr) => tr.is_default).length &&
-    type === "header"
+    !taxRates.filter((tr) => tr.is_default).length && type === "header"
 
   const Component = (
     <div

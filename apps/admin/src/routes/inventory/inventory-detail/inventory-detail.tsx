@@ -12,7 +12,7 @@ import { InventoryItemVariantsSection } from "./components/inventory-item-varian
 import { inventoryItemLoader } from "./loader"
 
 import { useExtension } from "../../../providers/extension-provider"
-import { INVENTORY_DETAIL_FIELDS } from "./constants"
+import { inventoryDetailQuery } from "./constants"
 
 export const InventoryDetail = () => {
   const { id } = useParams()
@@ -28,9 +28,7 @@ export const InventoryDetail = () => {
     error,
   } = useInventoryItem(
     id!,
-    {
-      fields: INVENTORY_DETAIL_FIELDS,
-    },
+    inventoryDetailQuery,
     {
       initialData,
     }
@@ -72,7 +70,7 @@ export const InventoryDetail = () => {
       </TwoColumnPage.Main>
       <TwoColumnPage.Sidebar>
         <InventoryItemVariantsSection
-          variants={(inventory_item as any).variants}
+          variants={inventory_item.variants ?? []}
         />
         <InventoryItemAttributeSection inventoryItem={inventory_item as any} />
       </TwoColumnPage.Sidebar>

@@ -15,8 +15,9 @@ export const Providers = ({ children }: PropsWithChildren) => {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <FeatureFlagProvider>
-              <I18n />
-              <I18nProvider>{children}</I18nProvider>
+              <I18n>
+                <I18nProvider>{children}</I18nProvider>
+              </I18n>
               <Toaster />
             </FeatureFlagProvider>
           </ThemeProvider>

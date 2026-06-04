@@ -1,6 +1,8 @@
 import i18n from "i18next"
 import LanguageDetector from "i18next-browser-languagedetector"
+import { PropsWithChildren, useEffect, useState } from "react"
 import { initReactI18next } from "react-i18next"
+import { Spinner } from "@medusajs/icons"
 
 import { defaultI18nOptions } from "../../../i18n/config"
 import { bindMedusaPluralLocales } from "../../../i18n/medusa-plural-locales"
@@ -23,35 +25,52 @@ const normalizeLanguageCode = (detected: string = "") => {
   return alias[normalized] ?? detected
 }
 
-export const I18n = () => {
-  const { getI18nResources } = useExtension()
+function I18nLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Spinner className="text-ui-fg-interactive animate-spin" />
+    </div>
+  )
+}
 
-  if (i18n.isInitialized) {
-    return null
+export const I18n = ({ children }: PropsWithChildren) => {
+  const { getI18nResources } = useExtension()
+  const [isReady, setIsReady] = useState(i18n.isInitialized)
+
+  useEffect(() => {
+    if (i18n.isInitialized) {
+      setIsReady(true)
+      return
+    }
+
+    const resources = getI18nResources()
+    void i18n
+      .use(
+        new LanguageDetector(null, {
+          lookupCookie: "lng",
+          lookupLocalStorage: "lng",
+          convertDetectedLanguage: normalizeLanguageCode,
+        }),
+      )
+      .use(initReactI18next)
+      .init(
+        {
+          ...defaultI18nOptions,
+          resources,
+          supportedLngs: Object.keys(resources),
+        },
+        () => {
+          bindMedusaPluralLocales(i18n)
+          setIsReady(true)
+        },
+      )
+  }, [getI18nResources])
+
+  if (!isReady) {
+    return <I18nLoading />
   }
 
-  const resources = getI18nResources()
-  i18n
-    .use(
-      new LanguageDetector(null, {
-        lookupCookie: "lng",
-        lookupLocalStorage: "lng",
-        convertDetectedLanguage: normalizeLanguageCode,
-      })
-    )
-    .use(initReactI18next)
-    .init(
-      {
-        ...defaultI18nOptions,
-        resources,
-        supportedLngs: Object.keys(resources),
-      },
-      () => {
-        bindMedusaPluralLocales(i18n)
-      }
-    )
-
-  return null
+  return children
 }
 
 export { i18n }
