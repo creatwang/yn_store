@@ -620,8 +620,8 @@ export const productService = {
               const valId = optEntry?.values.get(optVal as string)
               if (valId) {
                 await db.execute(sql`
-                  INSERT INTO product_variant_option (id, variant_id, option_value_id, created_at, updated_at)
-                  VALUES (${generateId("pvo")}, ${vid}, ${valId}, now(), now())
+                  INSERT INTO product_variant_option (variant_id, option_value_id)
+                  VALUES (${vid}, ${valId})
                 `)
               }
             }

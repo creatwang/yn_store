@@ -16,6 +16,7 @@ import { I18nProvider } from "./providers/i18n-provider"
 import { ThemeProvider } from "./providers/theme-provider"
 import "./index.css"
 import { lazyDetailRoute } from "./lib/lazy-route"
+import { settingsRoutesFragment } from "./app/settings-routes"
 
 function Loading() {
   return (
@@ -622,11 +623,7 @@ const router = createBrowserRouter(
         <Route path="settings" element={<SettingsLayout />}>
           <Route index lazy={() => import("./routes/settings")} />
 
-          <Route path="regions">
-            <Route index lazy={() => import("./routes/regions/region-list")} />
-            <Route path="create" lazy={() => import("./routes/regions/region-create")} />
-            <Route path=":id" lazy={() => import("./routes/regions/region-detail")} />
-          </Route>
+          {settingsRoutesFragment}
 
           <Route path="sales-channels">
             <Route index lazy={() => import("./routes/sales-channels/sales-channel-list")} />
@@ -653,15 +650,6 @@ const router = createBrowserRouter(
               />
             </Route>
           </Route>
-
-          <Route path="store" lazy={() => import("./routes/store/store-detail")} />
-          <Route path="users" lazy={() => import("./routes/users/user-list")} />
-          <Route path="tax-regions" lazy={() => import("./routes/tax-regions/tax-region-list")} />
-          <Route path="product-tags" lazy={() => import("./routes/product-tags/product-tag-list")} />
-          <Route path="product-types" lazy={() => import("./routes/product-types/product-type-list")} />
-          <Route path="locations" lazy={() => import("./routes/locations/location-list")} />
-          <Route path="return-reasons" lazy={() => import("./routes/return-reasons/return-reason-list")} />
-          <Route path="refund-reasons" lazy={() => import("./routes/refund-reasons/refund-reason-list")} />
 
           <Route path="publishable-api-keys">
             <Route
