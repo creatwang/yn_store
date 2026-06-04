@@ -39,11 +39,13 @@ import {
   paymentCollection,
   fulfillmentSet,
   fulfillmentProvider,
+  locationFulfillmentProvider,
   stockLocation,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import type {
   AdminFulfillmentProvidersParamsType,
+  AdminGetApiKeysParamsType,
   AdminGetCollectionsParamsType,
   AdminGetInventoryItemsParamsType,
   AdminGetPromotionsParamsType,
@@ -61,11 +63,51 @@ import {
 import { stockLocationService, shippingOptionService } from "./stock-location.service"
 import { getPromotionDetail } from "./promotion-detail.service"
 import {
+  insertPromotionRuleWithValues,
+  linkApplicationMethodRule,
+  linkPromotionCartRule,
+  normalizeRuleValues,
+  replacePromotionCartRules,
+} from "./promotion-official-db"
+import {
   enrichInventoryItemsForList,
   getInventoryItemDetail,
   loadInventoryLevelsForItem,
 } from "./inventory-item-detail.service"
 import { linkInventoryItemToVariantId } from "./inventory-variant-link.service"
+
+const DEFAULT_RAW_USED = { value: "0", precision: 20 } as const
+
+function bigNumberFromRow(
+  numeric: string | null | undefined,
+  raw: unknown,
+): number {
+  if (raw && typeof raw === "object" && "value" in (raw as object)) {
+    const v = (raw as { value?: string }).value
+    if (v != null && v !== "") return Number(v)
+  }
+  if (numeric != null && numeric !== "") return Number(numeric)
+  return 0
+}
+
+function bigNumberInsert(value: number | null | undefined) {
+  if (value == null) return { limit: null, raw_limit: null }
+  const s = String(value)
+  return {
+    limit: s,
+    raw_limit: { value: s, precision: 20 },
+  }
+}
+
+function presentCampaignBudget(
+  row: typeof campaignBudget.$inferSelect,
+) {
+  return {
+    ...row,
+    limit: bigNumberFromRow(row.limit, row.raw_limit),
+    used: bigNumberFromRow(row.used, row.raw_used),
+  }
+}
 
 function mkl<T extends { limit?: number; offset?: number }>(
   table: any,
@@ -392,49 +434,150 @@ async function listPromotionsFiltered(query: AdminGetPromotionsParamsType) {
   }
 }
 
+function aggregatePriceListRules(
+  rows: { attribute: string; value: unknown }[],
+): Record<string, string[]> {
+  const rules: Record<string, string[]> = {}
+  for (const row of rows) {
+    const values: string[] = []
+    if (Array.isArray(row.value)) {
+      for (const v of row.value) values.push(String(v))
+    } else if (row.value != null) {
+      values.push(String(row.value))
+    }
+    if (!values.length) continue
+    const list = rules[row.attribute] ?? []
+    for (const v of values) {
+      if (!list.includes(v)) list.push(v)
+    }
+    rules[row.attribute] = list
+  }
+  return rules
+}
+
+async function syncPriceListRules(
+  priceListId: string,
+  rules: Record<string, unknown> | undefined,
+) {
+  if (rules === undefined) return
+
+  const db = getDb()
+  const attributes = Object.keys(rules)
+  if (attributes.length) {
+    await db
+      .delete(priceListRule)
+      .where(
+        and(
+          eq(priceListRule.price_list_id, priceListId),
+          inArray(priceListRule.attribute, attributes),
+        ),
+      )
+  }
+
+  for (const [attribute, raw] of Object.entries(rules)) {
+    const values = Array.isArray(raw)
+      ? raw
+      : raw != null
+        ? [raw]
+        : []
+    for (const val of values) {
+      await db.insert(priceListRule).values({
+        id: generateId("prule"),
+        attribute,
+        value: [String(val)],
+        price_list_id: priceListId,
+      })
+    }
+  }
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(priceListRule)
+    .where(eq(priceListRule.price_list_id, priceListId))
+
+  await db
+    .update(priceList)
+    .set({ rules_count: Number(total ?? 0), updated_at: sql`now()` })
+    .where(eq(priceList.id, priceListId))
+}
+
+async function loadPriceListDetail(id: string) {
+  const db = getDb()
+  const [item] = await db
+    .select()
+    .from(priceList)
+    .where(and(eq(priceList.id, id), isNull(priceList.deleted_at)))
+    .limit(1)
+  if (!item) throw new HTTPException(404, { message: "未找到" })
+
+  const ruleRows = await db
+    .select()
+    .from(priceListRule)
+    .where(eq(priceListRule.price_list_id, id))
+
+  return {
+    price_list: {
+      ...item,
+      rules: aggregatePriceListRules(ruleRows),
+    },
+  }
+}
+
 // ── Price Lists ─────────────────────────────────────────────
 export const priceListService = {
   list: listPriceListsFiltered,
-  getById: mkg(priceList, "price_lists"),
+  getById: loadPriceListDetail,
   async create(input: Record<string, unknown>) {
     const db = getDb()
+    const { rules, ...fields } = input
     const id = generateId("plist")
     const [created] = await db
       .insert(priceList)
       .values({
         id,
-        title: String(input.title ?? "Price list"),
-        description: String(input.description ?? ""),
-        status: String(input.status ?? "draft"),
-        type: String(input.type ?? "sale"),
-        starts_at: (input.starts_at as Date | null | undefined) ?? null,
-        ends_at: (input.ends_at as Date | null | undefined) ?? null,
-        metadata: (input.metadata as Record<string, unknown> | null) ?? null,
+        title: String(fields.title ?? "Price list"),
+        description: String(fields.description ?? ""),
+        status: String(fields.status ?? "draft"),
+        type: String(fields.type ?? "sale"),
+        starts_at: (fields.starts_at as Date | null | undefined) ?? null,
+        ends_at: (fields.ends_at as Date | null | undefined) ?? null,
+        metadata: (fields.metadata as Record<string, unknown> | null) ?? null,
+        rules_count: 0,
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
       .returning()
-    return { price_list: created }
+    if (rules && typeof rules === "object") {
+      await syncPriceListRules(
+        id,
+        rules as Record<string, unknown>,
+      )
+    }
+    return loadPriceListDetail(id)
   },
   async update(id: string, input: Record<string, unknown>) {
     const db = getDb()
+    const { rules, ...fields } = input
     const set: Record<string, unknown> = { updated_at: sql`now()` }
-    if (input.title !== undefined) set.title = String(input.title)
-    if (input.description !== undefined) {
-      set.description = String(input.description)
+    if (fields.title !== undefined) set.title = String(fields.title)
+    if (fields.description !== undefined) {
+      set.description = String(fields.description)
     }
-    if (input.status !== undefined) set.status = String(input.status)
-    if (input.type !== undefined) set.type = String(input.type)
-    if (input.starts_at !== undefined) set.starts_at = input.starts_at
-    if (input.ends_at !== undefined) set.ends_at = input.ends_at
-    if (input.metadata !== undefined) set.metadata = input.metadata
+    if (fields.status !== undefined) set.status = String(fields.status)
+    if (fields.type !== undefined) set.type = String(fields.type)
+    if (fields.starts_at !== undefined) set.starts_at = fields.starts_at
+    if (fields.ends_at !== undefined) set.ends_at = fields.ends_at
+    if (fields.metadata !== undefined) set.metadata = fields.metadata
     const [updated] = await db
       .update(priceList)
       .set(set)
       .where(and(eq(priceList.id, id), isNull(priceList.deleted_at)))
       .returning()
     if (!updated) throw new HTTPException(404, { message: "未找到" })
-    return { price_list: updated }
+    if (rules !== undefined && typeof rules === "object") {
+      await syncPriceListRules(id, rules as Record<string, unknown>)
+    }
+    return loadPriceListDetail(id)
   },
   delete: mkdel(priceList),
 }
@@ -689,69 +832,43 @@ export const promotionService = {
         allocation: (am.allocation as string | undefined) ?? "across",
         value: String(amValue),
         raw_value: { value: String(amValue), precision: 20 },
-        currency_code: (am.currency_code as string | null | undefined) ?? null,
+        currency_code:
+          (am.currency_code as string | null | undefined) ?? "usd",
         max_quantity: (am.max_quantity as number | null | undefined) ?? null,
-        apply_to_quantity: (am.apply_to_quantity as number | null | undefined) ?? null,
-        buy_rules_min_quantity: (am.buy_rules_min_quantity as number | null | undefined) ?? null,
-        description: (am.description as string | null) ?? null,
+        apply_to_quantity:
+          (am.apply_to_quantity as number | null | undefined) ?? null,
+        buy_rules_min_quantity:
+          (am.buy_rules_min_quantity as number | null | undefined) ?? null,
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
 
-      // Write target_rules / buy_rules into promotion_rule
-      for (const key of ["target_rules", "buy_rules"]) {
+      for (const [key, kind] of [
+        ["target_rules", "target-rules"],
+        ["buy_rules", "buy-rules"],
+      ] as const) {
         const ruleList = (am[key] as Array<Record<string, unknown>>) ?? []
         for (const r of ruleList) {
-          const ruleId = generateId("prorul")
-          await db.insert(promotionRule).values({
-            id: ruleId,
-            promotion_id: id,
-            application_method_id: amId,
+          const ruleId = await insertPromotionRuleWithValues({
             attribute: String(r.attribute ?? ""),
             operator: String(r.operator ?? "eq"),
             description: (r.description as string | null) ?? null,
-            created_at: sql`now()`,
-            updated_at: sql`now()`,
+            values: normalizeRuleValues(r.values ?? r.value),
           })
-          const vals = (r.values ?? r.value) as string[] | string | undefined
-          const valueList = Array.isArray(vals) ? vals : vals ? [vals] : []
-          for (const v of valueList) {
-            await db.insert(promotionRuleValue).values({
-              id: generateId("prorulval"),
-              promotion_rule_id: ruleId,
-              value: String(v),
-              created_at: sql`now()`,
-              updated_at: sql`now()`,
-            })
-          }
+          await linkApplicationMethodRule(amId, ruleId, kind)
         }
       }
     }
 
-    // Write top-level rules
     const ruleList = (rules as Array<Record<string, unknown>>) ?? []
     for (const r of ruleList) {
-      const ruleId = generateId("prorul")
-      await db.insert(promotionRule).values({
-        id: ruleId,
-        promotion_id: id,
+      const ruleId = await insertPromotionRuleWithValues({
         attribute: String(r.attribute ?? ""),
         operator: String(r.operator ?? "eq"),
         description: (r.description as string | null) ?? null,
-        created_at: sql`now()`,
-        updated_at: sql`now()`,
+        values: normalizeRuleValues(r.values ?? r.value),
       })
-      const vals = (r.values ?? r.value) as string[] | string | undefined
-      const valueList = Array.isArray(vals) ? vals : vals ? [vals] : []
-      for (const v of valueList) {
-        await db.insert(promotionRuleValue).values({
-          id: generateId("prorulval"),
-          promotion_rule_id: ruleId,
-          value: String(v),
-          created_at: sql`now()`,
-          updated_at: sql`now()`,
-        })
-      }
+      await linkPromotionCartRule(id, ruleId)
     }
 
     return getPromotionDetail(id)
@@ -793,48 +910,32 @@ export const promotionService = {
         const amId = generateId("proappmet")
         const amValue = am.value != null ? Number(am.value) : 0
         await db.insert(applicationMethod).values({
-          id: amId, promotion_id: id,
-          type: String(am.type ?? "percentage"), target_type: String(am.target_type ?? "items"),
+          id: amId,
+          promotion_id: id,
+          type: String(am.type ?? "percentage"),
+          target_type: String(am.target_type ?? "items"),
           allocation: (am.allocation as string) ?? "across",
-          value: String(amValue), raw_value: { value: String(amValue), precision: 20 },
-          currency_code: (am.currency_code as string | null) ?? null,
+          value: String(amValue),
+          raw_value: { value: String(amValue), precision: 20 },
+          currency_code: (am.currency_code as string | null) ?? "usd",
           max_quantity: (am.max_quantity as number | null) ?? null,
           apply_to_quantity: (am.apply_to_quantity as number | null) ?? null,
-          buy_rules_min_quantity: (am.buy_rules_min_quantity as number | null) ?? null,
-          description: (am.description as string | null) ?? null,
-          created_at: sql`now()`, updated_at: sql`now()`,
+          buy_rules_min_quantity:
+            (am.buy_rules_min_quantity as number | null) ?? null,
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
         })
       }
     }
 
-    // Replace rules if provided
     if (rules !== undefined) {
-      // Delete existing rules + values
-      const existingRules = await db.select().from(promotionRule).where(eq(promotionRule.promotion_id, id))
-      for (const er of existingRules) {
-        await db.delete(promotionRuleValue).where(eq(promotionRuleValue.promotion_rule_id, er.id))
-      }
-      await db.delete(promotionRule).where(eq(promotionRule.promotion_id, id))
-
-      // Re-create
-      const ruleList = rules as Array<Record<string, unknown>>
-      for (const r of ruleList) {
-        const ruleId = generateId("prorul")
-        await db.insert(promotionRule).values({
-          id: ruleId, promotion_id: id,
-          attribute: String(r.attribute ?? ""), operator: String(r.operator ?? "eq"),
-          description: (r.description as string | null) ?? null,
-          created_at: sql`now()`, updated_at: sql`now()`,
-        })
-        const vals = (r.values ?? r.value) as string[] | string | undefined
-        const valueList = Array.isArray(vals) ? vals : vals ? [vals] : []
-        for (const v of valueList) {
-          await db.insert(promotionRuleValue).values({
-            id: generateId("prorulval"), promotion_rule_id: ruleId, value: String(v),
-            created_at: sql`now()`, updated_at: sql`now()`,
-          })
-        }
-      }
+      const ruleList = (rules as Array<Record<string, unknown>>).map((r) => ({
+        attribute: String(r.attribute ?? ""),
+        operator: String(r.operator ?? "eq"),
+        description: (r.description as string | null) ?? null,
+        values: normalizeRuleValues(r.values ?? r.value),
+      }))
+      await replacePromotionCartRules(id, ruleList)
     }
 
     return getPromotionDetail(id)
@@ -865,7 +966,7 @@ async function loadCampaignDetail(id: string) {
   return {
     campaign: {
       ...camp,
-      budget: budget ?? undefined,
+      budget: budget ? presentCampaignBudget(budget) : undefined,
       promotions: promos,
     },
   }
@@ -893,14 +994,19 @@ export const campaignService = {
     })
     const budgetInput = budget as Record<string, unknown> | undefined
     if (budgetInput?.type) {
+      const bn = bigNumberInsert(
+        budgetInput.limit as number | null | undefined,
+      )
       await db.insert(campaignBudget).values({
-        id: generateId("campbud"),
+        id: generateId("probudg"),
         campaign_id: id,
         type: String(budgetInput.type),
         currency_code: (budgetInput.currency_code as string | null) ?? null,
-        limit: (budgetInput.limit as number | null | undefined) ?? null,
+        limit: bn.limit,
+        raw_limit: bn.raw_limit,
         attribute: (budgetInput.attribute as string | null) ?? null,
-        used: 0,
+        used: "0",
+        raw_used: DEFAULT_RAW_USED,
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
@@ -939,7 +1045,13 @@ export const campaignService = {
         if (budgetInput.currency_code !== undefined) {
           bset.currency_code = budgetInput.currency_code
         }
-        if (budgetInput.limit !== undefined) bset.limit = budgetInput.limit
+        if (budgetInput.limit !== undefined) {
+          const bn = bigNumberInsert(
+            budgetInput.limit as number | null | undefined,
+          )
+          bset.limit = bn.limit
+          bset.raw_limit = bn.raw_limit
+        }
         if (budgetInput.attribute !== undefined) {
           bset.attribute = budgetInput.attribute
         }
@@ -948,14 +1060,19 @@ export const campaignService = {
           .set(bset)
           .where(eq(campaignBudget.id, existing.id))
       } else if (budgetInput.type) {
+        const bn = bigNumberInsert(
+          budgetInput.limit as number | null | undefined,
+        )
         await db.insert(campaignBudget).values({
-          id: generateId("campbud"),
+          id: generateId("probudg"),
           campaign_id: id,
           type: String(budgetInput.type),
           currency_code: (budgetInput.currency_code as string | null) ?? null,
-          limit: (budgetInput.limit as number | null | undefined) ?? null,
+          limit: bn.limit,
+          raw_limit: bn.raw_limit,
           attribute: (budgetInput.attribute as string | null) ?? null,
-          used: 0,
+          used: "0",
+          raw_used: DEFAULT_RAW_USED,
           created_at: sql`now()`,
           updated_at: sql`now()`,
         })
@@ -967,7 +1084,78 @@ export const campaignService = {
 }
 
 // ── API Keys ───────────────────────────────────────────────
-export const apiKeyService = { list: mkl(apiKey, "api_keys"), getById: mkg(apiKey, "api_keys"), create: mkc(apiKey, "ak", "api_keys"), update: mku(apiKey, "api_keys"), delete: mkdel(apiKey) }
+export const apiKeyService = {
+  async list(query: AdminGetApiKeysParamsType) {
+    const db = getDb()
+    const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
+    const conditions: Parameters<typeof and>[0][] = [isNull(apiKey.deleted_at)]
+
+    if (query.type) {
+      conditions.push(eq(apiKey.type, query.type))
+    }
+    if (query.q) {
+      conditions.push(ilike(apiKey.title, `%${query.q}%`))
+    }
+    applyDateRangeConditions(
+      apiKey.created_at,
+      asDateRange(query.created_at),
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      apiKey.updated_at,
+      asDateRange(query.updated_at),
+      conditions,
+      sql,
+    )
+    applyDateRangeConditions(
+      apiKey.revoked_at,
+      asDateRange(query.revoked_at),
+      conditions,
+      sql,
+    )
+
+    const where = and(...conditions)
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select()
+        .from(apiKey)
+        .where(where)
+        .orderBy(desc(apiKey.created_at))
+        .limit(limit)
+        .offset(offset),
+      db.select({ total: count() }).from(apiKey).where(where),
+    ])
+
+    return {
+      api_keys: rows,
+      count: Number(total),
+      limit,
+      offset,
+    }
+  },
+  getById: mkg(apiKey, "api_keys"),
+  create: mkc(apiKey, "ak", "api_keys"),
+  update: mku(apiKey, "api_keys"),
+  delete: mkdel(apiKey),
+  async revoke(id: string) {
+    const db = getDb()
+    const [updated] = await db
+      .update(apiKey)
+      .set({
+        revoked_at: sql`now()`,
+        revoked_by: "admin",
+        updated_at: sql`now()`,
+      })
+      .where(and(eq(apiKey.id, id), isNull(apiKey.deleted_at)))
+      .returning()
+    if (!updated) throw new HTTPException(404, { message: "未找到" })
+    return { api_key: updated }
+  },
+  async batchSalesChannels(id: string, _body: Record<string, unknown>) {
+    return apiKeyService.getById(id)
+  },
+}
 
 // Notifications: use services/notification.service.ts (adminNotifications routes)
 
@@ -1209,25 +1397,21 @@ export const fulfillmentProviderService = {
         ? query.stock_location_id
         : undefined
     if (stockLocationId) {
-      const [loc] = await db
-        .select()
-        .from(stockLocation)
+      const links = await db
+        .select({
+          fulfillment_provider_id:
+            locationFulfillmentProvider.fulfillment_provider_id,
+        })
+        .from(locationFulfillmentProvider)
         .where(
-          and(
-            eq(stockLocation.id, stockLocationId),
-            isNull(stockLocation.deleted_at),
-          ),
+          eq(locationFulfillmentProvider.stock_location_id, stockLocationId),
         )
-        .limit(1)
-      const meta = (loc?.metadata ?? {}) as Record<string, unknown>
       const linkedIds = new Set(
-        [
-          ...(Array.isArray(meta.fulfillment_provider_ids) ? meta.fulfillment_provider_ids : []),
-          ...(Array.isArray(meta.providerIds) ? meta.providerIds : []),
-          ...(Array.isArray(meta.fulfillmentProviderIds) ? meta.fulfillmentProviderIds : []),
-        ].map(String),
+        links.map((l) => l.fulfillment_provider_id),
       )
-      const fulfillment_providers = rows.filter((row) => linkedIds.has(row.id))
+      const fulfillment_providers = rows.filter((row) =>
+        linkedIds.has(row.id),
+      )
       return { fulfillment_providers, count: fulfillment_providers.length }
     }
 

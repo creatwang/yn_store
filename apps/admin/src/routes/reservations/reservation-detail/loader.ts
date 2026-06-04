@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { LoaderFunctionArgs } from "react-router-dom"
 import { reservationItemsQueryKeys } from "../../../hooks/api/reservations"
 import { sdk } from "../../../lib/client"

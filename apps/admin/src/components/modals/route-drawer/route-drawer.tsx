@@ -50,6 +50,10 @@ const Root = ({ prev = "..", children }: RouteDrawerProps) => {
               "!bg-ui-bg-disabled !inset-y-5 !right-5": stackedModalOpen,
             })}
           >
+            <Drawer.Title className="sr-only">Panel</Drawer.Title>
+            <Drawer.Description className="sr-only">
+              Edit form panel
+            </Drawer.Description>
             {children}
           </Drawer.Content>
         </StackedModalProvider>

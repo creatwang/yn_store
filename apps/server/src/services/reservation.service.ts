@@ -82,7 +82,12 @@ export const reservationService = {
       )
       .limit(1)
     if (!row) throw new HTTPException(404, { message: "未找到" })
-    return { reservation: row }
+    return {
+      reservation: {
+        ...row,
+        inventory_item: { id: row.inventory_item_id },
+      },
+    }
   },
 
   async create(input: Record<string, unknown>) {

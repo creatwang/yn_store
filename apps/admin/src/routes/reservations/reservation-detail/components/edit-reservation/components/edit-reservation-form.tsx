@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { HttpTypes } from "@medusajs/types"
 import { Button, Input, Select, Text, Textarea, toast } from "@medusajs/ui"
 import * as zod from "zod"
@@ -84,9 +83,16 @@ export const EditReservationForm = ({
   const reservedQuantity = form.watch("quantity")
   const locationId = form.watch("location_id")
 
-  const level = item.location_levels!.find(
-    (level: HttpTypes.AdminInventoryLevel) => level.location_id === locationId
+  const level = item.location_levels?.find(
+    (locLevel: HttpTypes.AdminInventoryLevel) =>
+      locLevel.location_id === locationId,
   )
+
+  const stockedQuantity = level?.stocked_quantity ?? 0
+  const reservedAtLevel = level?.reserved_quantity ?? 0
+  const availableQuantity = level?.available_quantity ?? 0
+  const maxQuantity =
+    availableQuantity + (reservation.quantity || 0)
 
   return (
     <RouteDrawer.Form form={form}>
@@ -136,14 +142,16 @@ export const EditReservationForm = ({
             <AttributeGridRow title={t("fields.sku")} value={item.sku!} />
             <AttributeGridRow
               title={t("fields.inStock")}
-              value={level!.stocked_quantity}
+              value={level ? stockedQuantity : "-"}
             />
             <AttributeGridRow
               title={t("inventory.available")}
               value={
-                level!.stocked_quantity -
-                (level!.reserved_quantity - reservation.quantity) -
-                reservedQuantity
+                level
+                  ? stockedQuantity -
+                    (reservedAtLevel - reservation.quantity) -
+                    reservedQuantity
+                  : "-"
               }
             />
           </div>
@@ -160,10 +168,8 @@ export const EditReservationForm = ({
                     <Input
                       type="number"
                       min={0}
-                      max={
-                        (level!.available_quantity || 0) +
-                        (reservation.quantity || 0)
-                      }
+                      max={level ? maxQuantity : undefined}
+                      disabled={!level}
                       value={value || ""}
                       onChange={(e) => {
                         const value = e.target.value

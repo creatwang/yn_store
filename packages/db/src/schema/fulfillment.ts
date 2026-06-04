@@ -126,3 +126,23 @@ export const fulfillmentAddress = pgTable("fulfillment_address", {
   phone: text("phone"),
   metadata: jsonb("metadata"),
 })
+
+/** 官方 link：sales_channel ↔ stock_location */
+export const salesChannelStockLocation = pgTable(
+  "sales_channel_stock_location",
+  {
+    id: text("id").primaryKey(),
+    sales_channel_id: text("sales_channel_id").notNull(),
+    stock_location_id: text("stock_location_id").notNull(),
+  },
+)
+
+/** 官方 link：stock_location ↔ fulfillment_provider */
+export const locationFulfillmentProvider = pgTable(
+  "location_fulfillment_provider",
+  {
+    id: text("id").primaryKey(),
+    stock_location_id: text("stock_location_id").notNull(),
+    fulfillment_provider_id: text("fulfillment_provider_id").notNull(),
+  },
+)

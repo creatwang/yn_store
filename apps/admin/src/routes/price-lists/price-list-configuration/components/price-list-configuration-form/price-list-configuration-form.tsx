@@ -92,7 +92,7 @@ export const PriceListConfigurationForm = ({
 
   const handleSubmit = form.handleSubmit(async (values) => {
     const groupIds = values.customer_group_id.map((group) => group.id)
-    const rules = { ...priceList.rules } // preserve other rules set on the PL
+    const rules = { ...(priceList.rules ?? {}) }
 
     if (groupIds.length) {
       rules["customer.groups.id"] = groupIds

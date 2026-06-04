@@ -2,6 +2,7 @@ import { AdminReservationResponse } from "@medusajs/types"
 import { Container, Heading } from "@medusajs/ui"
 
 import { ActionMenu } from "../../../../../components/common/action-menu"
+import { GeneralSectionSkeleton } from "../../../../../components/common/skeleton"
 import { PencilSquare } from "@medusajs/icons"
 import { SectionRow } from "../../../../../components/common/section"
 import { useInventoryItem } from "../../../../../hooks/api/inventory"
@@ -18,7 +19,9 @@ export const ReservationGeneralSection = ({
   const { t } = useTranslation()
 
   const { inventory_item: inventoryItem, isPending: isLoadingInventoryItem } =
-    useInventoryItem(reservation.inventory_item_id)
+    useInventoryItem(reservation.inventory_item_id, {
+      fields: "+location_levels,*location_levels.stock_locations",
+    })
 
   const { stock_location: location, isPending: isLoadingLocation } =
     useStockLocation(reservation.location_id)
@@ -29,11 +32,11 @@ export const ReservationGeneralSection = ({
     isLoadingLocation ||
     !location
   ) {
-    return <div>Loading...</div>
+    return <GeneralSectionSkeleton rowCount={6} />
   }
 
-  const locationLevel = inventoryItem.location_levels!.find(
-    (l) => l.location_id === reservation.location_id
+  const locationLevel = inventoryItem.location_levels?.find(
+    (l) => l.location_id === reservation.location_id,
   )
 
   return (
@@ -58,6 +61,10 @@ export const ReservationGeneralSection = ({
           ]}
         />
       </div>
+      <SectionRow
+        title={t("inventory.reservation.reservedAmount")}
+        value={reservation.quantity}
+      />
       <SectionRow
         title={t("inventory.reservation.lineItemId")}
         value={reservation.line_item_id} // TODO fetch order instead + add link

@@ -2241,6 +2241,11 @@
       },
       "actions": {
         "goToCampaign": "Go to campaign"
+      },
+      "empty": {
+        "title": "Not part of a campaign",
+        "message": "Add this promotion to an existing campaign",
+        "action": "Add to Campaign"
       }
     },
     "campaign_currency": {

@@ -95,11 +95,13 @@ export const RulesFormField = ({
     defaultValue: promotion?.application_method?.type,
   })
 
-  const applicationMethodTargetType = useWatch({
-    control: form.control,
-    name: "application_method.target_type",
-    defaultValue: promotion?.application_method?.target_type,
-  })
+  const applicationMethodTargetType =
+    useWatch({
+      control: form.control,
+      name: "application_method.target_type",
+      defaultValue:
+        promotion?.application_method?.target_type ?? "items",
+    }) ?? "items"
 
   const query: Record<string, string> = promotionType
     ? {

@@ -1,9 +1,12 @@
-// @ts-nocheck
 import { Heading } from "@medusajs/ui"
+import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 import { RouteDrawer } from "../../../../../components/modals"
-import { useInventoryItem } from "../../../../../hooks/api/inventory"
+import {
+  useInventoryItem,
+  useInventoryItemLevels,
+} from "../../../../../hooks/api/inventory"
 import { useReservationItem } from "../../../../../hooks/api/reservations"
 import { useStockLocations } from "../../../../../hooks/api/stock-locations"
 import { EditReservationForm } from "./components/edit-reservation-form"
@@ -13,23 +16,61 @@ export const ReservationEdit = () => {
   const { t } = useTranslation()
 
   const { reservation, isPending, isError, error } = useReservationItem(id!)
-  const { inventory_item: inventoryItem } = useInventoryItem(
-    reservation?.inventory_item_id!,
-    {
-      enabled: !!reservation,
+  const inventoryItemId = reservation?.inventory_item_id
+
+  const { inventory_item: inventoryItem, isPending: isInventoryPending } =
+    useInventoryItem(
+      inventoryItemId!,
+      { fields: "+location_levels,*location_levels.stock_locations" },
+      { enabled: Boolean(inventoryItemId) },
+    )
+
+  const { inventory_levels, isPending: isLevelsPending } =
+    useInventoryItemLevels(inventoryItemId!, undefined, {
+      enabled: Boolean(inventoryItemId),
+    })
+
+  const itemWithLevels = inventoryItem
+    ? {
+        ...inventoryItem,
+        location_levels:
+          inventoryItem.location_levels?.length
+            ? inventoryItem.location_levels
+            : (inventory_levels ?? []),
+      }
+    : undefined
+
+  const locationIds = useMemo(() => {
+    const fromLevels = itemWithLevels?.location_levels?.map((l) => l.location_id)
+    if (fromLevels?.length) {
+      return fromLevels
     }
+    return reservation?.location_id ? [reservation.location_id] : []
+  }, [itemWithLevels, reservation?.location_id])
+
+  const { stock_locations, isPending: isLocationsPending } = useStockLocations(
+    { id: locationIds },
+    { enabled: locationIds.length > 0 },
   )
 
-  const { stock_locations } = useStockLocations(
-    {
-      id: inventoryItem?.location_levels?.map((l) => l.location_id),
-    },
-    {
-      enabled: !!inventoryItem?.location_levels,
+  const locationsForForm = useMemo(() => {
+    if (stock_locations?.length) {
+      return stock_locations
     }
-  )
+    return (itemWithLevels?.location_levels ?? []).map((level) => ({
+      id: level.location_id,
+      name: level.stock_locations?.[0]?.name ?? level.location_id,
+    }))
+  }, [stock_locations, itemWithLevels])
 
-  const ready = !isPending && reservation && inventoryItem && stock_locations
+  const ready =
+    !isPending &&
+    !isInventoryPending &&
+    !isLevelsPending &&
+    (!locationIds.length || !isLocationsPending) &&
+    reservation &&
+    itemWithLevels &&
+    locationsForForm.length > 0
   if (isError) {
     throw error
   }
@@ -41,9 +82,9 @@ export const ReservationEdit = () => {
       </RouteDrawer.Header>
       {ready && (
         <EditReservationForm
-          locations={stock_locations}
+          locations={locationsForForm}
           reservation={reservation}
-          item={inventoryItem}
+          item={itemWithLevels}
         />
       )}
     </RouteDrawer>

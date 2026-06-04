@@ -11,6 +11,8 @@ import {
   DateHeader,
 } from "../../../../../components/table/table-cells/common/date-cell"
 
+const ROOT_PREFIX = "_root"
+
 const columnHelper =
   createColumnHelper<
     HttpTypes.AdminWorkflowExecutionResponse["workflow_execution"]
@@ -83,5 +85,3 @@ export const useWorkflowExecutionTableColumns = (): ColumnDef<
     [t]
   )
 }
-
-const ROOT_PREFIX = "_root"

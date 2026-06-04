@@ -55,7 +55,7 @@ const CustomerGroupDisplay = ({
 }) => {
   const { t } = useTranslation()
 
-  const customerGroupIds = priceList.rules["customer.groups.id"] as
+  const customerGroupIds = priceList.rules?.["customer.groups.id"] as
     | string[]
     | undefined
 

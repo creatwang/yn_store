@@ -1,4 +1,13 @@
-import { boolean, integer, jsonb, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import {
+  boolean,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core"
 import { timestamps } from "./timestamps"
 
 // promotion 表
@@ -99,20 +108,18 @@ export const viewConfiguration = pgTable("view_configuration", {
   ...timestamps,
 })
 
-// ── Promotion 规则引擎 ──────────────────────────
+// ── Promotion 规则引擎（对齐 Medusa v2 Promotion Module）──
 
-/** promotion_rule — 促销规则（rules / buy-rules / target-rules 共用） */
+/** promotion_rule — 与官方一致，关联通过 pivot 表 */
 export const promotionRule = pgTable("promotion_rule", {
   id: text("id").primaryKey(),
   description: text("description"),
   attribute: text("attribute").notNull(),
   operator: text("operator").notNull(),
-  promotion_id: text("promotion_id"),
-  application_method_id: text("application_method_id"),
   ...timestamps,
 })
 
-/** promotion_rule_value — 规则值列表（一条规则可有多个 IN 值） */
+/** promotion_rule_value */
 export const promotionRuleValue = pgTable("promotion_rule_value", {
   id: text("id").primaryKey(),
   value: text("value").notNull(),
@@ -120,10 +127,9 @@ export const promotionRuleValue = pgTable("promotion_rule_value", {
   ...timestamps,
 })
 
-/** application_method — 促销应用方式（折扣类型、金额、上限等） */
-export const applicationMethod = pgTable("application_method", {
+/** 官方表 promotion_application_method；勿使用已废弃的 application_method */
+export const applicationMethod = pgTable("promotion_application_method", {
   id: text("id").primaryKey(),
-  description: text("description"),
   value: numeric("value"),
   raw_value: jsonb("raw_value"),
   currency_code: text("currency_code"),
@@ -137,33 +143,78 @@ export const applicationMethod = pgTable("application_method", {
   ...timestamps,
 })
 
-// ── Campaign 预算 ───────────────────────────────
+/** promotion ↔ 购物车级 rules */
+export const promotionPromotionRule = pgTable(
+  "promotion_promotion_rule",
+  {
+    promotion_id: text("promotion_id").notNull(),
+    promotion_rule_id: text("promotion_rule_id").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.promotion_id, t.promotion_rule_id] }),
+  }),
+)
 
-/** campaign_budget — 活动预算（spend / usage） */
-export const campaignBudget = pgTable("campaign_budget", {
+/** application_method ↔ target rules */
+export const applicationMethodTargetRules = pgTable(
+  "application_method_target_rules",
+  {
+    application_method_id: text("application_method_id").notNull(),
+    promotion_rule_id: text("promotion_rule_id").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({
+      columns: [t.application_method_id, t.promotion_rule_id],
+    }),
+  }),
+)
+
+/** application_method ↔ buy rules */
+export const applicationMethodBuyRules = pgTable(
+  "application_method_buy_rules",
+  {
+    application_method_id: text("application_method_id").notNull(),
+    promotion_rule_id: text("promotion_rule_id").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({
+      columns: [t.application_method_id, t.promotion_rule_id],
+    }),
+  }),
+)
+
+// ── Campaign 预算（官方 promotion_campaign_budget）──
+
+export const campaignBudget = pgTable("promotion_campaign_budget", {
   id: text("id").primaryKey(),
   type: text("type").notNull(),
   currency_code: text("currency_code"),
-  limit: integer("limit"),
-  used: integer("used").default(0).notNull(),
+  limit: numeric("limit"),
+  raw_limit: jsonb("raw_limit"),
+  used: numeric("used").default("0").notNull(),
+  raw_used: jsonb("raw_used").notNull(),
   attribute: text("attribute"),
   campaign_id: text("campaign_id").notNull(),
   ...timestamps,
 })
 
-/** campaign_budget_usage — 预算按 attribute 配额使用记录 */
-export const campaignBudgetUsage = pgTable("campaign_budget_usage", {
-  id: text("id").primaryKey(),
-  attribute_value: text("attribute_value"),
-  used: integer("used").default(0).notNull(),
-  budget_id: text("budget_id").notNull(),
-  ...timestamps,
-})
+export const campaignBudgetUsage = pgTable(
+  "promotion_campaign_budget_usage",
+  {
+    id: text("id").primaryKey(),
+    attribute_value: text("attribute_value"),
+    used: numeric("used").default("0").notNull(),
+    raw_used: jsonb("raw_used").notNull(),
+    budget_id: text("budget_id").notNull(),
+    ...timestamps,
+  },
+)
 
 // ── Promotion 关联表 ────────────────────────────
 
-/** cart_promotion — 购物车 ↔ 促销（多对多） */
+/** cart_promotion — 官方 link，含 id（前缀 cartpromo） */
 export const cartPromotion = pgTable("cart_promotion", {
+  id: text("id").primaryKey(),
   cart_id: text("cart_id").notNull(),
   promotion_id: text("promotion_id").notNull(),
 })

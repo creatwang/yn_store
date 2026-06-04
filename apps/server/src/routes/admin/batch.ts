@@ -247,11 +247,42 @@ export const adminCampaigns = crudRoutes(
   campaignService,
   AdminGetCampaignsParams,
 )
-export const adminApiKeys = crudRoutes(
-  "api-keys",
-  apiKeyService,
-  AdminGetApiKeysParams,
-)
+export const adminApiKeys = new Hono<{ Variables: AuthVariables }>()
+  .use("*", adminAuth)
+  .get("/", rpcQueryValidator(AdminGetApiKeysParams), async (c) => {
+    const result = await apiKeyService.list(c.req.valid("query"))
+    return c.json(result)
+  })
+  .get("/:id", async (c) => {
+    const result = await apiKeyService.getById(c.req.param("id"))
+    return c.json(result)
+  })
+  .post("/", async (c) => {
+    const body = await c.req.json()
+    const result = await apiKeyService.create(body)
+    return c.json(result, 201)
+  })
+  .post("/:id", async (c) => {
+    const body = await c.req.json()
+    const result = await apiKeyService.update(c.req.param("id"), body)
+    return c.json(result)
+  })
+  .post("/:id/revoke", async (c) => {
+    const result = await apiKeyService.revoke(c.req.param("id"))
+    return c.json(result)
+  })
+  .post("/:id/sales-channels", async (c) => {
+    const body = await c.req.json()
+    const result = await apiKeyService.batchSalesChannels(
+      c.req.param("id"),
+      body,
+    )
+    return c.json(result)
+  })
+  .delete("/:id", async (c) => {
+    const result = await apiKeyService.delete(c.req.param("id"))
+    return c.json(result)
+  })
 export const adminNotifications = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
   .get("/", rpcQueryValidator(AdminGetNotificationsParams), async (c) => {

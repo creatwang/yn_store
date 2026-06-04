@@ -14,6 +14,9 @@ import {
   shippingOptionRule,
   shippingOptionType,
   salesChannel,
+  salesChannelStockLocation,
+  locationFulfillmentProvider,
+  fulfillmentProvider,
   priceSet,
   price,
   priceRule,
@@ -94,15 +97,6 @@ function ruleValue(value: unknown) {
   return value
 }
 
-function metaIds(metadata: unknown, ...keys: string[]) {
-  const meta = (metadata ?? {}) as Record<string, unknown>
-  for (const key of keys) {
-    const val = meta[key]
-    if (Array.isArray(val) && val.length) return val as string[]
-  }
-  return [] as string[]
-}
-
 export async function enrichShippingOptionRow(option: Record<string, unknown>) {
   const db = getDb()
   const [enriched] = await enrichShippingOptionsBatch(db, [option])
@@ -171,32 +165,39 @@ async function loadFulfillmentSetsForLocation(locationId: string, full: boolean)
   }))
 }
 
-async function loadSalesChannels(metadata: unknown) {
-  const ids = metaIds(metadata, "sales_channel_ids", "salesChannelIds")
-  if (!ids.length) return []
+async function loadSalesChannels(locationId: string) {
   const db = getDb()
+  const links = await db
+    .select({ sales_channel_id: salesChannelStockLocation.sales_channel_id })
+    .from(salesChannelStockLocation)
+    .where(eq(salesChannelStockLocation.stock_location_id, locationId))
+  const ids = links.map((l) => l.sales_channel_id)
+  if (!ids.length) return []
   return db
     .select()
     .from(salesChannel)
     .where(and(inArray(salesChannel.id, ids), isNull(salesChannel.deleted_at)))
 }
 
-async function loadFulfillmentProviders(metadata: unknown) {
-  const ids = metaIds(metadata, "fulfillment_provider_ids", "providerIds", "fulfillmentProviderIds")
-  return ids.map((id) => ({ id, is_enabled: true }))
+async function loadFulfillmentProviders(locationId: string) {
+  const db = getDb()
+  const links = await db
+    .select({
+      fulfillment_provider_id:
+        locationFulfillmentProvider.fulfillment_provider_id,
+    })
+    .from(locationFulfillmentProvider)
+    .where(eq(locationFulfillmentProvider.stock_location_id, locationId))
+  const ids = links.map((l) => l.fulfillment_provider_id)
+  if (!ids.length) return []
+  return db
+    .select()
+    .from(fulfillmentProvider)
+    .where(inArray(fulfillmentProvider.id, ids))
 }
 
-function mergeLinkedIds(current: string[], add: string[] = [], remove: string[] = []) {
-  const set = new Set(current)
-  for (const id of remove) set.delete(id)
-  for (const id of add) set.add(id)
-  return [...set]
-}
-
-async function updateLocationMetadataIds(
+async function updateSalesChannelLinks(
   id: string,
-  key: string,
-  altKeys: string[],
   body: { add?: string[]; remove?: string[] },
 ) {
   const db = getDb()
@@ -207,26 +208,91 @@ async function updateLocationMetadataIds(
     .limit(1)
   if (!loc) throw new HTTPException(404, { message: "未找到" })
 
-  const current = metaIds(loc.metadata, key, ...altKeys)
-  const next = mergeLinkedIds(current, body.add ?? [], body.remove ?? [])
-  const metadata = {
-    ...((loc.metadata as Record<string, unknown> | null) ?? {}),
-    [key]: next,
+  const remove = body.remove ?? []
+  if (remove.length) {
+    await db
+      .delete(salesChannelStockLocation)
+      .where(
+        and(
+          eq(salesChannelStockLocation.stock_location_id, id),
+          inArray(salesChannelStockLocation.sales_channel_id, remove),
+        ),
+      )
   }
+  for (const salesChannelId of body.add ?? []) {
+    if (!salesChannelId) continue
+    const [exists] = await db
+      .select({ id: salesChannelStockLocation.id })
+      .from(salesChannelStockLocation)
+      .where(
+        and(
+          eq(salesChannelStockLocation.stock_location_id, id),
+          eq(salesChannelStockLocation.sales_channel_id, salesChannelId),
+        ),
+      )
+      .limit(1)
+    if (exists) continue
+    await db.insert(salesChannelStockLocation).values({
+      id: generateId("scloc"),
+      stock_location_id: id,
+      sales_channel_id: salesChannelId,
+    })
+  }
+  return { stock_location: await enrichStockLocation(loc, true) }
+}
 
-  const [updated] = await db
-    .update(stockLocation)
-    .set({ metadata, updated_at: sql`now()` })
-    .where(eq(stockLocation.id, id))
-    .returning()
+async function updateFulfillmentProviderLinks(
+  id: string,
+  body: { add?: string[]; remove?: string[] },
+) {
+  const db = getDb()
+  const [loc] = await db
+    .select()
+    .from(stockLocation)
+    .where(and(eq(stockLocation.id, id), isNull(stockLocation.deleted_at)))
+    .limit(1)
+  if (!loc) throw new HTTPException(404, { message: "未找到" })
 
-  return { stock_location: await enrichStockLocation(updated, true) }
+  const remove = body.remove ?? []
+  if (remove.length) {
+    await db
+      .delete(locationFulfillmentProvider)
+      .where(
+        and(
+          eq(locationFulfillmentProvider.stock_location_id, id),
+          inArray(
+            locationFulfillmentProvider.fulfillment_provider_id,
+            remove,
+          ),
+        ),
+      )
+  }
+  for (const providerId of body.add ?? []) {
+    if (!providerId) continue
+    const [exists] = await db
+      .select({ id: locationFulfillmentProvider.id })
+      .from(locationFulfillmentProvider)
+      .where(
+        and(
+          eq(locationFulfillmentProvider.stock_location_id, id),
+          eq(locationFulfillmentProvider.fulfillment_provider_id, providerId),
+        ),
+      )
+      .limit(1)
+    if (exists) continue
+    await db.insert(locationFulfillmentProvider).values({
+      id: generateId("locfp"),
+      stock_location_id: id,
+      fulfillment_provider_id: providerId,
+    })
+  }
+  return { stock_location: await enrichStockLocation(loc, true) }
 }
 
 async function enrichStockLocation(loc: typeof stockLocation.$inferSelect, full: boolean) {
   const fulfillment_sets = await loadFulfillmentSetsForLocation(loc.id, full)
-  const sales_channels = await loadSalesChannels(loc.metadata)
-  const fulfillment_providers = await loadFulfillmentProviders(loc.metadata)
+  const sales_channels = await loadSalesChannels(loc.id)
+  const fulfillment_providers = await loadFulfillmentProviders(loc.id)
   return {
     ...loc,
     fulfillment_sets,
@@ -306,14 +372,11 @@ export const stockLocationService = {
   },
 
   async updateSalesChannels(id: string, body: { add?: string[]; remove?: string[] }) {
-    return updateLocationMetadataIds(id, "sales_channel_ids", ["salesChannelIds"], body)
+    return updateSalesChannelLinks(id, body)
   },
 
   async updateFulfillmentProviders(id: string, body: { add?: string[]; remove?: string[] }) {
-    return updateLocationMetadataIds(id, "fulfillment_provider_ids", [
-      "providerIds",
-      "fulfillmentProviderIds",
-    ], body)
+    return updateFulfillmentProviderLinks(id, body)
   },
 }
 

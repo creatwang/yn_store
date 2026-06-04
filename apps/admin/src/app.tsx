@@ -44,12 +44,26 @@ const router = createBrowserRouter(
           <Route index lazy={() => import("./routes/home")} />
 
           {/* Products */}
-          <Route path="products">
+          <Route
+            path="products"
+            handle={{ breadcrumb: () => i18n.t("products.domain") }}
+          >
             <Route index lazy={() => import("./routes/products/product-list")} />
             <Route path="create" lazy={() => import("./routes/products/product-create")} />
             <Route path="import" lazy={() => import("./routes/products/product-import")} />
             <Route path="export" lazy={() => import("./routes/products/product-export")} />
-            <Route path=":id" lazy={() => import("./routes/products/product-detail")}>
+            <Route
+              path=":id"
+              lazy={lazyDetailRoute(
+                () => import("./routes/products/product-detail"),
+              )}
+            >
+              <Route
+                path="edit-variant"
+                lazy={() =>
+                  import("./routes/product-variants/product-variant-edit")
+                }
+              />
               <Route path="edit" lazy={() => import("./routes/products/product-edit")} />
               <Route path="media" lazy={() => import("./routes/products/product-media")} />
               <Route path="prices" lazy={() => import("./routes/products/product-prices")} />
@@ -260,14 +274,64 @@ const router = createBrowserRouter(
               lazy={lazyDetailRoute(
                 () => import("./routes/customers/customer-detail"),
               )}
-            />
+            >
+              <Route
+                path="edit"
+                lazy={() => import("./routes/customers/customer-edit")}
+              />
+              <Route
+                path="create-address"
+                lazy={() =>
+                  import("./routes/customers/customer-create-address")
+                }
+              />
+              <Route
+                path="add-customer-groups"
+                lazy={() =>
+                  import("./routes/customers/customers-add-customer-group")
+                }
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() => import("./routes/customers/customer-metadata")}
+              />
+            </Route>
           </Route>
 
           {/* Collections */}
-          <Route path="collections">
-            <Route index lazy={() => import("./routes/collections/collection-list")} />
-            <Route path="create" lazy={() => import("./routes/collections/collection-create")} />
-            <Route path=":id" lazy={() => import("./routes/collections/collection-detail")} />
+          <Route
+            path="collections"
+            handle={{ breadcrumb: () => i18n.t("collections.domain") }}
+          >
+            <Route
+              index
+              lazy={() => import("./routes/collections/collection-list")}
+            />
+            <Route
+              path="create"
+              lazy={() => import("./routes/collections/collection-create")}
+            />
+            <Route
+              path=":id"
+              lazy={lazyDetailRoute(
+                () => import("./routes/collections/collection-detail"),
+              )}
+            >
+              <Route
+                path="edit"
+                lazy={() => import("./routes/collections/collection-edit")}
+              />
+              <Route
+                path="products"
+                lazy={() =>
+                  import("./routes/collections/collection-add-products")
+                }
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() => import("./routes/collections/collection-metadata")}
+              />
+            </Route>
           </Route>
 
           {/* Categories */}
@@ -409,8 +473,51 @@ const router = createBrowserRouter(
 
           <Route
             path="customer-groups"
-            lazy={() => import("./routes/customer-groups/customer-group-list")}
-          />
+            handle={{
+              breadcrumb: () => i18n.t("customerGroups.domain"),
+            }}
+          >
+            <Route
+              index
+              lazy={() =>
+                import("./routes/customer-groups/customer-group-list")
+              }
+            />
+            <Route
+              path="create"
+              lazy={() =>
+                import("./routes/customer-groups/customer-group-create")
+              }
+            />
+            <Route
+              path=":id"
+              lazy={lazyDetailRoute(
+                () =>
+                  import("./routes/customer-groups/customer-group-detail"),
+              )}
+            >
+              <Route
+                path="edit"
+                lazy={() =>
+                  import("./routes/customer-groups/customer-group-edit")
+                }
+              />
+              <Route
+                path="add-customers"
+                lazy={() =>
+                  import(
+                    "./routes/customer-groups/customer-group-add-customers"
+                  )
+                }
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() =>
+                  import("./routes/customer-groups/customer-group-metadata")
+                }
+              />
+            </Route>
+          </Route>
 
           {/* Inventory */}
           <Route
@@ -475,7 +582,10 @@ const router = createBrowserRouter(
           </Route>
 
           {/* Reservations */}
-          <Route path="reservations">
+          <Route
+            path="reservations"
+            handle={{ breadcrumb: () => i18n.t("reservations.domain") }}
+          >
             <Route
               index
               lazy={() => import("./routes/reservations/reservation-list")}
@@ -486,7 +596,9 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() => import("./routes/reservations/reservation-detail")}
+              lazy={lazyDetailRoute(
+                () => import("./routes/reservations/reservation-detail"),
+              )}
             >
               <Route
                 path="edit"
@@ -519,7 +631,27 @@ const router = createBrowserRouter(
           <Route path="sales-channels">
             <Route index lazy={() => import("./routes/sales-channels/sales-channel-list")} />
             <Route path="create" lazy={() => import("./routes/sales-channels/sales-channel-create")} />
-            <Route path=":id" lazy={() => import("./routes/sales-channels/sales-channel-detail")} />
+            <Route
+              path=":id"
+              lazy={lazyDetailRoute(
+                () => import("./routes/sales-channels/sales-channel-detail"),
+              )}
+            >
+              <Route
+                path="edit"
+                lazy={() => import("./routes/sales-channels/sales-channel-edit")}
+              />
+              <Route
+                path="products"
+                lazy={() =>
+                  import("./routes/sales-channels/sales-channel-add-products")
+                }
+              />
+              <Route
+                path="metadata/edit"
+                lazy={() => import("./routes/sales-channels/sales-channel-metadata")}
+              />
+            </Route>
           </Route>
 
           <Route path="store" lazy={() => import("./routes/store/store-detail")} />
@@ -546,9 +678,10 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() =>
-                import("./routes/api-key-management/api-key-management-detail")
-              }
+              lazy={lazyDetailRoute(
+                () =>
+                  import("./routes/api-key-management/api-key-management-detail"),
+              )}
             >
               <Route
                 path="edit"
@@ -582,9 +715,10 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() =>
-                import("./routes/api-key-management/api-key-management-detail")
-              }
+              lazy={lazyDetailRoute(
+                () =>
+                  import("./routes/api-key-management/api-key-management-detail"),
+              )}
             >
               <Route
                 path="edit"
@@ -614,11 +748,12 @@ const router = createBrowserRouter(
             />
             <Route
               path=":id"
-              lazy={() =>
-                import(
-                  "./routes/workflow-executions/workflow-execution-detail"
-                )
-              }
+              lazy={lazyDetailRoute(
+                () =>
+                  import(
+                    "./routes/workflow-executions/workflow-execution-detail"
+                  ),
+              )}
             />
           </Route>
 

@@ -95,7 +95,7 @@ export const InventoryVariantSkuPicker = ({
           type="button"
           size="small"
           variant="primary"
-          className="size-8 shrink-0"
+          className="size-7 shrink-0"
           onClick={() => setOpen(true)}
         >
           <PlusMini />

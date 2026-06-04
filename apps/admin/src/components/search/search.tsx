@@ -62,6 +62,7 @@ export const Search = () => {
     area,
     limit,
     q: search,
+    isOpen: open,
   })
 
   const handleReset = useCallback(() => {

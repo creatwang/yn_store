@@ -798,7 +798,21 @@ export const sdk = {
         return parseJsonResponse(res)
       },
     },
-    apiKey: entityClient("api-keys"),
+    apiKey: {
+      ...entityClient("api-keys"),
+      revoke: async (id: string) => {
+        const res = await (api as any).admin["api-keys"][":id"].revoke.$post({
+          param: { id },
+        })
+        return parseJsonResponse(res)
+      },
+      batchSalesChannels: async (id: string, body?: Record<string, unknown>) => {
+        const res = await (api as any).admin["api-keys"][":id"][
+          "sales-channels"
+        ].$post({ param: { id }, json: body })
+        return parseJsonResponse(res)
+      },
+    },
     notification: entityClient("notifications"),
     payment: paymentsClient(),
     taxRegion: entityClient("tax-regions"),

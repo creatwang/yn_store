@@ -112,32 +112,18 @@ async function loadVariantUnitPrices(
     sql`, `,
   )
 
-  try {
-    const rows = await db.execute(sql`
-      SELECT pvps.variant_id, MIN(pr.amount)::numeric AS amount
-      FROM product_variant_price_set pvps
-      JOIN price_set ps ON ps.id = pvps.price_set_id
-      JOIN price pr ON pr.price_set_id = ps.id
-      WHERE pvps.variant_id IN (${variantIdList})
-        AND pr.currency_code = ${currencyCode}
-      GROUP BY pvps.variant_id
-    `)
-    for (const row of sqlRows(rows) as Array<Record<string, unknown>>) {
-      map.set(String(row.variant_id), num(row.amount))
-    }
-  } catch {
-    try {
-      const rows = await db.execute(sql`
-        SELECT variant_id, MIN(amount)::numeric AS amount
-        FROM price
-        WHERE variant_id IN (${variantIdList})
-          AND currency_code = ${currencyCode}
-        GROUP BY variant_id
-      `)
-      for (const row of sqlRows(rows) as Array<Record<string, unknown>>) {
-        map.set(String(row.variant_id), num(row.amount))
-      }
-    } catch { /* no prices */ }
+  const rows = await db.execute(sql`
+    SELECT pvps.variant_id, MIN(pr.amount)::numeric AS amount
+    FROM product_variant_price_set pvps
+    JOIN price_set ps ON ps.id = pvps.price_set_id
+    JOIN price pr ON pr.price_set_id = ps.id
+    WHERE pvps.variant_id IN (${variantIdList})
+      AND pr.currency_code = ${currencyCode}
+      AND pr.deleted_at IS NULL
+    GROUP BY pvps.variant_id
+  `)
+  for (const row of sqlRows(rows) as Array<Record<string, unknown>>) {
+    map.set(String(row.variant_id), num(row.amount))
   }
 
   return map

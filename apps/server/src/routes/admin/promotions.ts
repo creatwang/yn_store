@@ -1,5 +1,5 @@
 ﻿import { Hono } from "hono"
-import { eq, inArray, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { AdminGetPromotionsParams } from "@my-store/validators/admin-list-params"
 import {
@@ -12,6 +12,12 @@ import {
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { promotionService } from "../../services/batch.service"
 import { getPromotionDetail, loadPromotionRules } from "../../services/promotion-detail.service"
+import {
+  deletePromotionRulesByIds,
+  insertPromotionRuleWithValues,
+  linkApplicationMethodRule,
+  linkPromotionCartRule,
+} from "../../services/promotion-official-db"
 import {
   listPromotionRuleAttributeOptions,
   listPromotionRuleValueOptions,
@@ -89,34 +95,34 @@ async function resolveApplicationMethodId(promotionId: string) {
 async function handleRuleBatch(
   promotionId: string,
   body: ReturnType<typeof normalizeRuleBatchBody>,
-  applicationMethodId?: string | null,
+  ruleType: "rules" | "target-rules" | "buy-rules",
 ) {
   const db = getDb()
   const created: unknown[] = []
   const updated: unknown[] = []
 
   if (body.create?.length) {
+    const applicationMethodId =
+      ruleType === "rules" ? null : await resolveApplicationMethodId(promotionId)
+
     for (const rule of body.create) {
-      const ruleId = generateId("prorul")
-      await db.insert(promotionRule).values({
-        id: ruleId,
+      const ruleId = await insertPromotionRuleWithValues({
         attribute: rule.attribute,
         operator: rule.operator,
         description: rule.description ?? null,
-        promotion_id: promotionId,
-        application_method_id: applicationMethodId ?? null,
-        created_at: sql`now()`,
-        updated_at: sql`now()`,
+        values: rule.values,
       })
-      for (const v of rule.values) {
-        await db.insert(promotionRuleValue).values({
-          id: generateId("prorulval"),
-          value: v,
-          promotion_rule_id: ruleId,
-          created_at: sql`now()`,
-          updated_at: sql`now()`,
-        })
+
+      if (ruleType === "rules") {
+        await linkPromotionCartRule(promotionId, ruleId)
+      } else if (applicationMethodId) {
+        await linkApplicationMethodRule(
+          applicationMethodId,
+          ruleId,
+          ruleType,
+        )
       }
+
       const [r] = await db
         .select()
         .from(promotionRule)
@@ -178,12 +184,7 @@ async function handleRuleBatch(
   }
 
   if (body.delete?.length) {
-    for (const id of body.delete) {
-      await db
-        .delete(promotionRuleValue)
-        .where(eq(promotionRuleValue.promotion_rule_id, id))
-    }
-    await db.delete(promotionRule).where(inArray(promotionRule.id, body.delete))
+    await deletePromotionRulesByIds(body.delete)
   }
 
   return { created, updated, deleted: body.delete ?? [] }
@@ -195,11 +196,11 @@ async function applyRuleBatchAndReturnPromotion(
   rawBody: Record<string, unknown>,
 ) {
   const body = normalizeRuleBatchBody(rawBody)
-  let applicationMethodId: string | null = null
-  if (ruleType === "target-rules" || ruleType === "buy-rules") {
-    applicationMethodId = await resolveApplicationMethodId(promotionId)
-  }
-  await handleRuleBatch(promotionId, body, applicationMethodId)
+  await handleRuleBatch(
+    promotionId,
+    body,
+    ruleType as "rules" | "target-rules" | "buy-rules",
+  )
   return getPromotionDetail(promotionId)
 }
 

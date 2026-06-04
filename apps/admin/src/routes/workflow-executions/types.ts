@@ -1,4 +1,3 @@
-// @ts-nocheck
 export enum TransactionStepStatus {
   IDLE = "idle",
   OK = "ok",

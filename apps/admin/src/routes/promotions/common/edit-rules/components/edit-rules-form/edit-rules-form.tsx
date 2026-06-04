@@ -33,7 +33,7 @@ export const EditRulesForm = ({
       rules: [],
       type: promotion.type,
       application_method: {
-        target_type: promotion.application_method?.target_type,
+        target_type: promotion.application_method?.target_type ?? "items",
       },
     },
     resolver: zodResolver(EditRules),

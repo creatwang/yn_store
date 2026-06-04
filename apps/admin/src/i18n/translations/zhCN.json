@@ -882,7 +882,7 @@
       "noVariantsFound": "未找到变体",
       "variantWithoutSku": "该变体没有 SKU",
       "skuPlaceholder": "例如 sku-123",
-      "skuLinkHint": "填写与变体一致的 SKU，或在右侧选择变体自动填入；保存后打开详情将自动关联。创建/编辑变体时勾选 管理库存",
+      "skuLinkHint": "填写与变体一致的 SKU，或在右侧选择变体自动填入；保存后打开详情将自动关联。",
       "variantRowSku": "SKU：{{sku}}",
       "variantRowMeta": "{{skuPart}} · {{product}}",
       "selectVariantItem": "选择变体 {{title}}"
@@ -2243,6 +2243,11 @@
       },
       "actions": {
         "goToCampaign": "前往营销活动"
+      },
+      "empty": {
+        "title": "未加入营销活动",
+        "message": "可将此促销添加到现有营销活动中。",
+        "action": "加入营销活动"
       }
     },
     "campaign_currency": {

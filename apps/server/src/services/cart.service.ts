@@ -6,7 +6,6 @@ import {
   cartShippingMethod,
   order,
   promotion,
-  applicationMethod,
   promotionRule,
   promotionRuleValue,
   getDb,
@@ -18,6 +17,10 @@ import { sendOrderConfirmationEmail } from "../lib/mail"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
 import { runInTransaction, type DbTx } from "../lib/transaction"
+import {
+  loadPromotionRulesForType,
+  selectApplicationMethodByPromotionId,
+} from "./promotion-official-db"
 
 export const cartService = {
   async create(input: CreateCartInput) {
@@ -66,15 +69,15 @@ export const cartService = {
 
     // Load adjustments (promo discounts) for display
     const itemIds = [...items.map((i) => i.id)]
-    let adjustments: any[] = []
-    if (itemIds.length > 0) {
-      try {
-        adjustments = await db
-          .select()
-          .from(cartLineItemAdjustment)
-          .where(sql`${cartLineItemAdjustment.item_id} = ANY(${itemIds}::text[])`)
-      } catch { /* table may not exist yet */ }
-    }
+    const adjustments =
+      itemIds.length > 0
+        ? await db
+            .select()
+            .from(cartLineItemAdjustment)
+            .where(
+              sql`${cartLineItemAdjustment.item_id} = ANY(${itemIds}::text[])`,
+            )
+        : []
 
     return { cart: cartItem, items, shipping_methods: shippingMethods, adjustments }
   },
@@ -86,19 +89,19 @@ export const cartService = {
     // 查变体价格（USD），通过 price_set 链，写入 unit_price
     let unitPrice = "0"
     if (input.variant_id) {
-      try {
-        const priceRows = await db.execute(sql`
-          SELECT pr.amount FROM price pr
-          JOIN price_set ps ON ps.id = pr.price_set_id
-          JOIN product_variant_price_set pvps ON pvps.price_set_id = ps.id
-          WHERE pvps.variant_id = ${input.variant_id} AND pr.currency_code = 'usd'
-          LIMIT 1
-        `)
-        const rows = Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? []
-        if (rows[0]) {
-          unitPrice = String(rows[0].amount)
-        }
-      } catch { /* price table not yet populated or schema mismatch */ }
+      const priceRows = await db.execute(sql`
+        SELECT pr.amount FROM price pr
+        JOIN price_set ps ON ps.id = pr.price_set_id
+        JOIN product_variant_price_set pvps ON pvps.price_set_id = ps.id
+        WHERE pvps.variant_id = ${input.variant_id}
+          AND pr.currency_code = 'usd'
+          AND pr.deleted_at IS NULL
+        LIMIT 1
+      `)
+      const rows = Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? []
+      if (rows[0]) {
+        unitPrice = String(rows[0].amount)
+      }
     }
 
     const id = generateId("line")
@@ -223,24 +226,12 @@ export const cartService = {
       .limit(1)
     if (existing) throw new HTTPException(400, { message: "该优惠码已使用" })
 
-    // ── Read application_method (try-catch: table may not exist) ──
-    let appMethod: typeof applicationMethod.$inferSelect | null = null
-    try {
-      ;[appMethod] = await db
-        .select()
-        .from(applicationMethod)
-        .where(eq(applicationMethod.promotion_id, promo.id))
-        .limit(1) as any
-    } catch { /* application_method table may not exist */ }
-
-    // Fallback to metadata for legacy data if no application_method
-    const meta = (promo.metadata ?? {}) as Record<string, any>
-    if (!appMethod || !appMethod.type) {
-      const ruleType = String(meta.application_type ?? "percentage")
-      const ruleValue = Number(meta.value ?? 10)
-      return runInTransaction((tx) =>
-        this._applyDiscount(tx, cartId, promo, items, ruleType, ruleValue),
-      )
+    const appMethod = await selectApplicationMethodByPromotionId(promo.id)
+    if (!appMethod?.type) {
+      throw new HTTPException(400, {
+        message:
+          "促销未配置折扣方式，请在后台编辑促销并保存 application_method",
+      })
     }
 
     const discountType = appMethod.type // "fixed" | "percentage"
@@ -248,11 +239,14 @@ export const cartService = {
     const maxQty = appMethod.max_quantity ?? null
     const allocation = appMethod.allocation ?? "across" // "each" | "across"
 
-    // ── Rule check: load rules for this promotion ────
-    const rules = await db
-      .select()
-      .from(promotionRule)
-      .where(eq(promotionRule.promotion_id, promo.id))
+    // ── Rule check: cart-level rules via promotion_promotion_rule ────
+    const linkedRules = await loadPromotionRulesForType(promo.id, "rules")
+    const rules = linkedRules.map((r) => ({
+      id: r.id,
+      attribute: r.attribute,
+      operator: r.operator,
+      description: r.description,
+    }))
 
     // Check cart-level rules (region, country, customer_group, sales_channel)
     if (rules.length > 0) {

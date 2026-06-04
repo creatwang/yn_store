@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useLoaderData, useParams } from "react-router-dom"
 
 import { TwoColumnPageSkeleton } from "../../../components/common/skeleton"
@@ -26,11 +25,12 @@ export const ReservationDetail = () => {
   )
 
   // TEMP: fetch directly since the fields are not populated with reservation call
-  const { inventory_item } = useInventoryItem(
-    reservation?.inventory_item?.id!,
-    undefined,
-    { enabled: !!reservation?.inventory_item?.id! }
-  )
+  const inventoryItemId =
+    reservation?.inventory_item_id ?? reservation?.inventory_item?.id
+
+  const { inventory_item } = useInventoryItem(inventoryItemId!, undefined, {
+    enabled: Boolean(inventoryItemId),
+  })
 
   const { getWidgets } = useExtension()
 
@@ -58,6 +58,7 @@ export const ReservationDetail = () => {
         sideAfter: getWidgets("reservation.details.side.after"),
       }}
       data={reservation}
+      hasOutlet
       showJSON
       showMetadata
     >

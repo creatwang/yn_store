@@ -21,6 +21,7 @@
     "typecheck": "turbo typecheck",
     "init": "powershell -ExecutionPolicy Bypass -File ./scripts/init.ps1",
     "check:db": "powershell -ExecutionPolicy Bypass -File ./scripts/check-db.ps1",
+    "db:drop-legacy-promotion": "pnpm --filter @my-store/db exec node ../../scripts/drop-legacy-promotion-schema.mjs",
     "check:runtime-db": "node scripts/check-runtime-db.mjs",
     "check:orders-products-1to1": "node scripts/audit-orders-products-1to1.mjs",
     "port:orders-products-stubs": "node scripts/port-orders-products-stubs.mjs",
@@ -33,7 +34,7 @@
     "sync:draft-order-plugin": "node scripts/sync-official-draft-order-plugin.mjs"
   },
   "pnpm": {
-    "overrides": {
+    "overrides": {  
       "@my-store/server>zod": "^4.2.0",
       "@my-store/admin>zod": "^4.2.0",
       "@my-store/validators>zod": "^4.2.0",

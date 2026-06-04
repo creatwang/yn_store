@@ -4,7 +4,7 @@ import { TFunction } from "i18next"
 import { ApiKeyType } from "./constants"
 
 export function getApiKeyTypeFromPathname(pathname: string) {
-  const isSecretKey = pathname.startsWith("/settings/secret-api-keys")
+  const isSecretKey = pathname.includes("/settings/secret-api-keys")
 
   switch (isSecretKey) {
     case true:

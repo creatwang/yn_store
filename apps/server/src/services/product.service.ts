@@ -10,7 +10,6 @@ import {
   productImage,
   productCollection,
   productType,
-  shippingProfile,
 } from "@my-store/db"
 import type {
   CreateProductInput,
@@ -46,94 +45,49 @@ const defaultAdminProductFields = [
   "*variants", "*sales_channels", "*categories", "*shipping_profile",
 ]
 
-async function loadProductShippingProfile(db: any, productId: string, item: any) {
-  try {
-    const rows = await db.execute(sql`
-      SELECT sp.id, sp.name, sp.type, sp.metadata, sp.created_at, sp.updated_at, sp.deleted_at
-      FROM shipping_profile sp
-      INNER JOIN product_shipping_profile psp ON psp.shipping_profile_id = sp.id
-      WHERE psp.product_id = ${productId} AND sp.deleted_at IS NULL
-      LIMIT 1
-    `)
-    const profile = sqlRows(rows)[0]
-    if (profile) return profile
-  } catch {
-    /* link table may be absent */
-  }
-
-  const profileId = (item.metadata as Record<string, unknown> | null)
-    ?.shipping_profile_id as string | undefined
-  if (!profileId) return null
-
-  const [row] = await db
-    .select()
-    .from(shippingProfile)
-    .where(eq(shippingProfile.id, profileId))
-    .limit(1)
-  return row ?? null
+async function loadProductShippingProfile(db: any, productId: string) {
+  const rows = await db.execute(sql`
+    SELECT sp.id, sp.name, sp.type, sp.metadata, sp.created_at, sp.updated_at, sp.deleted_at
+    FROM shipping_profile sp
+    INNER JOIN product_shipping_profile psp ON psp.shipping_profile_id = sp.id
+    WHERE psp.product_id = ${productId} AND sp.deleted_at IS NULL
+    LIMIT 1
+  `)
+  return sqlRows(rows)[0] ?? null
 }
 
 async function setProductShippingProfile(
   db: any,
   productId: string,
   profileId: string | null,
-  existingMetadata: unknown,
 ) {
-  try {
+  await db.execute(sql`
+    DELETE FROM product_shipping_profile WHERE product_id = ${productId}
+  `)
+  if (profileId) {
     await db.execute(sql`
-      DELETE FROM product_shipping_profile WHERE product_id = ${productId}
+      INSERT INTO product_shipping_profile (id, product_id, shipping_profile_id)
+      VALUES (${generateId("prodsp")}, ${productId}, ${profileId})
     `)
-    if (profileId) {
-      await db.execute(sql`
-        INSERT INTO product_shipping_profile (product_id, shipping_profile_id)
-        VALUES (${productId}, ${profileId})
-      `)
-    }
-    return
-  } catch {
-    /* fallback: metadata */
   }
-
-  const meta = {
-    ...((existingMetadata as Record<string, unknown>) ?? {}),
-    shipping_profile_id: profileId,
-  }
-  await db
-    .update(product)
-    .set({ metadata: meta, updated_at: sql`now()` })
-    .where(eq(product.id, productId))
 }
 
 async function loadVariantPrices(db: any, variantIds: string[]) {
   const priceMap = new Map<string, unknown[]>()
   if (!variantIds.length) return priceMap
 
-  try {
-    const priceRows = await db.execute(sql`
-      SELECT pvps.variant_id, pr.id, pr.currency_code, pr.amount, pr.rules, pr.created_at, pr.updated_at
-      FROM product_variant_price_set pvps
-      JOIN price_set ps ON ps.id = pvps.price_set_id
-      JOIN price pr ON pr.price_set_id = ps.id
-      WHERE pvps.variant_id = ANY(${variantIds}::text[])
-    `)
-    for (const row of sqlRows(priceRows) as { variant_id: string }[]) {
-      const list = priceMap.get(row.variant_id) ?? []
-      list.push(row)
-      priceMap.set(row.variant_id, list)
-    }
-  } catch {
-    try {
-      const priceRows = await db.execute(sql`
-        SELECT variant_id, id, currency_code, amount, rules, created_at, updated_at
-        FROM price
-        WHERE variant_id = ANY(${variantIds}::text[])
-      `)
-      for (const row of sqlRows(priceRows) as { variant_id: string }[]) {
-        const list = priceMap.get(row.variant_id) ?? []
-        list.push(row)
-        priceMap.set(row.variant_id, list)
-      }
-    } catch { /* no price rows */ }
+  const priceRows = await db.execute(sql`
+    SELECT pvps.variant_id, pr.id, pr.currency_code, pr.amount, pr.rules, pr.created_at, pr.updated_at
+    FROM product_variant_price_set pvps
+    JOIN price_set ps ON ps.id = pvps.price_set_id
+    JOIN price pr ON pr.price_set_id = ps.id
+    WHERE pvps.variant_id = ANY(${variantIds}::text[])
+      AND pr.deleted_at IS NULL
+  `)
+  for (const row of sqlRows(priceRows) as { variant_id: string }[]) {
+    const list = priceMap.get(row.variant_id) ?? []
+    list.push(row)
+    priceMap.set(row.variant_id, list)
   }
 
   return priceMap
@@ -185,7 +139,7 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
   }
 
   if (wants("shipping_profile")) {
-    result.shipping_profile = await loadProductShippingProfile(db, id, item)
+    result.shipping_profile = await loadProductShippingProfile(db, id)
   }
 
   if (wants("options")) {
@@ -398,22 +352,21 @@ export const productService = {
     const productIds = products.map((p) => p.id)
     const priceMap = new Map<string, number>()
     if (productIds.length > 0) {
-      try {
-        const priceRows = await db.execute(sql`
-          SELECT pv.product_id, MIN(pr.amount)::numeric as min_price
-          FROM product_variant pv
-          JOIN product_variant_price_set pvps ON pvps.variant_id = pv.id
-          JOIN price_set ps ON ps.id = pvps.price_set_id
-          JOIN price pr ON pr.price_set_id = ps.id
-          WHERE pv.product_id = ANY(${productIds}::text[])
-            AND pr.currency_code = 'usd'
-            AND pv.deleted_at IS NULL
-          GROUP BY pv.product_id
-        `)
-        for (const row of (Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? [])) {
-          priceMap.set(row.product_id, Number(row.min_price))
-        }
-      } catch { /* price table not yet populated or schema mismatch */ }
+      const priceRows = await db.execute(sql`
+        SELECT pv.product_id, MIN(pr.amount)::numeric as min_price
+        FROM product_variant pv
+        JOIN product_variant_price_set pvps ON pvps.variant_id = pv.id
+        JOIN price_set ps ON ps.id = pvps.price_set_id
+        JOIN price pr ON pr.price_set_id = ps.id
+        WHERE pv.product_id = ANY(${productIds}::text[])
+          AND pr.currency_code = 'usd'
+          AND pv.deleted_at IS NULL
+          AND pr.deleted_at IS NULL
+        GROUP BY pv.product_id
+      `)
+      for (const row of (Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? [])) {
+        priceMap.set(row.product_id, Number(row.min_price))
+      }
     }
 
     return {
@@ -479,21 +432,24 @@ export const productService = {
     const variantIds = variants.map((v) => v.id)
     const priceMap = new Map<string, { amount: number; currency_code: string }>()
     if (variantIds.length > 0) {
-      try {
-        const priceRows = await db.execute(sql`
-          SELECT pvps.variant_id, pr.amount, pr.currency_code
-          FROM product_variant_price_set pvps
-          JOIN price_set ps ON ps.id = pvps.price_set_id
-          JOIN price pr ON pr.price_set_id = ps.id
-          WHERE pvps.variant_id = ANY(${variantIds}::text[]) AND pr.currency_code = 'usd'
-          ORDER BY pr.amount ASC
-        `)
-        for (const row of (Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? [])) {
-          if (!priceMap.has(row.variant_id)) {
-            priceMap.set(row.variant_id, { amount: Number(row.amount), currency_code: row.currency_code })
-          }
+      const priceRows = await db.execute(sql`
+        SELECT pvps.variant_id, pr.amount, pr.currency_code
+        FROM product_variant_price_set pvps
+        JOIN price_set ps ON ps.id = pvps.price_set_id
+        JOIN price pr ON pr.price_set_id = ps.id
+        WHERE pvps.variant_id = ANY(${variantIds}::text[])
+          AND pr.currency_code = 'usd'
+          AND pr.deleted_at IS NULL
+        ORDER BY pr.amount ASC
+      `)
+      for (const row of (Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? [])) {
+        if (!priceMap.has(row.variant_id)) {
+          priceMap.set(row.variant_id, {
+            amount: Number(row.amount),
+            currency_code: row.currency_code,
+          })
         }
-      } catch { /* price table not yet populated or schema mismatch */ }
+      }
     }
 
     return { product: { ...item, variants: variants.map((v) => ({ ...v, price: priceMap.get(v.id) ?? null })) } }
@@ -671,14 +627,26 @@ export const productService = {
             }
           }
         }
-        // 保存 variant prices（price 表中的 money_amount 行）
         if ((v as any).prices?.length) {
+          const priceSetId = generateId("pset")
+          await db.execute(sql`INSERT INTO price_set (id) VALUES (${priceSetId})`)
+          await db.execute(sql`
+            INSERT INTO product_variant_price_set (id, variant_id, price_set_id)
+            VALUES (${generateId("pvps")}, ${vid}, ${priceSetId})
+          `)
           for (const p of (v as any).prices) {
-            const priceId = generateId("price")
+            const amount = String(p.amount)
             const rules = p.rules ? JSON.stringify(p.rules) : null
             await db.execute(sql`
-              INSERT INTO price (id, currency_code, amount, variant_id, created_at, updated_at, rules)
-              VALUES (${priceId}, ${p.currency_code}, ${p.amount}, ${vid}, now(), now(), ${rules}::jsonb)
+              INSERT INTO price (
+                id, currency_code, amount, raw_amount, price_set_id,
+                created_at, updated_at, rules
+              )
+              VALUES (
+                ${generateId("price")}, ${p.currency_code}, ${amount},
+                ${JSON.stringify({ value: amount, precision: 20 })}::jsonb,
+                ${priceSetId}, now(), now(), ${rules}::jsonb
+              )
             `)
           }
         }
@@ -705,6 +673,10 @@ export const productService = {
           },
         )
       }
+    }
+
+    if (input.shipping_profile_id) {
+      await setProductShippingProfile(db, id, input.shipping_profile_id)
     }
 
     return { product: created }
@@ -770,7 +742,6 @@ export const productService = {
         db,
         id,
         input.shipping_profile_id ?? null,
-        updated.metadata,
       )
     }
 
