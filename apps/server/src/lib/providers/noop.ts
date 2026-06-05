@@ -1,6 +1,9 @@
 /**
- * NOOP Provider 实现 — 全部返回 mock 数据，业务正常运行
- * 未来接 Stripe/Shippo 时只需替换对应 provider 的实现
+ * NOOP Provider — 开发环境占位，返回 mock / 空操作，不调用真实外部 API。
+ *
+ * 接生产服务：实现同目录 `types.ts` 中的接口 → 在 `index.ts` 的
+ * `registerDefaultProviders()` 注册（如 `providers.payment.set("stripe", …)`）→
+ * workflow step 改用对应 provider id。无需改 Medusa 官方代码。
  */
 import type {
   PaymentProvider, ShippingProvider,
@@ -45,9 +48,19 @@ export class NOOPNotificationProvider implements NotificationProvider {
   async send(_input: { to: string; template: string; data: Record<string, unknown> }) { /* noop — mail.ts handles this */ }
 }
 
+/**
+ * 库存 NOOP：结账/履约只写本地 DB，不推 WMS。
+ * 接 ERP 时实现 onCheckoutReserve / onFulfillmentDeduct 等（types.ts）。
+ */
 export class NOOPInventoryProvider implements InventoryProvider {
   id = "noop"
-  async pushAdjustment(_input: { inventory_item_id: string; quantity: number; reason: string }) { /* noop */ }
+  async pushAdjustment(_input: {
+    inventory_item_id: string
+    quantity: number
+    reason: string
+  }) {
+    /* noop */
+  }
   async pullStock(_input: { sku: string }) {
     return { quantity: 0 }
   }

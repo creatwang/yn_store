@@ -9,13 +9,37 @@
 
 ## C-01: Workflow 编排 + 事务回滚
 
-### 状态 🟡 方案已定，待实施（2026-06-02）
+### 状态 ✅ 已确认方向（2026-06-05，**不追求官方 Medusa Workflow**）
 
 > 详细方案见 **[docs/workflow-plan.md](workflow-plan.md)**
 
-### 当前实况
+**产品决策（用户确认）**：
 
-5 个 workflow 文件 0 调用，所有 service 方法直接裸写 DB，无事务包裹。
+- 使用**本项目自研** `lib/workflow.ts` 引擎，**无需**对齐 Medusa 官方 `beginOrderEditOrderWorkflow` 等命名/结构。
+- **仅在**「DB 写 → 外部服务调用 → 失败需补偿」且步骤有先后顺序时启用 Workflow（例：下单 → 支付授权 → 后续入库/履约）。
+- 纯 DB 跨表仍用 `db.transaction()`；单步业务回滚用 `dispatchRollbackProcess`；**不做** workflow-plan 全量 302 方法扫描式接线。
+
+### 当前实况（代码核实 2026-06-05）
+
+**9 个 workflow 文件，核心 8 条 + 1 条扩展均已 `.run()` 接线**：
+
+| Workflow | 调用入口 | 外部 Provider |
+|----------|----------|:-------------:|
+| `order-confirm` | `cart.service.completeCheckout` | Payment `noop` 授权 |
+| `payment-capture` | `payment.service.capture` | Payment `noop` capture |
+| `payment-refund` | `payment.service.refund` | Payment `noop` refund |
+| `fulfillment-create` | `fulfillment.service.create` | Shipping `noop` 面单 |
+| `fulfillment-ship` | `fulfillment.service.createShipment` | Shipping `noop` |
+| `return-create` | `return.service.create` | — |
+| `claim-create` | `claim.service.create` | — |
+| `exchange-create` | `exchange.service.create` | — |
+| `reservation-bulk-allocate` | `reservation.service` batch | Inventory `noop` |
+
+Provider 注册：`lib/providers/index.ts`（Payment/Shipping/Notification/Inventory 均为 **noop 占位**，接 Stripe/真实 WMS 时替换实现即可）。
+
+**尚未纳入 checkout workflow 的步骤**：购物车完成时**未**调用 Inventory Provider 做预留/扣减（库存仍走独立 Admin 库存 API + `reservation-bulk-allocate` workflow）。
+
+`dispatchRollbackProcess`：已用于 `order.service` 部分路径（如 `requestTransfer`、`addLineItem`），非 11 处全量接线——按决策**按需补**，非 P1 阻塞。
 
 ---
 
@@ -410,7 +434,7 @@ Subscriber（订阅处理）:
 | C-05 | order_change_action | 🟡 | 基础实现，claim/exchange 详细追踪仍缺 | **P1** — 索赔/换货 metadata 待迁 |
 | C-07 | 事件总线 | ✅ | —（2026-06-02 解决） | — |
 | C-06 | 通知系统 | 🟡 | 缺 Module 抽象，无 DB 记录 | **P2** — 邮件覆盖尚可但无扩展性 |
-| C-01 | Workflow + 事务回滚 | 🟡 | 方案定，待实施：8 Workflow + 11 dispatchRollback + 11 db.transaction | **P0** — 立刻实施 |
+| C-01 | Workflow + 事务回滚 | ✅ | 自研引擎已接线 9 workflow；不追官方；noop Provider；checkout 未含库存预留 | **已确认** — 接真实支付/WMS 时换 Provider |
 | C-02 | fields | 🟡 | 基础设施在，路由部分未接线 | **P3** — 性能优化（非阻塞） |
 | C-04 | Totals | ✅ | — | — |
 

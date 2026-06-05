@@ -15,6 +15,11 @@ import {
   removeChangeShippingAction,
   updateChangeShippingAction,
 } from "../lib/order-change-shipping"
+import {
+  addChangeOutboundItems,
+  removeChangeOutboundItem,
+  updateChangeOutboundItem,
+} from "../lib/order-change-items"
 import { notifyClaimRequested } from "../lib/notify-customer"
 
 export const claimService = {
@@ -140,7 +145,7 @@ export const claimService = {
     return this.getById(claimId)
   },
 
-  // ── Outbound shipping → order_change_action；outbound items 仍用 metadata ──
+  // ── Outbound shipping / items → order_change_action ──
 
   async addOutboundShipping(claimId: string, payload: { shipping_option_id: string }) {
     const change = await getPendingChangeByClaimId(claimId)
@@ -166,34 +171,24 @@ export const claimService = {
   },
 
   async addOutboundItems(claimId: string, payload: { items: { variant_id: string; quantity: number }[] }) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    meta.outbound_items = [
-      ...(meta.outbound_items ?? []),
-      ...payload.items.map((i) => ({ ...i, id: generateId("act") })),
-    ]
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await addChangeOutboundItems({
+      change,
+      items: payload.items,
+      claim_id: claimId,
+    })
     return this.getById(claimId)
   },
 
   async updateOutboundItem(claimId: string, actionId: string, payload: { quantity?: number }) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    meta.outbound_items = (meta.outbound_items ?? []).map((i: any) =>
-      i.id === actionId ? { ...i, ...payload } : i,
-    )
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await updateChangeOutboundItem(change.id, actionId, payload)
     return this.getById(claimId)
   },
 
   async removeOutboundItem(claimId: string, actionId: string) {
-    const claim = await this.getById(claimId)
-    const meta = (claim.claim.metadata as Record<string, any>) ?? {}
-    meta.outbound_items = (meta.outbound_items ?? []).filter((i: any) => i.id !== actionId)
-    const db = getDb()
-    await db.update(orderClaim).set({ metadata: meta }).where(eq(orderClaim.id, claimId))
+    const change = await getPendingChangeByClaimId(claimId)
+    await removeChangeOutboundItem(change.id, actionId)
     return this.getById(claimId)
   },
 

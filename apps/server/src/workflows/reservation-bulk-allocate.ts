@@ -1,5 +1,5 @@
 /** Workflow: reservation.bulk-allocate — 订单行批量分配库存（失败回滚软删） */
-import { inArray, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import {
   generateId,
   getDb,
@@ -9,6 +9,10 @@ import type { AdminBulkCreateReservationsType } from "@my-store/validators/admin
 import { createWorkflow, step } from "../lib/workflow"
 import { runInTransaction } from "../lib/transaction"
 import { providers } from "../lib/providers"
+import {
+  adjustReservedQuantity,
+  releaseReservations,
+} from "../services/inventory-reservation.service"
 
 export const reservationBulkAllocateWorkflow = createWorkflow(
   "reservation-bulk-allocate",
@@ -38,7 +42,15 @@ export const reservationBulkAllocateWorkflow = createWorkflow(
                 updated_at: sql`now()`,
               })
               .returning()
-            if (row) created.push(row)
+            if (row) {
+              await adjustReservedQuantity(
+                item.inventory_item_id,
+                payload.location_id,
+                item.quantity,
+                tx,
+              )
+              created.push(row)
+            }
           }
 
           return {
@@ -51,13 +63,7 @@ export const reservationBulkAllocateWorkflow = createWorkflow(
         const ids =
           (output.allocate as { reservationIds?: string[] } | undefined)
             ?.reservationIds ?? []
-        if (ids.length === 0) return
-
-        const db = getDb()
-        await db
-          .update(reservationItem)
-          .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
-          .where(inArray(reservationItem.id, ids))
+        await releaseReservations(ids)
       },
     ),
   ],

@@ -1,5 +1,5 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
-import { generateId, getDb, orderExchange, orderChange } from "@my-store/db"
+import { getDb, orderExchange, orderChange } from "@my-store/db"
 import type { CreateExchangeInput } from "@my-store/validators"
 import type { AdminListExchangesParamsType } from "@my-store/validators/admin-list-params"
 import {
@@ -15,6 +15,14 @@ import {
   removeChangeShippingAction,
   updateChangeShippingAction,
 } from "../lib/order-change-shipping"
+import {
+  addChangeInboundReturnItems,
+  addChangeOutboundItems,
+  removeChangeInboundReturnItem,
+  removeChangeOutboundItem,
+  updateChangeInboundReturnItem,
+  updateChangeOutboundItem,
+} from "../lib/order-change-items"
 import { notifyExchangeRequested } from "../lib/notify-customer"
 
 export const exchangeService = {
@@ -70,30 +78,24 @@ export const exchangeService = {
   },
 
   async addInboundItems(exchangeId: string, payload: { items: { item_id: string; quantity: number }[] }) {
-    const exchange = await this.getById(exchangeId)
-    const meta = (exchange.exchange.metadata as Record<string, any>) ?? {}
-    const items = (meta.inbound_items ?? []).concat(payload.items.map(i => ({ ...i, id: generateId("act") })))
-    meta.inbound_items = items
-    const db = getDb()
-    await db.update(orderExchange).set({ metadata: meta }).where(eq(orderExchange.id, exchangeId))
+    const change = await getPendingChangeByExchangeId(exchangeId)
+    await addChangeInboundReturnItems({
+      change,
+      items: payload.items,
+      exchange_id: exchangeId,
+    })
     return this.getById(exchangeId)
   },
 
   async updateInboundItem(exchangeId: string, actionId: string, payload: { quantity?: number }) {
-    const exchange = await this.getById(exchangeId)
-    const meta = (exchange.exchange.metadata as Record<string, any>) ?? {}
-    meta.inbound_items = (meta.inbound_items ?? []).map((i: any) => i.id === actionId ? { ...i, ...payload } : i)
-    const db = getDb()
-    await db.update(orderExchange).set({ metadata: meta }).where(eq(orderExchange.id, exchangeId))
+    const change = await getPendingChangeByExchangeId(exchangeId)
+    await updateChangeInboundReturnItem(change.id, actionId, payload)
     return this.getById(exchangeId)
   },
 
   async removeInboundItem(exchangeId: string, actionId: string) {
-    const exchange = await this.getById(exchangeId)
-    const meta = (exchange.exchange.metadata as Record<string, any>) ?? {}
-    meta.inbound_items = (meta.inbound_items ?? []).filter((i: any) => i.id !== actionId)
-    const db = getDb()
-    await db.update(orderExchange).set({ metadata: meta }).where(eq(orderExchange.id, exchangeId))
+    const change = await getPendingChangeByExchangeId(exchangeId)
+    await removeChangeInboundReturnItem(change.id, actionId)
     return this.getById(exchangeId)
   },
 
@@ -123,29 +125,24 @@ export const exchangeService = {
 
   // ── Outbound Items ───────────────────────────────────
   async addOutboundItems(exchangeId: string, payload: { items: { variant_id: string; quantity: number }[] }) {
-    const exchange = await this.getById(exchangeId)
-    const meta = (exchange.exchange.metadata as Record<string, any>) ?? {}
-    meta.outbound_items = [...(meta.outbound_items ?? []), ...payload.items.map(i => ({ ...i, id: generateId("act") }))]
-    const db = getDb()
-    await db.update(orderExchange).set({ metadata: meta }).where(eq(orderExchange.id, exchangeId))
+    const change = await getPendingChangeByExchangeId(exchangeId)
+    await addChangeOutboundItems({
+      change,
+      items: payload.items,
+      exchange_id: exchangeId,
+    })
     return this.getById(exchangeId)
   },
 
   async updateOutboundItem(exchangeId: string, actionId: string, payload: { quantity?: number }) {
-    const exchange = await this.getById(exchangeId)
-    const meta = (exchange.exchange.metadata as Record<string, any>) ?? {}
-    meta.outbound_items = (meta.outbound_items ?? []).map((i: any) => i.id === actionId ? { ...i, ...payload } : i)
-    const db = getDb()
-    await db.update(orderExchange).set({ metadata: meta }).where(eq(orderExchange.id, exchangeId))
+    const change = await getPendingChangeByExchangeId(exchangeId)
+    await updateChangeOutboundItem(change.id, actionId, payload)
     return this.getById(exchangeId)
   },
 
   async removeOutboundItem(exchangeId: string, actionId: string) {
-    const exchange = await this.getById(exchangeId)
-    const meta = (exchange.exchange.metadata as Record<string, any>) ?? {}
-    meta.outbound_items = (meta.outbound_items ?? []).filter((i: any) => i.id !== actionId)
-    const db = getDb()
-    await db.update(orderExchange).set({ metadata: meta }).where(eq(orderExchange.id, exchangeId))
+    const change = await getPendingChangeByExchangeId(exchangeId)
+    await removeChangeOutboundItem(change.id, actionId)
     return this.getById(exchangeId)
   },
 

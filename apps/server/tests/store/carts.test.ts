@@ -16,6 +16,7 @@ describe("Store 购物车 API", () => {
     const vr = await apiPost(`/admin/products/${productId}/variants`, {
       title: "Default",
       sku: `CART_${Date.now()}`,
+      manage_inventory: false,
     })
     variantId = (await vr.json()).variant.id
 

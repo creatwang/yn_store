@@ -1,4 +1,3 @@
-// @ts-nocheck
 export * from "./tax-region-detail"
 
 export { TaxRegionDetailBreadcrumb as Breadcrumb } from "./breadcrumb"

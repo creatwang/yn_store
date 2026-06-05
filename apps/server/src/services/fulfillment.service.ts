@@ -26,6 +26,10 @@ import { eventBus } from "../lib/events"
 import { fulfillmentCreateWorkflow } from "../workflows/fulfillment-create"
 import { fulfillmentShipWorkflow } from "../workflows/fulfillment-ship"
 import { runInTransaction } from "../lib/transaction"
+import {
+  restoreInventoryDeductions,
+  type InventoryDeduction,
+} from "./inventory-reservation.service"
 
 export const fulfillmentService = {
   async listByOrder(orderId: string, query: ListFulfillmentsQuery = { limit: 50, offset: 0 }) {
@@ -146,6 +150,11 @@ export const fulfillmentService = {
       throw new HTTPException(400, { message: "Cannot cancel a fulfillment that has already been shipped" })
     }
 
+    const deductions = (
+      (f.metadata as Record<string, unknown> | null)?.inventory_deductions ??
+      []
+    ) as InventoryDeduction[]
+
     await runInTransaction(async (tx) => {
       await tx
         .update(fulfillment)
@@ -176,6 +185,10 @@ export const fulfillmentService = {
         }
       }
     })
+
+    if (deductions.length) {
+      await restoreInventoryDeductions(deductions)
+    }
 
     return { fulfillment: { id: fulfillmentId, canceled_at: new Date().toISOString() } }
   },

@@ -326,6 +326,82 @@ async function appendOutboundItems(
   }
 }
 
+function applyInboundReturnItemActions(
+  items: Record<string, unknown>[],
+  actions: Array<typeof orderChangeAction.$inferSelect>,
+  returnId: string | null,
+  ctx: { exchangeId?: string; claimId?: string },
+) {
+  for (const row of actions) {
+    if (row.action !== "RETURN_ITEM") continue
+    if (ctx.exchangeId && row.exchange_id !== ctx.exchangeId) continue
+    if (ctx.claimId && row.claim_id !== ctx.claimId) continue
+
+    const item = items.find((i) => i.id === row.reference_id)
+    if (!item) continue
+
+    const details = (row.details ?? {}) as Record<string, unknown>
+    const qty = num(details.quantity)
+    const lineQty = num(item.quantity) || 1
+    const unitTotal = num(item.total) / lineQty
+    const action: PreviewAction = {
+      action: "RETURN_ITEM",
+      id: row.id,
+      return_id: returnId ?? undefined,
+      exchange_id: ctx.exchangeId,
+      claim_id: ctx.claimId,
+      internal_note: (details.note as string) ?? null,
+      details: details.reason_id
+        ? { reason_id: details.reason_id }
+        : undefined,
+    }
+    item.actions = [...((item.actions as PreviewAction[]) ?? []), action]
+    item.detail = {
+      ...(item.detail as object),
+      quantity: lineQty,
+      return_requested_quantity: qty,
+    }
+    item.return_requested_total = unitTotal * qty
+  }
+}
+
+async function appendOutboundItemActions(
+  db: Db,
+  items: Record<string, unknown>[],
+  actions: Array<typeof orderChangeAction.$inferSelect>,
+  ctx: { exchangeId?: string; claimId?: string },
+) {
+  const outbound = actions.filter((row) => {
+    if (row.action !== "ITEM_ADD") return false
+    if (ctx.exchangeId) return row.exchange_id === ctx.exchangeId
+    if (ctx.claimId) return row.claim_id === ctx.claimId
+    return false
+  })
+
+  const mapped = outbound.map((row) => {
+    const details = (row.details ?? {}) as Record<string, unknown>
+    return {
+      id: row.id,
+      variant_id: row.reference_id!,
+      quantity: num(details.quantity) || 1,
+    }
+  })
+  await appendOutboundItems(db, items, mapped, ctx)
+}
+
+async function loadChangeItemActions(db: Db, changeId: string) {
+  return db
+    .select()
+    .from(orderChangeAction)
+    .where(
+      and(
+        eq(orderChangeAction.order_change_id, changeId),
+        inArray(orderChangeAction.action, ["ITEM_ADD", "RETURN_ITEM"]),
+      ),
+    )
+    .orderBy(asc(orderChangeAction.ordering))
+}
+
 function buildShippingMethods(
   methods: Array<Record<string, unknown>>,
   returnId: string | null,
@@ -478,9 +554,35 @@ export async function buildAdminOrderPreview(orderId: string) {
       .where(and(eq(orderExchange.id, activeChange.exchange_id), isNull(orderExchange.deleted_at)))
       .limit(1)
     if (ex) {
+      const itemActions = await loadChangeItemActions(db, activeChange.id)
+      applyInboundReturnItemActions(
+        items,
+        itemActions,
+        activeChange.return_id,
+        { exchangeId: ex.id },
+      )
       const meta = (ex.metadata ?? {}) as Record<string, unknown>
-      applyMetadataInbound(items, activeChange.return_id, ex.id, null, (meta.inbound_items as any[]) ?? [])
-      await appendOutboundItems(db, items, (meta.outbound_items as any[]) ?? [], { exchangeId: ex.id })
+      if (!itemActions.some((a) => a.action === "RETURN_ITEM" && a.exchange_id === ex.id)) {
+        applyMetadataInbound(
+          items,
+          activeChange.return_id,
+          ex.id,
+          null,
+          (meta.inbound_items as any[]) ?? [],
+        )
+      }
+      if (itemActions.some((a) => a.action === "ITEM_ADD" && a.exchange_id === ex.id)) {
+        await appendOutboundItemActions(db, items, itemActions, {
+          exchangeId: ex.id,
+        })
+      } else {
+        await appendOutboundItems(
+          db,
+          items,
+          (meta.outbound_items as any[]) ?? [],
+          { exchangeId: ex.id },
+        )
+      }
       const exchangeShipping = await loadChangeShippingForPreview(
         db,
         activeChange.id,
@@ -506,6 +608,7 @@ export async function buildAdminOrderPreview(orderId: string) {
         .from(orderClaimItem)
         .where(eq(orderClaimItem.claim_id, cl.id))
       const meta = (cl.metadata ?? {}) as Record<string, unknown>
+      const itemActions = await loadChangeItemActions(db, activeChange.id)
       if (claimItemRows.length) {
         for (const ci of claimItemRows) {
           const item = items.find((i) => i.id === ci.item_id)
@@ -528,9 +631,34 @@ export async function buildAdminOrderPreview(orderId: string) {
           item.return_requested_total = unitTotal * qty
         }
       } else {
-        applyMetadataInbound(items, activeChange.return_id, null, cl.id, (meta.inbound_items as any[]) ?? [])
+        applyInboundReturnItemActions(
+          items,
+          itemActions,
+          activeChange.return_id,
+          { claimId: cl.id },
+        )
+        if (!itemActions.some((a) => a.action === "RETURN_ITEM" && a.claim_id === cl.id)) {
+          applyMetadataInbound(
+            items,
+            activeChange.return_id,
+            null,
+            cl.id,
+            (meta.inbound_items as any[]) ?? [],
+          )
+        }
       }
-      await appendOutboundItems(db, items, (meta.outbound_items as any[]) ?? [], { claimId: cl.id })
+      if (itemActions.some((a) => a.action === "ITEM_ADD" && a.claim_id === cl.id)) {
+        await appendOutboundItemActions(db, items, itemActions, {
+          claimId: cl.id,
+        })
+      } else {
+        await appendOutboundItems(
+          db,
+          items,
+          (meta.outbound_items as any[]) ?? [],
+          { claimId: cl.id },
+        )
+      }
       const claimShipping = await loadChangeShippingForPreview(
         db,
         activeChange.id,

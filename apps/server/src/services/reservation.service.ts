@@ -11,7 +11,12 @@ import {
   listLimitOffset,
 } from "../lib/query-filters"
 import { HTTPException } from "hono/http-exception"
+import { runInTransaction } from "../lib/transaction"
 import { reservationBulkAllocateWorkflow } from "../workflows/reservation-bulk-allocate"
+import {
+  adjustReservedQuantity,
+  releaseReservations,
+} from "./inventory-reservation.service"
 
 export const reservationService = {
   async list(query: AdminGetReservationsParamsType) {
@@ -91,25 +96,31 @@ export const reservationService = {
   },
 
   async create(input: Record<string, unknown>) {
-    const db = getDb()
     const id = generateId("resitem")
     const quantity = Number(input.quantity ?? 0)
-    const [created] = await db
-      .insert(reservationItem)
-      .values({
-        id,
-        line_item_id: (input.line_item_id as string | null | undefined) ?? null,
-        location_id: String(input.location_id),
-        inventory_item_id: String(input.inventory_item_id),
-        quantity: String(quantity),
-        raw_quantity: { amount: quantity, precision: 0 },
-        description: (input.description as string | null | undefined) ?? null,
-        metadata: (input.metadata as Record<string, unknown> | null) ?? null,
-        created_by: "admin",
-        created_at: sql`now()`,
-        updated_at: sql`now()`,
-      })
-      .returning()
+    const locationId = String(input.location_id)
+    const inventoryItemId = String(input.inventory_item_id)
+
+    const [created] = await runInTransaction(async (tx) => {
+      const [row] = await tx
+        .insert(reservationItem)
+        .values({
+          id,
+          line_item_id: (input.line_item_id as string | null | undefined) ?? null,
+          location_id: locationId,
+          inventory_item_id: inventoryItemId,
+          quantity: String(quantity),
+          raw_quantity: { amount: quantity, precision: 0 },
+          description: (input.description as string | null | undefined) ?? null,
+          metadata: (input.metadata as Record<string, unknown> | null) ?? null,
+          created_by: "admin",
+          created_at: sql`now()`,
+          updated_at: sql`now()`,
+        })
+        .returning()
+      await adjustReservedQuantity(inventoryItemId, locationId, quantity, tx)
+      return [row]
+    })
     return { reservation: created }
   },
 
@@ -145,13 +156,7 @@ export const reservationService = {
   },
 
   async delete(id: string) {
-    const db = getDb()
-    await db
-      .update(reservationItem)
-      .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
-      .where(
-        and(eq(reservationItem.id, id), isNull(reservationItem.deleted_at)),
-      )
+    await releaseReservations([id])
     return { id, deleted: true }
   },
 

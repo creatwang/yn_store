@@ -1,9 +1,21 @@
-/** Workflow: fulfillment.create — 创建履约 + 物流面单 */
+/**
+ * Workflow: fulfillment.create — Admin 发货/履约 + 物流面单
+ *
+ * 【库存 — 阶段 ②，仅此 workflow 触发（需 input.location_id）】
+ * create-fulfillment 内调用 deductInventoryForFulfillment：
+ * stocked ↓、reserved ↓、消耗 reservation_item（结账时写的预留）。
+ * 无 location_id 时只更新订单行履约数量，不改 inventory_level。
+ * WMS/ERP 出库同步见 lib/inventory-external-hook.ts（当前 NOOP）。
+ */
 import { and, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, fulfillment, fulfillmentItem, fulfillmentLabel, order, orderItem } from "@my-store/db"
 import { createWorkflow, step } from "../lib/workflow"
 import { eventBus } from "../lib/events"
 import { providers } from "../lib/providers"
+import {
+  deductInventoryForFulfillment,
+  restoreInventoryDeductions,
+} from "../services/inventory-reservation.service"
 
 export const fulfillmentCreateWorkflow = createWorkflow("fulfillment-create", [
   step("validate-order", async ({ input }) => {
@@ -42,10 +54,50 @@ export const fulfillmentCreateWorkflow = createWorkflow("fulfillment-create", [
         })
       }
     }
-    return { fulfillmentId: fId, order: output["validate-order"]?.order }
+    // 阶段 ② 履约扣减：与结账无关；运营在后台点发货时才执行
+    let inventoryDeductions: Awaited<
+      ReturnType<typeof deductInventoryForFulfillment>
+    > = []
+    if (input.location_id?.trim()) {
+      inventoryDeductions = await deductInventoryForFulfillment({
+        location_id: input.location_id,
+        items: input.items.map((i) => ({
+          line_item_id: i.item_id,
+          quantity: i.quantity,
+        })),
+      })
+    }
+
+    if (inventoryDeductions.length) {
+      const prevMeta = (input.metadata ?? {}) as Record<string, unknown>
+      await db
+        .update(fulfillment)
+        .set({
+          metadata: {
+            ...prevMeta,
+            inventory_deductions: inventoryDeductions,
+          },
+        })
+        .where(eq(fulfillment.id, fId))
+    }
+
+    return {
+      fulfillmentId: fId,
+      order: output["validate-order"]?.order,
+      inventoryDeductions,
+    }
   }, async ({ output }) => {
     const db = getDb()
-    const { fulfillmentId } = output["create-fulfillment"] ?? {}
+    const created = output["create-fulfillment"] ?? {}
+    const { fulfillmentId, inventoryDeductions } = created as {
+      fulfillmentId?: string
+      inventoryDeductions?: Awaited<
+        ReturnType<typeof deductInventoryForFulfillment>
+      >
+    }
+    if (inventoryDeductions?.length) {
+      await restoreInventoryDeductions(inventoryDeductions)
+    }
     if (fulfillmentId) {
       await db.delete(fulfillmentItem).where(eq(fulfillmentItem.fulfillment_id, fulfillmentId))
       await db.delete(fulfillmentLabel).where(eq(fulfillmentLabel.fulfillment_id, fulfillmentId))

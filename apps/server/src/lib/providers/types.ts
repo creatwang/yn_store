@@ -34,9 +34,57 @@ export interface NotificationProvider {
 
 export interface InventoryProvider {
   id: string
-  /** 推送库存变动到外部系统 */
-  pushAdjustment(input: { inventory_item_id: string; quantity: number; reason: string }): Promise<void>
-  /** 拉取外部库存 */
+
+  // ── 生命周期钩子（可选，接 WMS/ERP 时实现；NOOP 不实现）──
+  // 本地 DB 写入见 inventory-reservation.service；以下仅为外部同步扩展点。
+
+  /** 结账预留成功后 — 对应 Store complete → reserve-inventory */
+  onCheckoutReserve?(input: {
+    reservation_ids: string[]
+    sales_channel_id: string | null
+    lines: Array<{
+      line_item_id: string
+      inventory_item_id: string
+      location_id: string
+      quantity: number
+    }>
+  }): Promise<void>
+
+  /** 释放预留后 — compensate / 取消订单（未来） */
+  onReleaseReservations?(input: {
+    reservation_ids: string[]
+  }): Promise<void>
+
+  /** 履约扣减成功后 — 对应 Admin create fulfillment */
+  onFulfillmentDeduct?(input: {
+    fulfillment_id?: string
+    location_id: string
+    deductions: Array<{
+      reservation_id: string | null
+      inventory_item_id: string
+      location_id: string
+      quantity: number
+    }>
+  }): Promise<void>
+
+  /** 取消履约恢复库存后 */
+  onRestoreDeductions?(input: {
+    deductions: Array<{
+      reservation_id: string | null
+      inventory_item_id: string
+      location_id: string
+      quantity: number
+    }>
+  }): Promise<void>
+
+  /** 通用：推送库存变动到外部系统（对账、手工调整等） */
+  pushAdjustment(input: {
+    inventory_item_id: string
+    quantity: number
+    reason: string
+  }): Promise<void>
+
+  /** 拉取外部库存（对账 job / 以 WMS 为准时） */
   pullStock(input: { sku: string }): Promise<{ quantity: number }>
 }
 

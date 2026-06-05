@@ -3,7 +3,7 @@
 > **核实日期**：2026-06-04  
 > **官方对照表**：[02-api-endpoints.mdx](./02-api-endpoints.mdx)（Medusa v2.15.3 全量 ~220 Admin 路由，**非**本仓库承诺范围）  
 > **实际挂载**：`apps/server/src/app.ts`  
-> **自动化**：`pnpm --filter=@my-store/server test` → **23 文件 / 182 用例**（2026-06-04 全绿）
+> **自动化**：`pnpm --filter=@my-store/server test` → **24 文件 / 183 用例**（2026-06-05 全绿，含 seed admin 登录）
 
 ---
 
@@ -67,32 +67,13 @@ Auth：自定义 JWT（非文档中的 `/auth/user/emailpass` 路径名，语义
 
 ---
 
-## 5. Admin UI `export const stub = {}`（18 处，2026-06-04）
+## 5. Admin UI stub 拷贝层（2026-06-05 已清零）
 
-价格列表 add/edit 表单**已**从官方拷贝，不在此列。
+**22 个目录**已从 `@medusajs/dashboard` 原样拷贝（仅加 `// @ts-nocheck`），脚本：`apps/admin/scripts/copy-official-stubs.ps1`。
 
-| # | 路由域 | 文件（`apps/admin/src/routes/...`） |
-|---|--------|-----------------------------------|
-| 1 | 税收-覆盖编辑 | `tax-regions/.../tax-region-tax-override-edit-form.tsx` |
-| 2 | 税收-税率编辑 | `tax-regions/.../tax-region-tax-rate-edit-form.tsx` |
-| 3 | 税收-税率新建 | `tax-regions/.../tax-region-tax-rate-create-form.tsx` |
-| 4 | 税收-覆盖新建 | `tax-regions/.../tax-region-override-create.tsx` |
-| 5 | 税收-省覆盖区 | `tax-regions/.../tax-region-province-override-section.tsx` |
-| 6 | 税收-省详情区 | `tax-regions/.../tax-region-detail-section.tsx` |
-| 7 | 税收-省新建 | `tax-regions/.../tax-region-province-create-form.tsx` |
-| 8 | 运输配置-列表表 | `shipping-profiles/.../shipping-profile-list-table.tsx` |
-| 9 | 运输配置-详情 | `shipping-profiles/.../shipping-profile-general-section.tsx` |
-| 10 | 运输配置-新建 | `shipping-profiles/.../create-shipping-profile-form.tsx` |
-| 11 | 运输选项类型-列表 | `shipping-option-types/.../shipping-option-type-list-table.tsx` |
-| 12 | 运输选项类型-编辑 | `shipping-option-types/.../edit-shipping-option-type-form.tsx` |
-| 13 | 退货原因-新建 | `return-reasons/.../return-reason-create-form.tsx` |
-| 14 | 退款原因-新建 | `refund-reasons/.../refund-reason-create-form.tsx` |
-| 15 | 产品类型-产品区 | `product-types/.../product-type-product-section.tsx` |
-| 16 | 产品类型-通用区 | `product-types/.../product-type-general-section.tsx` |
-| 17 | 产品标签-产品区 | `product-tags/.../product-tag-product-section.tsx` |
-| 18 | 产品标签-通用区 | `product-tags/.../product-tag-general-section.tsx` |
+覆盖：税收 `common` + 6 子路由、运输配置 3 组件、运输选项类型 4 组件、退货/退款原因新建、产品类型/标签详情 4 组件、产品库存套件、翻译完成度区。
 
-后端 CRUD 多已存在；**空壳在 Admin 拷贝层**，点进子页可能白屏或仅布局。
+`rg 'export const stub' apps/admin` → **0 处**。
 
 ---
 
