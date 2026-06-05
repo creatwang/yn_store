@@ -1288,7 +1288,7 @@
 
 ### Notification 模块 (2 表)
 
-**notification**: id (PK, `noti`), to, from, channel, template, data (jsonb), provider_data (jsonb), trigger_type, resource_id, resource_type, receiver_id, original_notification_id, idempotency_key (UNIQUE), external_id, status (`pending`/`sent`/`failed`)
+**notification**: id (PK, `noti`), to, from, channel, template, data (jsonb), provider_data (jsonb), trigger_type, resource_id, resource_type, receiver_id, original_notification_id, idempotency_key (UNIQUE), external_id, status (`pending`/`success`/`failure`)
 
 **notification_provider**: id (PK, `notpro`), handle, name, is_enabled (default: true), channels (jsonb array)
 

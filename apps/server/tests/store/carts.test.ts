@@ -25,7 +25,11 @@ describe("Store 购物车 API", () => {
       type: "standard",
       status: "active",
       is_automatic: false,
-      metadata: { application_type: "percentage", value: 10 },
+      application_method: {
+        type: "percentage",
+        target_type: "items",
+        value: 10,
+      },
     })
     promoCode = (await pr.json()).promotion.code
   })

@@ -9,7 +9,7 @@ const FEED_TO = "admin"
 export const notificationService = {
   /**
    * 写 DB 记录 + 异步发送。
-   * 调用方提供 sender 回调，notificationService 负责：idempotency → DB pending → sender() → status sent/failed。
+   * 调用方提供 sender 回调，notificationService 负责：idempotency → DB pending → sender() → status success/failure（Medusa v2 官方枚举）。
    */
   async send(params: {
     to: string
@@ -68,7 +68,7 @@ export const notificationService = {
         await db
           .update(notification)
           .set({
-            status: "failed",
+            status: "failure",
             provider_data: { error: message },
             updated_at: sql`now()`,
           })
@@ -192,7 +192,7 @@ export const notificationService = {
         await db
           .update(notification)
           .set({
-            status: "failed",
+            status: "failure",
             provider_data: { error: message },
             updated_at: sql`now()`,
           })

@@ -307,7 +307,7 @@ export function InventoryCreateForm({ locations }: InventoryCreateFormProps) {
                               <Form.Hint>
                                 {t("inventory.create.skuLinkHint", {
                                   defaultValue:
-                                    "填写与变体一致的 SKU，或在右侧选择变体自动填入；保存后打开详情将自动关联。创建/编辑变体时勾选 管理库存",
+                                    "填写与变体一致的 SKU，或在右侧选择变体自动填入；保存后打开详情将自动关联。",
                                 })}
                               </Form.Hint>
                               <Form.ErrorMessage />

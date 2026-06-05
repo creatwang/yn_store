@@ -1,6 +1,6 @@
 # 项目状态 — 单一事实来源
 
-> **代码核实日期**：2026-06-02
+> **代码核实日期**：2026-06-04
 > **切勿信任本文档之外的旧状态**（14/15/16 已合并入本文，勿再看）。
 > **剩余工作与过期文档清单** → [REMAINING-WORK.md](./REMAINING-WORK.md)
 
@@ -24,7 +24,8 @@
 | **库存/仓库** | ~80% | batch level + Locations + service zones |
 | **Storefront** | ~70% | 见 `ecommerce-c-end/implementation-status.md` |
 | **事务/回滚（P0）** | ✅ 核心路径 | `lib/transaction.ts` + 多 service |
-| **自动化测试** | 19 文件 / 159 条 全绿（2026-06-02 实跑） | `pnpm --filter=@my-store/server test` |
+| **自动化测试** | 23 文件 / 182 条 全绿（2026-06-04 实跑） | `pnpm --filter=@my-store/server test` |
+| **Admin UI stub** | 18 处 `export const stub = {}` | 见 [API-IMPLEMENTATION-GAP.md](./API-IMPLEMENTATION-GAP.md) §5 |
 | **client.ts** | 100% 零 noop | 所有 hooks ↔ client 方法对齐 |
 
 ---

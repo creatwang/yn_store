@@ -171,7 +171,7 @@ pnpm run copy:dashboard-ui
 | Admin + Store API | ✅ 见 PROJECT_STATUS §API 挂载矩阵 |
 | `client.ts` / hooks | ✅ 零 noop |
 | 事务 `runInTransaction` + Workflow 8 条 | ✅ |
-| 自动化测试 | ✅ 19 文件 / 159 条（`pnpm --filter=@my-store/server test`） |
+| 自动化测试 | ✅ 23 文件 / 182 条（`pnpm --filter=@my-store/server test`，2026-06-04） |
 | Storefront | ✅ ~70%；Hybrid、cart/checkout、E2E、部署 — 见 `ecommerce-c-end/implementation-status.md` |
 | **未做（P2，有意跳过）** | Stripe、i18n、View Transitions、`<dialog>` 抽屉、Cloudflare adapter、All-in-One |
 | **可选债（P3）** | admin `@ts-nocheck`、Store `fields`、server 全量 `tsc` 零错 |

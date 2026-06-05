@@ -146,17 +146,11 @@ export const productTags = pgTable("product_tags", {
   product_tag_id: text("product_tag_id").notNull(),
 })
 
-/** 对齐 Medusa v2：复合主键，无独立 id */
-export const productVariantOption = pgTable(
-  "product_variant_option",
-  {
-    variant_id: text("variant_id").notNull(),
-    option_value_id: text("option_value_id").notNull(),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.variant_id, table.option_value_id] }),
-  }),
-)
+export const productVariantOption = pgTable("product_variant_option", {
+  id: text("id").primaryKey(),
+  variant_id: text("variant_id").notNull(),
+  option_value_id: text("option_value_id").notNull(),
+})
 
 export const productVariantPriceSet = pgTable("product_variant_price_set", {
   id: text("id").primaryKey(),

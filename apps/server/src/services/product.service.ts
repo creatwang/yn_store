@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
+import { sqlInIds } from "../lib/sql-in-ids"
 import {
   generateId,
   getDb,
@@ -81,7 +82,7 @@ async function loadVariantPrices(db: any, variantIds: string[]) {
     FROM product_variant_price_set pvps
     JOIN price_set ps ON ps.id = pvps.price_set_id
     JOIN price pr ON pr.price_set_id = ps.id
-    WHERE pvps.variant_id = ANY(${variantIds}::text[])
+    WHERE ${sqlInIds(sql`pvps.variant_id`, variantIds)}
       AND pr.deleted_at IS NULL
   `)
   for (const row of sqlRows(priceRows) as { variant_id: string }[]) {
@@ -100,6 +101,72 @@ async function loadVariantPrices(db: any, variantIds: string[]) {
  */
 function sqlRows(result: unknown): unknown[] {
   return Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+}
+
+function parseFieldsParam(fields: unknown): string[] {
+  if (typeof fields !== "string" || !fields.trim()) {
+    return []
+  }
+  return fields.split(",").map((f) => f.trim())
+}
+
+function wantsVariantsInList(fields: string[]): boolean {
+  if (!fields.length) {
+    return false
+  }
+  const negated = new Set(
+    fields.filter((f) => f.startsWith("-")).map((f) => f.slice(1)),
+  )
+  if (negated.has("variants")) {
+    return false
+  }
+  const hasPositives = fields.some((f) => !f.startsWith("-"))
+  if (!hasPositives) {
+    return true
+  }
+  return fields.some(
+    (f) =>
+      f === "variants" ||
+      f === "*variants" ||
+      f.startsWith("variants.") ||
+      f.startsWith("*variants."),
+  )
+}
+
+async function attachVariantsForList(
+  db: ReturnType<typeof getDb>,
+  products: Record<string, unknown>[],
+  fields: string[],
+) {
+  if (!wantsVariantsInList(fields) || !products.length) {
+    return products
+  }
+
+  const productIds = products.map((p) => String(p.id))
+  const variantRows = await db
+    .select({
+      id: productVariant.id,
+      product_id: productVariant.product_id,
+    })
+    .from(productVariant)
+    .where(
+      and(
+        inArray(productVariant.product_id, productIds),
+        isNull(productVariant.deleted_at),
+      ),
+    )
+
+  const byProduct = new Map<string, { id: string }[]>()
+  for (const row of variantRows) {
+    const list = byProduct.get(row.product_id) ?? []
+    list.push({ id: row.id })
+    byProduct.set(row.product_id, list)
+  }
+
+  return products.map((p) => ({
+    ...p,
+    variants: byProduct.get(String(p.id)) ?? [],
+  }))
 }
 
 async function fetchRelations(db: any, id: string, item: any, fields: string[] = defaultAdminProductFields) {
@@ -213,7 +280,7 @@ export const productService = {
     const conditions: any[] = [isNull(product.deleted_at)]
 
     if (query.status?.length) {
-      conditions.push(sql`${product.status} = ANY(${query.status}::text[])`)
+      conditions.push(inArray(product.status, query.status))
     }
 
     applyInArrayCondition(product.id, query.id, conditions)
@@ -358,7 +425,7 @@ export const productService = {
         JOIN product_variant_price_set pvps ON pvps.variant_id = pv.id
         JOIN price_set ps ON ps.id = pvps.price_set_id
         JOIN price pr ON pr.price_set_id = ps.id
-        WHERE pv.product_id = ANY(${productIds}::text[])
+        WHERE ${sqlInIds(sql`pv.product_id`, productIds)}
           AND pr.currency_code = 'usd'
           AND pv.deleted_at IS NULL
           AND pr.deleted_at IS NULL
@@ -437,7 +504,7 @@ export const productService = {
         FROM product_variant_price_set pvps
         JOIN price_set ps ON ps.id = pvps.price_set_id
         JOIN price pr ON pr.price_set_id = ps.id
-        WHERE pvps.variant_id = ANY(${variantIds}::text[])
+        WHERE ${sqlInIds(sql`pvps.variant_id`, variantIds)}
           AND pr.currency_code = 'usd'
           AND pr.deleted_at IS NULL
         ORDER BY pr.amount ASC

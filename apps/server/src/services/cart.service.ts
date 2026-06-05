@@ -17,6 +17,7 @@ import { sendOrderConfirmationEmail } from "../lib/mail"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
 import { runInTransaction, type DbTx } from "../lib/transaction"
+import { sqlInIds } from "../lib/sql-in-ids"
 import {
   loadPromotionRulesForType,
   selectApplicationMethodByPromotionId,
@@ -74,9 +75,7 @@ export const cartService = {
         ? await db
             .select()
             .from(cartLineItemAdjustment)
-            .where(
-              sql`${cartLineItemAdjustment.item_id} = ANY(${itemIds}::text[])`,
-            )
+            .where(sqlInIds(cartLineItemAdjustment.item_id, itemIds))
         : []
 
     return { cart: cartItem, items, shipping_methods: shippingMethods, adjustments }

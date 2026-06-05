@@ -13,6 +13,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useCreatePriceList } from "../../../../../hooks/api/price-lists"
+import { toIsoStringOrNull } from "../../../../../lib/date-iso"
 import { exctractPricesFromProducts } from "../../../common/utils"
 import { PriceListDetailsForm } from "./price-list-details-form"
 import { PriceListPricesForm } from "./price-list-prices-form"
@@ -95,8 +96,8 @@ export const PriceListCreateForm = ({
         type: data.type as PriceListType,
         status: data.status as PriceListStatus,
         description: data.description,
-        starts_at: data.starts_at ? data.starts_at.toISOString() : null,
-        ends_at: data.ends_at ? data.ends_at.toISOString() : null,
+        starts_at: toIsoStringOrNull(data.starts_at),
+        ends_at: toIsoStringOrNull(data.ends_at),
         rules: rulesPayload,
         prices,
       },

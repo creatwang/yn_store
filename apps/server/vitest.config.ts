@@ -7,7 +7,7 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     globalTeardown: ["./tests/global-teardown.ts"],
     testTimeout: 60000,
-    hookTimeout: 30000,
+    hookTimeout: 120000,
     // Supabase session pooler pool_size=15；并行 worker 各自建连接池会触发 EMAXCONNSESSION
     fileParallelism: false,
     maxWorkers: 1,

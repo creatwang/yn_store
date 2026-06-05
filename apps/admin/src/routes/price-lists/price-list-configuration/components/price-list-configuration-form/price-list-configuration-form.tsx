@@ -21,6 +21,7 @@ import { StackedDrawer } from "../../../../../components/modals/stacked-drawer"
 import { useStackedModal } from "../../../../../components/modals/stacked-modal-provider"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useUpdatePriceList } from "../../../../../hooks/api/price-lists"
+import { toIsoStringOrNull } from "../../../../../lib/date-iso"
 import { PriceListCustomerGroupRuleForm } from "../../../common/components/price-list-customer-group-rule-form"
 import { PricingCustomerGroupsArrayType } from "../../../price-list-create/components/price-list-create-form/schema"
 
@@ -102,8 +103,8 @@ export const PriceListConfigurationForm = ({
 
     await mutateAsync(
       {
-        starts_at: values.starts_at?.toISOString() || null,
-        ends_at: values.ends_at?.toISOString() || null,
+        starts_at: toIsoStringOrNull(values.starts_at),
+        ends_at: toIsoStringOrNull(values.ends_at),
         rules: rules,
       },
       {

@@ -18,7 +18,10 @@ import {
   customerGroup,
   priceList,
   price,
+  priceSet,
+  priceRule,
   priceListRule,
+  productVariantPriceSet,
   productVariant,
   taxRate,
   inventoryItem,
@@ -77,6 +80,14 @@ import {
 import { linkInventoryItemToVariantId } from "./inventory-variant-link.service"
 
 const DEFAULT_RAW_USED = { value: "0", precision: 20 } as const
+
+function sqlRows(result: unknown): Record<string, unknown>[] {
+  return (
+    Array.isArray(result)
+      ? result
+      : ((result as { rows?: Record<string, unknown>[] }).rows ?? [])
+  ) as Record<string, unknown>[]
+}
 
 function bigNumberFromRow(
   numeric: string | null | undefined,
@@ -501,6 +512,85 @@ async function syncPriceListRules(
     .where(eq(priceList.id, priceListId))
 }
 
+async function resolveVariantPriceSetId(
+  db: ReturnType<typeof getDb>,
+  variantId: string,
+): Promise<string> {
+  const links = sqlRows(
+    await db.execute(sql`
+      SELECT price_set_id
+      FROM product_variant_price_set
+      WHERE variant_id = ${variantId}
+      LIMIT 1
+    `),
+  )
+  if (links[0]?.price_set_id) {
+    return String(links[0].price_set_id)
+  }
+
+  const priceSetId = generateId("pset")
+  await db.insert(priceSet).values({ id: priceSetId })
+  await db.insert(productVariantPriceSet).values({
+    id: generateId("pvps"),
+    variant_id: variantId,
+    price_set_id: priceSetId,
+  })
+  return priceSetId
+}
+
+async function syncPriceRulesForPrice(
+  db: ReturnType<typeof getDb>,
+  priceId: string,
+  rules?: Record<string, string>,
+) {
+  await db.delete(priceRule).where(eq(priceRule.price_id, priceId))
+  const regionId = rules?.region_id
+  if (!regionId) {
+    await db
+      .update(price)
+      .set({ rules_count: 0, updated_at: sql`now()` })
+      .where(eq(price.id, priceId))
+    return
+  }
+
+  await db.insert(priceRule).values({
+    id: generateId("prule"),
+    attribute: "region_id",
+    value: regionId,
+    price_id: priceId,
+  })
+  await db
+    .update(price)
+    .set({ rules_count: 1, updated_at: sql`now()` })
+    .where(eq(price.id, priceId))
+}
+
+async function enrichPriceListPrices(
+  priceRows: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  if (priceRows.length === 0) return priceRows
+
+  const db = getDb()
+  const priceIds = priceRows.map((r) => String(r.id))
+  const ruleRows = await db
+    .select()
+    .from(priceRule)
+    .where(inArray(priceRule.price_id, priceIds))
+
+  const rulesByPriceId = new Map<string, Record<string, string>>()
+  for (const rule of ruleRows) {
+    const existing = rulesByPriceId.get(rule.price_id) ?? {}
+    existing[rule.attribute] = rule.value
+    rulesByPriceId.set(rule.price_id, existing)
+  }
+
+  return priceRows.map((row) => ({
+    ...row,
+    amount: row.amount != null ? Number(row.amount) : row.amount,
+    rules: rulesByPriceId.get(String(row.id)) ?? {},
+  }))
+}
+
 async function loadPriceListDetail(id: string) {
   const db = getDb()
   const [item] = await db
@@ -515,10 +605,22 @@ async function loadPriceListDetail(id: string) {
     .from(priceListRule)
     .where(eq(priceListRule.price_list_id, id))
 
+  const priceRows = sqlRows(
+    await db.execute(sql`
+      SELECT pr.*, pvps.variant_id
+      FROM price pr
+      LEFT JOIN product_variant_price_set pvps
+        ON pvps.price_set_id = pr.price_set_id
+      WHERE pr.price_list_id = ${id}
+        AND pr.deleted_at IS NULL
+    `),
+  )
+
   return {
     price_list: {
       ...item,
       rules: aggregatePriceListRules(ruleRows),
+      prices: await enrichPriceListPrices(priceRows),
     },
   }
 }
@@ -565,8 +667,18 @@ export const priceListService = {
     }
     if (fields.status !== undefined) set.status = String(fields.status)
     if (fields.type !== undefined) set.type = String(fields.type)
-    if (fields.starts_at !== undefined) set.starts_at = fields.starts_at
-    if (fields.ends_at !== undefined) set.ends_at = fields.ends_at
+    if (fields.starts_at !== undefined) {
+      set.starts_at =
+        fields.starts_at == null || fields.starts_at === ""
+          ? null
+          : new Date(fields.starts_at as string)
+    }
+    if (fields.ends_at !== undefined) {
+      set.ends_at =
+        fields.ends_at == null || fields.ends_at === ""
+          ? null
+          : new Date(fields.ends_at as string)
+    }
     if (fields.metadata !== undefined) set.metadata = fields.metadata
     const [updated] = await db
       .update(priceList)
@@ -803,7 +915,21 @@ export const promotionService = {
   async create(input: Record<string, unknown>) {
     const db = getDb()
     const id = generateId("promo")
-    const { application_method, rules, ...promoFields } = input
+    let { application_method, rules, ...promoFields } = input
+    if (
+      !application_method &&
+      promoFields.metadata &&
+      typeof promoFields.metadata === "object"
+    ) {
+      const meta = promoFields.metadata as Record<string, unknown>
+      if (meta.application_type != null || meta.value != null) {
+        application_method = {
+          type: meta.application_type ?? "percentage",
+          target_type: "items",
+          value: meta.value ?? 0,
+        }
+      }
+    }
     await db.insert(promotion).values({
       id,
       code: String(promoFields.code ?? ""),
@@ -1316,27 +1442,88 @@ export const priceListPriceService = {
       .select()
       .from(price)
       .where(and(eq(price.price_list_id, plid), isNull(price.deleted_at)))
-    return { prices: rows, count: rows.length }
+    const prices = await enrichPriceListPrices(rows as Record<string, unknown>[])
+    return { prices, count: prices.length }
   },
-  async add(plid: string, input: any) {
+  async add(plid: string, input: Record<string, unknown>) {
     const db = getDb()
-    const id = generateId("pr")
+    const variantId = input.variant_id as string | undefined
+    let priceSetId = input.price_set_id as string | undefined
+    if (!priceSetId && variantId) {
+      priceSetId = await resolveVariantPriceSetId(db, variantId)
+    }
+    if (!priceSetId) {
+      priceSetId = generateId("pset")
+      await db.insert(priceSet).values({ id: priceSetId })
+    }
+
     const amount = input.amount ?? 0
-    const [c] = await db
+    const rules = input.rules as Record<string, string> | undefined
+    const id = generateId("pr")
+    const [created] = await db
       .insert(price)
       .values({
         id,
         price_list_id: plid,
-        currency_code: input.currency_code ?? "USD",
+        currency_code: String(input.currency_code ?? "USD"),
         amount: String(amount),
         raw_amount: { amount, precision: 2 },
-        price_set_id: input.price_set_id ?? generateId("pset"),
-        ...input,
+        price_set_id: priceSetId,
+        rules_count: rules?.region_id ? 1 : 0,
         created_at: sql`now()`,
         updated_at: sql`now()`,
       })
       .returning()
-    return { price: c }
+
+    if (rules?.region_id) {
+      await db.insert(priceRule).values({
+        id: generateId("prule"),
+        attribute: "region_id",
+        value: rules.region_id,
+        price_id: id,
+      })
+    }
+
+    const [enriched] = await enrichPriceListPrices([
+      { ...created, variant_id: variantId },
+    ])
+    return { price: enriched }
+  },
+  async updatePrice(plid: string, input: Record<string, unknown>) {
+    const db = getDb()
+    const id = String(input.id)
+    const amount = input.amount ?? 0
+    const [updated] = await db
+      .update(price)
+      .set({
+        currency_code: String(input.currency_code ?? "USD"),
+        amount: String(amount),
+        raw_amount: { amount, precision: 2 },
+        updated_at: sql`now()`,
+      })
+      .where(
+        and(
+          eq(price.id, id),
+          eq(price.price_list_id, plid),
+          isNull(price.deleted_at),
+        ),
+      )
+      .returning()
+    if (!updated) throw new HTTPException(404, { message: "未找到" })
+
+    await syncPriceRulesForPrice(
+      db,
+      id,
+      input.rules as Record<string, string> | undefined,
+    )
+
+    const [enriched] = await enrichPriceListPrices([
+      {
+        ...updated,
+        variant_id: input.variant_id,
+      },
+    ])
+    return { price: enriched }
   },
   async remove(plid: string, pid: string) {
     const db = getDb()
@@ -1344,7 +1531,7 @@ export const priceListPriceService = {
       .update(price)
       .set({ deleted_at: sql`now()` })
       .where(and(eq(price.id, pid), eq(price.price_list_id, plid)))
-    return { deleted: true }
+    return { deleted: true, id: pid }
   },
   async linkProducts(plid: string, input: { product_ids?: string[]; productIds?: string[] }) {
     const db = getDb()
@@ -1375,15 +1562,36 @@ export const priceListPriceService = {
   },
   async batchPrices(
     plid: string,
-    input: { prices?: Array<Record<string, unknown>>; create?: Array<Record<string, unknown>> },
+    input: {
+      prices?: Array<Record<string, unknown>>
+      create?: Array<Record<string, unknown>>
+      update?: Array<Record<string, unknown>>
+      delete?: string[]
+    },
   ) {
-    const rows = input.prices ?? input.create ?? []
-    const prices = []
-    for (const row of rows) {
-      const res = await this.add(plid, row)
-      prices.push(res.price)
+    const created: unknown[] = []
+    const updated: unknown[] = []
+
+    for (const id of input.delete ?? []) {
+      await this.remove(plid, String(id))
     }
-    return { prices }
+
+    for (const row of input.update ?? []) {
+      const res = await this.updatePrice(plid, row)
+      updated.push(res.price)
+    }
+
+    const createRows = input.prices ?? input.create ?? []
+    for (const row of createRows) {
+      const res = await this.add(plid, row)
+      created.push(res.price)
+    }
+
+    return {
+      created,
+      updated,
+      deleted: (input.delete ?? []).map((id) => ({ id })),
+    }
   },
 }
 

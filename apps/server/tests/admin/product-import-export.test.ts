@@ -74,7 +74,7 @@ describe("产品 CSV 导入导出", () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.transaction_id).toBeDefined()
-    expect(body.url).toMatch(/^\/exports\//)
+    expect(body.url).toMatch(/^\/api\/admin\/products\/export\//)
 
     const dl = await apiGet(`/admin/products/export/${body.transaction_id}`)
     expect(dl.status).toBe(200)

@@ -78,14 +78,14 @@ describe("Admin Views API", () => {
 // Uploads
 // ============================================================================
 describe("Admin Uploads API", () => {
-  it("GET /:id — 任意 ID 返回 200", async () => {
+  it("GET /:id — 不存在返回 404", async () => {
     const res = await apiGet("/admin/uploads/notexist")
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(404)
   })
 
-  it("DELETE /:id — 删除成功", async () => {
+  it("DELETE /:id — 不存在返回 404", async () => {
     const res = await apiDelete("/admin/uploads/notexist")
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(404)
   })
 })
 

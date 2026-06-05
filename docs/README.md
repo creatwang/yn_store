@@ -1,6 +1,6 @@
 # 文档全集索引
 
-> **核实日期**：2026-06-02  
+> **核实日期**：2026-06-04  
 > 本文件列出仓库内**全部**文档路径、用途与是否仍维护。接手开发**只信**「权威」列中的文件。
 
 ---
@@ -11,6 +11,7 @@
 |------|------|
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | 后端 + Admin API 矩阵、完成度、测试、技术债 |
 | [REMAINING-WORK.md](REMAINING-WORK.md) | 未完成项（当前仅 **P2 产品化** + P3 可选 + Admin 迭代 02 边缘） |
+| [API-IMPLEMENTATION-GAP.md](API-IMPLEMENTATION-GAP.md) | 本仓库 API 抽样、stub 清单、与 02 官方端点差异 |
 | [00-agent-handoff.md](00-agent-handoff.md) | AI/人协作：目标、硬规则、命令、§9 实现快照 |
 | [QUICKSTART.md](QUICKSTART.md) | clone → `.env` → `pnpm dev` |
 | [ecommerce-c-end/implementation-status.md](ecommerce-c-end/implementation-status.md) | C 端（Astro）实现状态 |
@@ -67,7 +68,7 @@
 
 | 文档 | 改用 |
 |------|------|
-| [11-feature-tracker.mdx](11-feature-tracker.mdx) | [PROJECT_STATUS.md](PROJECT_STATUS.md) |
+| ~~11-feature-tracker.mdx~~ | 已删除（2026-06-04）；用 [PROJECT_STATUS.md](PROJECT_STATUS.md) + [API-IMPLEMENTATION-GAP.md](API-IMPLEMENTATION-GAP.md) |
 | `05-tech-conventions.mdx` | 已删除；规范见 `CLAUDE.md`、`ecommerce-c-end/storefront-conventions.md` |
 | `07-feature-spec.mdx` | 已删除；以 PROJECT_STATUS 为准 |
 | `14-admin-api-gap-matrix.md` | 已删除；合并入 PROJECT_STATUS |

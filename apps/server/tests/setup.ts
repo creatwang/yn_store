@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm"
 import { setDb, createDb, getDb } from "@my-store/db"
 import { signToken } from "../src/lib/jwt"
 import { app } from "../src/app"
+import { ensureTestDbSchema } from "./ensure-db-schema"
 
 // 加载 .env
 config({ path: resolve(__dirname, "..", ".env") })
@@ -26,6 +27,7 @@ beforeAll(async () => {
       await getDb().execute(sql`SELECT 1`)
     } catch { /* warmup 失败不影响测试 */ }
   }
+  await ensureTestDbSchema()
 })
 
 // ---------------------------------------------------------------------------
