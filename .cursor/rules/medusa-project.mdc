@@ -20,7 +20,15 @@ alwaysApply: true
 4. Admin UI 从 `apps/admin/demo/dashboard/src/routes/` 拷贝参考
 5. Storefront 仅用原生 `<script>`，禁止 React 岛，checkout 可选 Preact
 
+【硬性代码生成规范 - 严禁偷懒】
+1. 在进行对照开发或代码重构时，严禁简化实现，严格对照官方实现。
+2. 如果代码量过大超过你的单次输出限制，请在无法继续输出的地方停止，并提示我回复“继续”，绝对不要私自压缩或简化代码。
+3. 当官方的某一个共能代码实现和当前项目架构产生冲突的时候，不要私自定方案要询问好我
+
+
 ## 关键文档
 - [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) — 代码核实的权威状态
 - [docs/00-agent-handoff.md](docs/00-agent-handoff.md) — 开发规范
 - [docs/ecommerce-c-end/full-tech-stack.md](docs/ecommerce-c-end/full-tech-stack.md) — C 端方案
+
+

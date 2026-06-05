@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm"
-import bcrypt from "bcryptjs"
 import crypto from "node:crypto"
+import { hashPassword, verifyPassword } from "../lib/password-hash"
 import {
   authIdentity,
   generateId,
@@ -45,7 +45,7 @@ export const authService = {
 
     const meta = identity.provider_metadata as ProviderMetadata | null
     const hash = meta?.password
-    if (!hash || !(await bcrypt.compare(password, hash))) {
+    if (!(await verifyPassword(hash, password))) {
       throw new HTTPException(401, { message: "Invalid email or password" })
     }
 
@@ -143,7 +143,7 @@ export const authService = {
 
     const meta = identity.provider_metadata as ProviderMetadata | null
     const hash = meta?.password
-    if (!hash || !(await bcrypt.compare(password, hash))) {
+    if (!(await verifyPassword(hash, password))) {
       throw new HTTPException(401, { message: "Invalid email or password" })
     }
 
@@ -233,7 +233,7 @@ export const authService = {
       updated_at: sql`now()`,
     })
 
-    const hash = await bcrypt.hash(password, 10)
+    const hash = await hashPassword(password)
     await db.insert(providerIdentity).values({
       id: generateId("provid"),
       entity_id: email,
@@ -460,7 +460,7 @@ export const authService = {
       throw new HTTPException(400, { message: "Reset token expired" })
     }
 
-    const hash = await bcrypt.hash(password, 10)
+    const hash = await hashPassword(password)
     await db
       .update(providerIdentity)
       .set({

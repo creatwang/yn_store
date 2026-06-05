@@ -1,11 +1,10 @@
 /**
- * 创建首个管理员
+ * 创建/更新管理员（Scrypt，对齐 Medusa emailpass）
  *
  * 用法:
  *   pnpm seed:admin
  *   pnpm seed:admin -- admin@example.com YourPassword
  */
-import bcrypt from "bcryptjs"
 import { eq, isNull, and } from "drizzle-orm"
 import { loadEnv } from "../load-env"
 import {
@@ -16,6 +15,7 @@ import {
   user,
 } from "@my-store/db"
 import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from "@my-store/config"
+import { hashPassword } from "../src/lib/password-hash"
 
 loadEnv()
 
@@ -24,6 +24,7 @@ const password = process.argv[3] ?? process.env.SEED_ADMIN_PASSWORD ?? DEFAULT_A
 
 async function main() {
   const db = getDb()
+  const passwordHash = await hashPassword(password)
 
   const [existingUser] = await db
     .select()
@@ -39,17 +40,18 @@ async function main() {
         and(
           eq(providerIdentity.entity_id, email),
           eq(providerIdentity.provider, "emailpass"),
-          isNull(providerIdentity.deleted_at)
-        )
+          isNull(providerIdentity.deleted_at),
+        ),
       )
       .limit(1)
 
     if (identity) {
-      const hash = await bcrypt.hash(password, 10)
+      const meta =
+        (identity.provider_metadata as Record<string, unknown> | null) ?? {}
       await db
         .update(providerIdentity)
         .set({
-          provider_metadata: { password: hash },
+          provider_metadata: { ...meta, password: passwordHash },
         })
         .where(eq(providerIdentity.id, identity.id))
 
@@ -58,7 +60,7 @@ async function main() {
     }
 
     console.error(
-      `邮箱 ${email} 在 user 表已存在，但没有 emailpass 登录记录。请在 Supabase 手动关联或换邮箱。`
+      `邮箱 ${email} 在 user 表已存在，但没有 emailpass 登录记录。请在 Supabase 手动关联或换邮箱。`,
     )
     process.exit(1)
   }
@@ -66,7 +68,6 @@ async function main() {
   const userId = generateId("user")
   const authId = generateId("authid")
   const providerId = generateId("provid")
-  const passwordHash = await bcrypt.hash(password, 10)
 
   await db.insert(user).values({
     id: userId,
@@ -91,7 +92,7 @@ async function main() {
   console.log("管理员已创建，可使用以下凭据登录 Admin：")
   console.log(`  邮箱: ${email}`)
   console.log(`  密码: ${password}`)
-  console.log("  登录页: http://localhost:5173/admin/login")
+  console.log("  登录页: http://localhost:5173/app/login")
 }
 
 main().catch((err) => {

@@ -16,7 +16,7 @@ import type {
 import type { AdminCustomersParamsType } from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
 import { applyDateRangeConditions, listLimitOffset } from "../lib/query-filters"
-import bcrypt from "bcryptjs"
+import { hashPassword } from "../lib/password-hash"
 
 export const customerService = {
   async list(query: AdminCustomersParamsType) {
@@ -177,7 +177,7 @@ export const customerService = {
     })
 
     // Create provider identity with password hash
-    const hash = await bcrypt.hash(input.password, 10)
+    const hash = await hashPassword(input.password)
     await db.insert(providerIdentity).values({
       id: generateId("provid"),
       entity_id: input.email,
