@@ -9,7 +9,7 @@
 |---|--------|------|
 | `.cursor/rules/*.mdc` | 自动加载 | **不自动** |
 | `.cursor/skills/**/SKILL.md` | 可自动匹配 | **不自动** |
-| 应读文档 | 可读 handoff | **必须读本文档** 或 `TRAE_KICKOFF_PROMPT.md` |
+| 应读文档 | 可读 handoff | **必须读** `docs/00-agent-handoff.md` + `docs/PROJECT_STATUS.md` |
 
 Trae **可以**在对话中指定路径读取 `.cursor` 下文件，但**不会**像 Cursor 一样开箱即用。规则正文以**本文**为准。
 
@@ -41,7 +41,7 @@ packages/
   validators/      # Zod schema（@my-store/validators）
 
 docs/              # 01–07 + 本文件
-scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scripts/README.md）
+scripts/           # init、copy-dashboard-ui 等（见 scripts/README.md）
 
 .cursor/
   rules/           # Cursor 自动加载
@@ -54,16 +54,16 @@ scripts/           # init、migrate、sync-handoff、copy-dashboard-ui（见 scr
 
 | # | 文件 | 用途 |
 |---|------|------|
-| 1 | `docs/00-agent-handoff.md` | 本文件：全局约束与流程 |
-| 2 | `docs/PROJECT_STATUS.md` | **权威状态**：API 矩阵、测试覆盖、完成度 |
-| 2b | `docs/REMAINING-WORK.md` | **剩余工作**：未办项、过期文档、P0~P3 优先级（2026-06-02 审计） |
-| 3 | `docs/01-database-schema.mdx` | 表与字段 |
-| 4 | `docs/02-api-endpoints.mdx` | 全量路由；实现时对齐 **MVP** 节再扩展 |
-| 5 | `docs/03-business-workflows.mdx` | 购物车→订单等流程 |
-| 6 | `docs/06-drizzle-migration-guide.mdx` | Drizzle 写法、软删、bigNumber |
-| 7 | `docs/04-implementation-plan.mdx` | 分阶段（部分内容仍写 Next，以本 handoff 技术栈为准） |
-| **8** | **`docs/09-stitching-alignment.mdx`** | **缝合对齐规则（必读！Dashboard ↔ API 后端对照）** |
-| 9 | `docs/00-architecture-overview.mdx` | 历史总览；若与本文冲突以 **本文 + PROJECT_STATUS.md** 为准 |
+| 1 | `docs/PROJECT_STATUS.md` | **权威状态**：API、完成度、测试 |
+| 2 | `docs/REMAINING-WORK.md` | **待办**：P0–P3 |
+| 3 | `docs/00-agent-handoff.md` | 本文件：硬规则与命令 |
+| 4 | `docs/09-stitching-alignment.mdx` | **改 Admin 必读** |
+| 5 | `docs/02-api-endpoints.mdx` | Medusa 路由对照（非完成度依据） |
+| 6 | `docs/01-database-schema.mdx` | 表与字段 |
+| 7 | `docs/06-drizzle-migration-guide.mdx` | Drizzle 写法 |
+| 8 | `docs/ecommerce-c-end/implementation-status.md` | C 端状态（改 storefront 时） |
+
+**勿读** 已删除的 `docs/archive/` 与旧迁移文档；状态以 PROJECT_STATUS 为准。
 
 ---
 
@@ -163,20 +163,19 @@ pnpm run copy:dashboard-ui
 
 ---
 
-## 9. 当前实现快照（2026-06-02，与 PROJECT_STATUS 同步）
+## 9. 当前实现快照（与 PROJECT_STATUS 同步，2026-05-30）
 
 | 维度 | 状态 |
 |------|------|
-| Admin 可运营 | ✅ 产品 / 订单 / 客户 / 库存 / 履约 / RMA 主线 |
-| Admin + Store API | ✅ 见 PROJECT_STATUS §API 挂载矩阵 |
-| `client.ts` / hooks | ✅ 零 noop |
-| 事务 `runInTransaction` + Workflow 8 条 | ✅ |
-| 自动化测试 | ✅ 23 文件 / 182 条（`pnpm --filter=@my-store/server test`，2026-06-04） |
-| Storefront | ✅ ~70%；Hybrid、cart/checkout、E2E、部署 — 见 `ecommerce-c-end/implementation-status.md` |
-| **未做（P2，有意跳过）** | Stripe、i18n、View Transitions、`<dialog>` 抽屉、Cloudflare adapter、All-in-One |
-| **可选债（P3）** | admin `@ts-nocheck`、Store `fields`、server 全量 `tsc` 零错 |
+| Admin 可运营 | ✅ 产品 / 订单 / 客户 / 库存 / 履约 / RMA / 草稿订单 |
+| Admin + Store API | ✅ 见 PROJECT_STATUS §API 挂载 |
+| Workflow 9 条 + 事务 | ✅ |
+| 自动化测试 | ✅ 25 文件 / ~183 用例 |
+| Storefront | ✅ ~70%；见 `ecommerce-c-end/implementation-status.md` |
+| **未做（P2）** | Stripe、i18n、View Transitions、`<dialog>` 抽屉、Cloudflare |
+| **P1 断链** | translations API、feature-flags API、Provider 全 NOOP |
 
-细节与矩阵：[PROJECT_STATUS.md](./PROJECT_STATUS.md)。待办-only：[REMAINING-WORK.md](./REMAINING-WORK.md)。
+细节：[PROJECT_STATUS.md](./PROJECT_STATUS.md)。待办：[REMAINING-WORK.md](./REMAINING-WORK.md)。
 
 ---
 
@@ -193,11 +192,11 @@ pnpm run copy:dashboard-ui
 
 ## 11. 冲突处理
 
-- `docs/00-architecture-overview.mdx`、`docs/04-implementation-plan.mdx` 若仍写 **Next.js + Medusa 后端不动**，视为**过期表述**；实施以 **本文 + `docs/PROJECT_STATUS.md` + `AGENTS.md`** 为准。
-- 有疑问优先查 `docs/01`（表是否存在）与 `docs/02`（路径是否已有 Medusa 先例）。
+- **项目状态**以 `docs/PROJECT_STATUS.md` + `docs/REMAINING-WORK.md` 为准。
+- 改 API 查 `docs/02-api-endpoints.mdx`；改 Admin 查 `docs/09-stitching-alignment.mdx`；改表查 `docs/01-database-schema.mdx`。
 
 ---
 
 ## 12. 联系与本文件维护
 
-更新架构或技术栈时，请同步修改：**本文件**、`AGENT_HANDOFF.md`、`AGENTS.md`、`.cursor/rules/agent-handoff.mdc`、`.cursor/skills/hono-medusa-rebuild/SKILL.md`。
+更新架构或技术栈时，请同步修改：**本文件**、`AGENTS.md`、`.cursor/rules/agent-handoff.mdc`、`.cursor/skills/hono-medusa-rebuild/SKILL.md`。

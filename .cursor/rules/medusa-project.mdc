@@ -17,7 +17,7 @@ alwaysApply: true
 1. 不改 `apps/backend/`
 2. Hono 路由链式定义，不画蛇添足
 3. 前端通过 `hc<AppType>()` 调用 API
-4. Admin UI 从 `apps/admin/demo/dashboard/src/routes/` 拷贝参考
+4. Admin UI 用 `pnpm run copy:dashboard-ui` 从 Medusa Dashboard 拷贝参考
 5. Storefront 仅用原生 `<script>`，禁止 React 岛，checkout 可选 Preact
 
 【硬性代码生成规范 - 严禁偷懒】
@@ -29,6 +29,7 @@ alwaysApply: true
 ## 关键文档
 - [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) — 代码核实的权威状态
 - [docs/00-agent-handoff.md](docs/00-agent-handoff.md) — 开发规范
-- [docs/ecommerce-c-end/full-tech-stack.md](docs/ecommerce-c-end/full-tech-stack.md) — C 端方案
+- [docs/ecommerce-c-end/implementation-status.md](docs/ecommerce-c-end/implementation-status.md) — C 端状态
+- [docs/ecommerce-c-end/storefront-conventions.md](docs/ecommerce-c-end/storefront-conventions.md) — C 端约定
 
 

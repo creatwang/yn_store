@@ -43,10 +43,9 @@ Write-Step "Check project layout"
 
 $requiredPaths = @(
   "docs/00-agent-handoff.md",
+  "docs/PROJECT_STATUS.md",
   "AGENTS.md",
-  "AGENT_HANDOFF.md",
   "START_HERE.md",
-  "TRAE_KICKOFF_PROMPT.md",
   "apps/server/src/app.ts",
   "apps/server/entry.node.ts",
   "apps/admin/src/main.tsx",
@@ -59,8 +58,7 @@ $requiredPaths = @(
   ".cursor/rules/medusa-project.mdc",
   ".cursor/rules/admin-development.mdc",
   ".cursor/rules/storefront-development.mdc",
-  ".cursor/skills/hono-medusa-rebuild/SKILL.md",
-  "docs/MIGRATION.md"
+  ".cursor/skills/hono-medusa-rebuild/SKILL.md"
 )
 
 $missing = @()
@@ -123,11 +121,11 @@ Next:
      若端口占用: pnpm predev
      Or separately:
        pnpm dev:server   # http://localhost:7000/api/health
-       pnpm dev:admin    # http://localhost:5173/admin
+       pnpm dev:admin    # http://localhost:5173/app/
        pnpm dev:store    # http://localhost:4321
   3. Read before coding:
+       docs/PROJECT_STATUS.md
        docs/00-agent-handoff.md
-       TRAE_KICKOFF_PROMPT.md
   4. Optional copy Medusa UI:
        pnpm run copy:dashboard-ui -- -MedusaSourcePath "D:\path\to\@medusajs\dashboard\src"
 

@@ -1,68 +1,45 @@
-# 剩余工作与真实状态审计
+# 剩余工作
 
-> **核实日期**：2026-06-04  
-> **已完成能力矩阵** → [PROJECT_STATUS.md](./PROJECT_STATUS.md)
+> **核实日期**：2026-05-30  
+> **已完成能力** → [PROJECT_STATUS.md](./PROJECT_STATUS.md)
 
 ---
 
-## 1. 快速结论
+## 快速结论
 
 | 问题 | 答案 |
 |------|------|
-| 能否日常运营？ | **能** |
-| 等价 Medusa v2 全功能？ | **约 65%**（P2 支付/i18n 仍缺） |
-| 测试是否全绿？ | **是** — 23 文件 / 182 条（2026-06-04 实跑） |
-| 最大剩余风险？ | **P2 产品化** + 部分 Admin UI 拷贝层 TODO + server `tsc` 历史债 |
+| 能否日常运营？ | **能**（产品、订单、库存、RMA、客户、草稿订单） |
+| 等价 Medusa v2 全功能？ | **约 65%** |
+| 测试 | `pnpm --filter=@my-store/server test` — 25 文件 / ~183 用例 |
+| 最大缺口 | 真实支付、i18n、外部 Provider、Admin 翻译/feature-flags 断链 |
 
 ---
 
-## 2. 本轮已完成（2026-06-02）
+## P0 — 若要 C 端真实收款
 
-### P0 — 事务与回滚
-
-| 项 | 状态 |
-|----|:----:|
-| `lib/transaction.ts` → `runInTransaction()` | ✅ |
-| `cart.applyPromo` / `removePromo` | ✅ 事务 |
-| `order.create` / `cancel` | ✅ 事务 |
-| `fulfillment.cancel` | ✅ 事务 |
-| `return.addReturnItems` / `receive` | ✅ 事务 |
-| `order-edit.confirm` / `cancel` | ✅ 事务 |
-| `product-import.confirm` | ✅ 事务 |
-| `order.requestTransfer` | ✅ `dispatchRollback` |
-| `order.addLineItem` | ✅ 事务 |
-| Workflow 8 条 | ✅ 已接线（维持） |
-
-### P1 — 业务深度
-
-| 项 | 状态 |
-|----|:----:|
-| `return.receive` 404 + 完整 `getById` 响应 | ✅ |
-| `return.received` 事件 | ✅ |
-| `order-edit.*` 事件 | ✅ requested/confirmed/canceled |
-| 订单导出分页（500/批） | ✅ |
-| `POST /admin/orders/:id/notes` | ✅ metadata.admin_notes |
-| Admin 通知路由 → `notification.service` + resend | ✅ |
-| claim/exchange/return shipping → `order_change_action` | ✅（2026-06-03） |
-
-### P3 — fields
-
-| 项 | 状态 |
-|----|:----:|
-| `GET /admin/orders/:id?fields=` | ✅ |
-| `GET /admin/products/:id?fields=` | ✅（原有） |
-
-### C 端（非 P2）
-
-| 项 | 状态 |
-|----|:----:|
-| Vercel / Docker / CI | ✅（前序已落地） |
+1. 实现 `StripePaymentProvider`（`apps/server/src/lib/providers/`）
+2. 注册 Provider，checkout workflow 改用可配置 ID
+3. Storefront `checkout.astro` 接 Stripe.js
 
 ---
 
-## 3. 仍待办 — 仅 P2 与可选
+## P1 — Admin 断链 / 明显半成品
 
-### P2 — 明确排除本轮（用户要求跳过）
+| 项 | 说明 |
+|----|------|
+| 翻译模块 | `routes/translations/` 有 UI，**未注册路由**；server 无 `/admin/translations` |
+| Feature Flags | `hooks/api/feature-flags.tsx` 调 server，**无** `/admin/feature-flags` |
+| 税区 metadata | server 有 update，UI 仍占位 |
+| GitHub OAuth | `auth.service.ts` 返回 501 |
+| 运输选项改价 | 更新 region price 报错 |
+| 过期 TODO | `customer-order-section` 创建订单按钮等 |
+
+**处理方式**：二选一 — 补 API + 接线，或隐藏入口。
+
+---
+
+## P2 — 产品化（当前有意未做）
 
 | 项 | 状态 |
 |----|:----:|
@@ -72,59 +49,33 @@
 | View Transitions | ❌ |
 | Cloudflare adapter | ❌ |
 | All-in-One 静态托管 | ❌ |
+| SMS / Webhook 通知 | ❌ |
+| Handlebars 邮件模板 | ❌ |
+| RMA 专用邮件 | ❌ |
 
-### P2 边缘（通知深化，非阻塞）
+---
+
+## P3 — 质量 / 可选
 
 | 项 | 状态 |
 |----|:----:|
-| SMS / Webhook 通知渠道 | ❌ |
-| Handlebars 模板引擎 | ❌ |
-| RMA 专用邮件模板 | ❌ |
-
-### P3 — 可选质量
-
-| 项 | 状态 |
-|----|:----:|
-| `@ts-nocheck` ~250（admin 拷贝层） | 🟡 |
-| Store API `fields` 支持 | ❌ |
-| `apps/server` 全量 `tsc --noEmit` 零错 | 🟡 有历史 TS 债 |
-| Vitest Loader（storefront） | ❌ 可选 |
-
-### Admin UI 迭代 01（2026-06-01）
-
-| 切片 | 状态 |
-|------|:----:|
-| S1 备注 + 列表筛选 | ✅ |
-| S2 订单编辑 + 退货 | ✅ 核心 |
-| S3 Claim 全流程 | ✅ |
-| S4 Exchange + 分配库存 UX | ✅ |
-
-详见 [ADMIN-UI-ITERATION-01.md](./ADMIN-UI-ITERATION-01.md)。**Admin 建单**：草稿订单 UI + 订单子路由已接（2026-06-01）。**迭代 02（2026-06-03）**：`GET /admin/shipping-options?is_return` / `admin_only` 服务端筛选、`POST /admin/reservations/batch` + workflow 回滚、`GET /admin/orders/:id/shipping-options` 带筛选。
+| Store API `?fields=` | ❌ |
+| 降低 Admin `@ts-nocheck` | 🟡 |
+| server 全量 `tsc` 零错 | 🟡 |
+| 事件持久化 | ❌ |
+| Admin RMA Playwright | ❌（仅 smoke E2E） |
+| promotions / claims 单测 | 部分缺失 |
 
 ---
 
-## 4. 勿再使用的过期文档
+## 外部 Provider（全部 NOOP）
 
-| 文档 | 改用 |
-|------|------|
-| `11-feature-tracker.mdx` | PROJECT_STATUS |
-| `00-agent-handoff.md` 旧 §9「已过期」占位 | 已改为 §9 实现快照（2026-06-02） |
-| `ecommerce-c-end/adoption-matrix.md` 搜索 ❌ | 已修正为 ✅ |
+`apps/server/src/lib/providers/index.ts` — Payment、Shipping、Notification、Inventory 均为占位。接 Stripe/Shippo/WMS 时在此替换。
+
+Checkout **未**调用 Inventory Provider 做预留/扣减。
 
 ---
 
-## 5. 维护约定
+## 维护
 
-| 动作 | 更新 |
-|------|------|
-| 新 API | PROJECT_STATUS §API 矩阵 |
-| C 端 | `ecommerce-c-end/implementation-status.md` |
-| 完成 P2 项 | 从本文 §3 删除 |
-
----
-
-## 6. 相关索引
-
-- [workflow-plan.md](./workflow-plan.md)
-- [13-architecture-conflicts.mdx](./13-architecture-conflicts.mdx)
-- [ecommerce-c-end/implementation-status.md](./ecommerce-c-end/implementation-status.md)
+完成某项后：从本文删除对应行，并更新 `PROJECT_STATUS.md`。

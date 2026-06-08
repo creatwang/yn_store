@@ -1,7 +1,6 @@
 # AI 开发指南 — 跨境电商平台 (Hono 全栈)
 
-> **外部工具 / Trae / 其他 Agent 完整交接**：请先读 [`docs/00-agent-handoff.md`](docs/00-agent-handoff.md)，根目录 [`AGENT_HANDOFF.md`](AGENT_HANDOFF.md) 为索引。  
-> Cursor Skill：`.cursor/skills/hono-medusa-rebuild/SKILL.md`；规则：`.cursor/rules/agent-handoff.mdc`。
+> **外部 Agent**：请先读 [`docs/00-agent-handoff.md`](docs/00-agent-handoff.md) 与 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)。
 
 ## 项目概述
 
@@ -51,13 +50,13 @@ Medusa 运行时对照（**不在本仓库**）：`../my-medusa-store/apps/backe
 
 ### 3. 参考文档
 
-- **`docs/00-agent-handoff.md`** — **外部 Agent / Trae 完整交接（必读）**
-- `docs/README.md` — 文档索引
-- `docs/PROJECT_STATUS.md` — **项目状态（优先阅读）**
-- `docs/01-database-schema.mdx` — 数据库表结构
-- `docs/02-api-endpoints.mdx` — Medusa API 对照
-- `docs/03-business-workflows.mdx` — 业务流程
-- `docs/06-drizzle-migration-guide.mdx` — Drizzle 映射
+- **`docs/PROJECT_STATUS.md`** — **项目状态（优先阅读）**
+- **`docs/REMAINING-WORK.md`** — 待办
+- **`docs/00-agent-handoff.md`** — 完整交接
+- **`docs/README.md`** — 文档索引（权威 / 参考 / 归档）
+- **`docs/09-stitching-alignment.mdx`** — 改 Admin 必读
+- **`docs/01-database-schema.mdx`**、`docs/02-api-endpoints.mdx`、`docs/06-drizzle-migration-guide.mdx` — Medusa 对照（非完成度依据）
+- **`docs/archive/`** — 已删除；状态只看 PROJECT_STATUS
 
 ### 4. 数据库规范
 

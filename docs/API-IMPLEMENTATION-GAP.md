@@ -1,6 +1,6 @@
 # API 实现 vs Medusa 官方对照（本仓库）
 
-> **核实日期**：2026-06-04  
+> **核实日期**：2026-05-30  
 > **官方对照表**：[02-api-endpoints.mdx](./02-api-endpoints.mdx)（Medusa v2.15.3 全量 ~220 Admin 路由，**非**本仓库承诺范围）  
 > **实际挂载**：`apps/server/src/app.ts`  
 > **自动化**：`pnpm --filter=@my-store/server test` → **24 文件 / 183 用例**（2026-06-05 全绿，含 seed admin 登录）

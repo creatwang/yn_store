@@ -3,7 +3,7 @@
 > 仓库：`D:\webstormProject\my-medusa-store-hono/apps/storefront`  
 > **改代码后请同步更新本文件**
 
-最后核对：2026-06-02（P2 项见 [REMAINING-WORK.md](../REMAINING-WORK.md)）
+最后核对：2026-05-30（P2 项见 [REMAINING-WORK.md](../REMAINING-WORK.md)）
 
 ---
 

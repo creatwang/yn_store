@@ -139,8 +139,8 @@ pnpm dev:node
 pnpm dev --filter=@my-store/admin
 ```
 
-**端口：** http://localhost:5173/admin  
-**访问地址：** http://localhost:5173/admin
+**端口：** http://localhost:5173  
+**访问地址：** http://localhost:5173/app/
 
 **Admin 命令说明：**
 | 命令 | 作用 |
@@ -225,23 +225,17 @@ pnpm install
 | Cart | `cart.service.ts` | — | ✅ | ✅ 已完成 |
 | Customer | `customer.service.ts` | ✅ | ✅ | ✅ 已完成 |
 
-### API 端点总览
+### API 端点
 
-**Admin API (`/api/admin/*`)：**
-- `/api/admin/products` - 商品管理
-- `/api/admin/orders` - 订单管理
-- `/api/admin/customers` - 客户管理
+**完整挂载矩阵** → [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) · **与 Medusa 差异** → [`docs/API-IMPLEMENTATION-GAP.md`](docs/API-IMPLEMENTATION-GAP.md)
 
-**Store API (`/api/store/*`)：**
-- `/api/store/products` - 商品浏览
-- `/api/store/orders` - 订单查询
-- `/api/store/carts` - 购物车管理
-- `/api/store/customers` - 客户注册/资料
+**常用前缀（均经 `/api`）：**
 
-**Auth API (`/api/auth/*`)：**
-- `/api/auth/user/emailpass` - 管理员登录
-- `/api/auth/customer/emailpass` - 客户登录
-- `/api/auth/token/refresh` - Token 刷新
+| 前缀 | 说明 |
+|------|------|
+| `/api/admin/*` | 后台：products、orders、customers、returns、claims、draft-orders 等 60+ |
+| `/api/store/*` | 商城：products、carts、orders、customers 等 |
+| `/api/auth/*` | 客户/管理员 JWT 会话 |
 
 ---
 
@@ -249,10 +243,10 @@ pnpm install
 
 | 命令 | 说明 |
 |------|------|
-| `pnpm run init` | 初始化环境与依赖（运行 scripts/init.ps1） |
-| `pnpm run sync:handoff` | 从 `../my-medusa-store` 刷新 docs + `.cursor` |
+| `pnpm run init` | 初始化环境与依赖 |
 | `pnpm run copy:dashboard-ui` | 重新拷贝 Medusa Dashboard UI |
-| `pnpm typecheck` | 运行所有包的 TypeScript 类型检查 |
+| `pnpm run check:runtime-db` | DB 池验收 |
+| `pnpm typecheck` | TypeScript 检查 |
 | `pnpm build` | 构建所有服务 |
 
 ---
@@ -264,7 +258,7 @@ pnpm install
 1. `docs/00-agent-handoff.md` — 交接与硬规则
 2. `docs/PROJECT_STATUS.md` — 权威状态（API / 测试）
 3. `docs/REMAINING-WORK.md` — 未完成项
-4. `docs/README.md` — **全部文档路径索引（42+ 篇）**
+4. `docs/README.md` — **文档索引**
 5. `docs/QUICKSTART.md` — 快速启动
 6. `AGENTS.md` — AI 规则摘要
 
@@ -281,10 +275,10 @@ pnpm install
 
 | 类别 | 路径 |
 |------|------|
-| 交接文档 | `docs/README.md`（全集索引）+ `00-agent-handoff.md` |
-| AI 入口 | `AGENTS.md`、`AGENT_HANDOFF.md`、`START_HERE.md`、`TRAE_KICKOFF_PROMPT.md` |
+| 文档 | `docs/README.md`、`docs/PROJECT_STATUS.md` |
+| AI 入口 | `AGENTS.md`、`START_HERE.md` |
 | Cursor | `.cursor/rules/`、`.cursor/skills/hono-medusa-rebuild/SKILL.md` |
-| 脚本 | `scripts/init.ps1`、`sync-handoff-from-old.ps1`、`copy-dashboard-ui.ps1` |
+| 脚本 | `scripts/`（见 `scripts/README.md`） |
 | 后端 | `apps/server/` |
 | Admin | `apps/admin/`（含已拷贝的 `dashboard-ui`） |
 | 商城 | `apps/storefront/` |
@@ -293,9 +287,9 @@ pnpm install
 ## 不含（故意不拷）
 
 - `apps/backend/`（旧 Medusa，对照用兄弟目录 `../my-medusa-store/apps/backend/`）
-- `packages/dashboard/`、`apps/storefront/`（已废弃方案）
+- `packages/dashboard/`（已废弃，UI 在 `apps/admin/src/`）
 
 ---
 
 - **Cursor**：打开仓库即可用 `.cursor/rules` + Skill  
-- **Trae**：**不会自动读 `.cursor`**，请读 **`START_HERE.md`** 或复制 **`TRAE_KICKOFF_PROMPT.md`**
+- **Trae**：读 **`START_HERE.md`** 与 **`docs/00-agent-handoff.md`**

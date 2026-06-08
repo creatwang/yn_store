@@ -1,4 +1,4 @@
-# 开工入口（本目录 = 新项目根）
+# 开工入口
 
 **路径**：`D:\webstormProject\my-medusa-store-hono`
 
@@ -8,34 +8,39 @@
 pnpm run init
 ```
 
-脚本在 **`scripts/`**（`init.ps1`、`sync-handoff-from-old.ps1`、`copy-dashboard-ui.ps1`）。
+配置 `apps/server/.env`：`DATABASE_URL`、`JWT_SECRET`。
 
-## 2. Trae 能不能读 `.cursor`？
-
-**不能自动读。** `.cursor` 是给 Cursor 用的；Trae 不会自动加载 Rules/Skill。
-
-| 工具 | `.cursor/rules` | `.cursor/skills` | 建议入口 |
-|------|-----------------|------------------|----------|
-| **Cursor** | 自动 | 自动 | 打开仓库即可 |
-| **Trae** | 不自动 | 不自动 | 复制 **`TRAE_KICKOFF_PROMPT.md`** 或让其读 **`docs/00-agent-handoff.md`** |
-
-## 3. 必读
-
-1. `docs/00-agent-handoff.md`（Trae **首选**，含全部硬规则）
-2. `docs/PROJECT_STATUS.md`（权威状态）
-3. `docs/REMAINING-WORK.md`（未完成项）
-4. `docs/README.md`（**全部文档路径索引**）
-5. `AGENTS.md`
-6. `TRAE_KICKOFF_PROMPT.md`（**Trae 第一条消息粘贴本文件**）
-
-## 4. 开发
-
-配置 `apps/server/.env` 后：`pnpm dev`
-
-## 5. 从旧仓库更新文档（可选）
+## 2. 开发
 
 ```powershell
-pnpm run sync:handoff
+pnpm dev
 ```
 
-源目录默认：`../my-medusa-store`
+| 服务 | 地址 |
+|------|------|
+| API | http://localhost:7000/api |
+| Admin | http://localhost:5173/app/ |
+| Store | http://localhost:4321 |
+
+## 3. 必读文档
+
+1. [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) — 真实完成度
+2. [docs/REMAINING-WORK.md](docs/REMAINING-WORK.md) — 待办
+3. [docs/00-agent-handoff.md](docs/00-agent-handoff.md) — 硬规则
+4. [docs/README.md](docs/README.md) — 文档索引
+5. [AGENTS.md](AGENTS.md)
+
+## 4. Trae / 外部 AI
+
+Trae **不会自动读** `.cursor/rules`。请让其阅读 `docs/00-agent-handoff.md` + `docs/PROJECT_STATUS.md`。
+
+## 5. 常用命令
+
+| 命令 | 说明 |
+|------|------|
+| `pnpm --filter @my-store/server test` | 后端 API 测试 |
+| `pnpm --filter @my-store/admin test:e2e` | Admin Playwright smoke |
+| `pnpm run copy:dashboard-ui` | 重新拷贝 Medusa Dashboard UI |
+| `pnpm run seed:admin` | 创建测试管理员 |
+
+脚本说明 → [scripts/README.md](scripts/README.md)
