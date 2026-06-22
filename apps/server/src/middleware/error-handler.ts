@@ -44,6 +44,11 @@ function isDbConnectivityError(err: unknown): boolean {
   )
 }
 
+function isUniqueConstraintError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : ""
+  return msg.includes("duplicate key value violates unique constraint")
+}
+
 export const errorHandler: ErrorHandler = (err, c) => {
   if (err instanceof HTTPException) {
     return c.json(
@@ -75,7 +80,16 @@ export const errorHandler: ErrorHandler = (err, c) => {
     )
   }
 
-  const message = isDev() ? getUnknownErrorMessage(err) : "Internal Server Error"
+  if (!isDev()) {
+    return c.json({ message: "Internal Server Error" }, 500)
+  }
+
+  // 开发环境下区分不同类型错误
+  const message = getUnknownErrorMessage(err)
+
+  if (isUniqueConstraintError(err)) {
+    return c.json({ message, type: "conflict" }, 409)
+  }
 
   return c.json({ message, type: "unknown_error" }, 500)
 }

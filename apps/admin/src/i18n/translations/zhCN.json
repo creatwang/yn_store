@@ -504,6 +504,8 @@
       }
     },
     "deleteWarning": "您即将删除产品 {{title}}。此操作无法撤销。",
+    "batchDeleteWarning": "您即将删除 {{count}} 个产品。此操作无法撤销。",
+    "generateSkus": "生成 SKU",
     "variants": {
       "header": "变体",
       "empty": {
@@ -738,6 +740,20 @@
         "error": {
           "header": "删除产品失败"
         }
+      },
+      "batchDelete": {
+        "header": "批量删除完成",
+        "success": "成功删除 {{count}} 个产品",
+        "notFound": "{{count}} 个产品未找到",
+        "error": {
+          "header": "批量删除失败"
+        }
+      },
+      "generateSkus": {
+        "success": "SKU 生成成功",
+        "description": "已生成 {{generated}} 个 SKU，{{skipped}} 个变体已有 SKU",
+        "noSkusNeeded": "所有变体已有 SKU",
+        "error": "SKU 生成失败"
       }
     },
     "columns": {

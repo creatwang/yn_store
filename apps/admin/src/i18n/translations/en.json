@@ -504,6 +504,8 @@
       }
     },
     "deleteWarning": "You are about to delete the product {{title}}. This action cannot be undone.",
+    "batchDeleteWarning": "You are about to delete {{count}} products. This action cannot be undone.",
+    "generateSkus": "Generate SKUs",
     "variants": {
       "header": "Variants",
       "empty": {
@@ -762,6 +764,20 @@
         "error": {
           "header": "Failed to delete product"
         }
+      },
+      "batchDelete": {
+        "header": "Batch delete completed",
+        "success": "Successfully deleted {{count}} products",
+        "notFound": "{{count}} products not found",
+        "error": {
+          "header": "Batch delete failed"
+        }
+      },
+      "generateSkus": {
+        "success": "SKUs generated",
+        "description": "{{generated}} SKUs generated, {{skipped}} variants already had SKUs.",
+        "noSkusNeeded": "All variants already have SKUs.",
+        "error": "Failed to generate SKUs"
       }
     }
   },

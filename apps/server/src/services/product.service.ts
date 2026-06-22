@@ -1,4 +1,5 @@
 // @ts-nocheck
+import crypto from "node:crypto"
 import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
 import { sqlInIds } from "../lib/sql-in-ids"
 import {
@@ -30,7 +31,7 @@ import {
   normalizeFilterIds,
   normalizeIdFilter,
 } from "../lib/query-filters"
-import { slugify } from "../lib/slug"
+import { slugify, generateUniqueHandle } from "../lib/slug"
 import { variantService } from "./variant.service"
 
 /**
@@ -78,12 +79,23 @@ async function loadVariantPrices(db: any, variantIds: string[]) {
   if (!variantIds.length) return priceMap
 
   const priceRows = await db.execute(sql`
-    SELECT pvps.variant_id, pr.id, pr.currency_code, pr.amount, pr.rules, pr.created_at, pr.updated_at
+    SELECT pvps.variant_id,
+           pr.id,
+           pr.currency_code,
+           pr.amount,
+           pr.created_at,
+           pr.updated_at,
+           COALESCE(
+             jsonb_object_agg(prr.attribute, prr.value) FILTER (WHERE prr.attribute IS NOT NULL),
+             '{}'::jsonb
+           ) AS rules
     FROM product_variant_price_set pvps
     JOIN price_set ps ON ps.id = pvps.price_set_id
     JOIN price pr ON pr.price_set_id = ps.id
+    LEFT JOIN price_rule prr ON prr.price_id = pr.id AND prr.deleted_at IS NULL
     WHERE ${sqlInIds(sql`pvps.variant_id`, variantIds)}
       AND pr.deleted_at IS NULL
+    GROUP BY pvps.variant_id, pr.id, pr.currency_code, pr.amount, pr.created_at, pr.updated_at
   `)
   for (const row of sqlRows(priceRows) as { variant_id: string }[]) {
     const list = priceMap.get(row.variant_id) ?? []
@@ -179,7 +191,16 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
 
   const wants = (name: string) => {
     if (negated.has(name)) return false
-    return effectiveFields.includes(`*${name}`) || effectiveFields.includes(name)
+    // 精确匹配 "*images" 或 "images"
+    if (effectiveFields.includes(`*${name}`) || effectiveFields.includes(name)) return true
+    // 点分字段匹配: "images.id", "images.variants.id" → 要加载 images
+    const prefix = `${name}.`
+    return effectiveFields.some((f) => f.startsWith(prefix))
+  }
+
+  const wantsSubField = (name: string, sub: string) => {
+    const prefix = `${name}.${sub}`
+    return effectiveFields.some((f) => f === prefix || f.startsWith(`${prefix}.`) || f === `*${prefix}`)
   }
 
   const result: Record<string, any> = {}
@@ -222,9 +243,33 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
   }
 
   if (wants("images")) {
-    result.images = await db.select().from(productImage).where(
+    const images = await db.select().from(productImage).where(
       and(eq(productImage.product_id, id), isNull(productImage.deleted_at))
-    ).catch(() => [])
+    ).orderBy(productImage.rank).catch(() => [])
+
+    // 如果请求了 images.variants 子字段，加载变体关联
+    if (wantsSubField("images", "variants") && images.length) {
+      const imageIds = images.map((img: any) => img.id)
+      const variantRows = await db.execute(sql`
+        SELECT pvpi.image_id, pv.id AS variant_id
+        FROM product_variant_product_image pvpi
+        JOIN product_variant pv ON pv.id = pvpi.variant_id AND pv.deleted_at IS NULL
+        WHERE pvpi.image_id = ANY(ARRAY[${sql.join(imageIds.map((iid: string) => sql`${iid}`), sql`, `)}])
+      `)
+      const rows = sqlRows(variantRows) as { image_id: string; variant_id: string }[]
+      const variantMap = new Map<string, { id: string }[]>()
+      for (const r of rows) {
+        const list = variantMap.get(r.image_id) ?? []
+        list.push({ id: r.variant_id })
+        variantMap.set(r.image_id, list)
+      }
+      result.images = images.map((img: any) => ({
+        ...img,
+        variants: variantMap.get(img.id) ?? [],
+      }))
+    } else {
+      result.images = images
+    }
   }
 
   if (wants("collection") && item.collection_id) {
@@ -547,8 +592,25 @@ export const productService = {
 
   async create(input: CreateProductInput) {
     const db = getDb()
-    const handle =
-      input.handle?.trim() || `${slugify(input.title)}-${generateId("h").slice(0, 6)}`
+
+    // 生成 handle：用户提供则直接使用，否则从 title slugify
+    let handle: string
+    if (input.handle?.trim()) {
+      handle = input.handle.trim()
+    } else {
+      handle = slugify(input.title)
+    }
+
+    // 确保 handle 唯一（自动生成时若冲突则追加随机后缀）
+    const existing = await db
+      .select({ id: product.id })
+      .from(product)
+      .where(and(eq(product.handle, handle), isNull(product.deleted_at)))
+      .limit(1)
+
+    if (existing.length > 0) {
+      handle = `${handle}-${generateUniqueHandle(handle)}`
+    }
 
     const id = generateId("prod")
 
@@ -703,18 +765,36 @@ export const productService = {
           `)
           for (const p of (v as any).prices) {
             const amount = String(p.amount)
-            const rules = p.rules ? JSON.stringify(p.rules) : null
+            const priceId = generateId("price")
+            const rulesEntries =
+              p.rules && typeof p.rules === "object"
+                ? Object.entries(p.rules).filter(
+                    ([_, v]) => v != null && v !== "",
+                  )
+                : []
             await db.execute(sql`
               INSERT INTO price (
                 id, currency_code, amount, raw_amount, price_set_id,
-                created_at, updated_at, rules
+                rules_count, created_at, updated_at
               )
               VALUES (
-                ${generateId("price")}, ${p.currency_code}, ${amount},
+                ${priceId}, ${p.currency_code}, ${amount},
                 ${JSON.stringify({ value: amount, precision: 20 })}::jsonb,
-                ${priceSetId}, now(), now(), ${rules}::jsonb
+                ${priceSetId}, ${rulesEntries.length}, now(), now()
               )
             `)
+            for (const [attribute, value] of rulesEntries) {
+              await db.execute(sql`
+                INSERT INTO price_rule (
+                  id, attribute, value, operator, priority, price_id,
+                  created_at, updated_at
+                )
+                VALUES (
+                  ${generateId("prul")}, ${attribute}, ${String(value)},
+                  'eq', 0, ${priceId}, now(), now()
+                )
+              `)
+            }
           }
         }
         await syncVariantInventoryFromInput(
@@ -755,6 +835,26 @@ export const productService = {
     const handle =
       input.handle?.trim() ||
       existing.product.handle
+
+    // 如果用户想要更新 handle，检查新 handle 是否被其他产品占用
+    if (input.handle?.trim()) {
+      const conflict = await db
+        .select({ id: product.id })
+        .from(product)
+        .where(
+          and(
+            eq(product.handle, handle),
+            isNull(product.deleted_at),
+            sql`${product.id} != ${id}`,
+          ),
+        )
+        .limit(1)
+      if (conflict.length > 0) {
+        throw new HTTPException(409, {
+          message: `Handle "${handle}" 已被其他产品使用`,
+        })
+      }
+    }
 
     const [updated] = await db
       .update(product)
@@ -877,5 +977,157 @@ export const productService = {
       .set({ deleted_at: sql`now()` })
       .where(eq(product.id, id))
     return { id, object: "product", deleted: true }
+  },
+
+  /** 批量软删除 */
+  async batchDelete(ids: string[]) {
+    const db = getDb()
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+
+    // 先查出存在的 product id
+    const existing = await db
+      .select({ id: product.id })
+      .from(product)
+      .where(
+        and(
+          inArray(product.id, ids),
+          isNull(product.deleted_at),
+        ),
+      )
+
+    const existingIds = new Set(existing.map((r) => r.id))
+    const notFound = ids.filter((id) => !existingIds.has(id))
+
+    if (existingIds.size > 0) {
+      await db
+        .update(product)
+        .set({ deleted_at: sql`now()` })
+        .where(
+          and(
+            inArray(product.id, [...existingIds]),
+            isNull(product.deleted_at),
+          ),
+        )
+    }
+
+    return {
+      deleted: [...existingIds],
+      not_found: notFound,
+    }
+  },
+
+  /** 自动为产品下所有未填 SKU 的变体生成 SKU */
+  async generateSkus(productId: string) {
+    const db = getDb()
+
+    // 获取产品信息
+    const [prod] = await db
+      .select({ handle: product.handle, title: product.title })
+      .from(product)
+      .where(and(eq(product.id, productId), isNull(product.deleted_at)))
+
+    if (!prod) {
+      throw new HTTPException(404, { message: "产品不存在" })
+    }
+
+    const base = (prod.handle || slugify(prod.title || "product")).toLowerCase()
+
+    // 查询所有变体及其选项值
+    const variants = await db
+      .select({
+        id: productVariant.id,
+        sku: productVariant.sku,
+      })
+      .from(productVariant)
+      .where(
+        and(
+          eq(productVariant.product_id, productId),
+          isNull(productVariant.deleted_at),
+        ),
+      )
+      .orderBy(productVariant.variant_rank, productVariant.created_at)
+
+    // 查询每个变体的 option values
+    const variantOptions: Record<string, string[]> = {}
+    for (const v of variants) {
+      const rows = await db.execute(sql`
+        SELECT pov.value
+        FROM product_variant_option pvo
+        JOIN product_option_value pov ON pov.id = pvo.option_value_id
+        WHERE pvo.variant_id = ${v.id}
+        ORDER BY pov.value
+      `)
+      const values = sqlRows(rows).map((r: any) => String(r.value))
+      variantOptions[v.id] = values
+    }
+
+    // 收集所有已存在的 SKU（用于去重）
+    const allSkus = new Set(
+      variants.filter((v) => v.sku).map((v) => v.sku!.toLowerCase()),
+    )
+
+    const generated: { id: string; sku: string }[] = []
+    const skipped: { id: string; reason: string }[] = []
+
+    for (const v of variants) {
+      // 已有 SKU 的跳过
+      if (v.sku) {
+        skipped.push({ id: v.id, reason: "已有 SKU" })
+        continue
+      }
+
+      const opts = variantOptions[v.id] ?? []
+      const suffix = opts.length > 0
+        ? "-" + opts.map((o) => slugify(o).replace(/-/g, "")).join("-")
+        : ""
+
+      // 生成 SKU 并查数据库确保全局唯一
+      let sku = ""
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const randomSuffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8)
+        const candidate = `${base}${suffix}-${randomSuffix}`
+
+        // 检查是否与已有 SKU 冲突（内存 + 数据库）
+        if (allSkus.has(candidate.toLowerCase())) continue
+
+        const [conflict] = await db
+          .select({ id: productVariant.id })
+          .from(productVariant)
+          .where(
+            and(
+              eq(productVariant.sku, candidate),
+              isNull(productVariant.deleted_at),
+            ),
+          )
+          .limit(1)
+
+        if (!conflict) {
+          sku = candidate
+          break
+        }
+      }
+
+      if (!sku) {
+        skipped.push({ id: v.id, reason: "无法生成唯一 SKU" })
+        continue
+      }
+
+      allSkus.add(sku.toLowerCase())
+
+      await db
+        .update(productVariant)
+        .set({ sku, updated_at: sql`now()` })
+        .where(eq(productVariant.id, v.id))
+
+      generated.push({ id: v.id, sku })
+    }
+
+    return {
+      product_id: productId,
+      generated,
+      skipped,
+    }
   },
 }

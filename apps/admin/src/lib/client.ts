@@ -63,6 +63,12 @@ function productEntity() {
     batchVariants: (productId: string, body?: any, query?: Record<string, any>) =>
       rpcPost(rpc[":productId"].variants.batch, body, { productId }, query),
 
+    // ── Batch ─────────────────────────────────────────────────
+    batchDelete: (body?: { ids: string[] }) =>
+      rpcPost(rpc.batch, body),
+    generateSkus: (id: string) =>
+      rpcPost(rpc[":id"]["generate-skus"], undefined, { id }),
+
     // ── Options ────────────────────────────────────────────────
     listOptions: (productId: string, query?: Record<string, any>) =>
       rpcGet(rpc[":productId"].options, { productId }, query),

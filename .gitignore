@@ -16,3 +16,4 @@ _backup_old
 Project_Default.xml
 **/playwright-report/
 **/test-results/
+public

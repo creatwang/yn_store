@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { createProductSchema, updateProductSchema } from "@my-store/validators"
+import { batchDeleteProductsSchema, createProductSchema, updateProductSchema } from "@my-store/validators"
 import { AdminGetProductsParams } from "@my-store/validators/admin-list-params"
 import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { productService } from "../../services/product.service"
@@ -81,9 +81,18 @@ export const adminProducts = new Hono<{ Variables: AuthVariables }>()
     )
     return c.json(result)
   })
+  .post("/batch", zValidator("json", batchDeleteProductsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await productService.batchDelete(ids)
+    return c.json(result)
+  })
   .post("/:id", zValidator("json", updateProductSchema), async (c) => {
     const body = c.req.valid("json")
     const result = await productService.update(c.req.param("id"), body)
+    return c.json(result)
+  })
+  .post("/:id/generate-skus", async (c) => {
+    const result = await productService.generateSkus(c.req.param("id"))
     return c.json(result)
   })
   .delete("/:id", async (c) => {

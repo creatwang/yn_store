@@ -1,9 +1,10 @@
 // @ts-nocheck
-import { GlobeEurope, PencilSquare, Trash } from "@medusajs/icons"
-import { Button, Container, Heading, toast, usePrompt } from "@medusajs/ui"
+import { GlobeEurope, PencilSquare, Tag, Trash } from "@medusajs/icons"
+import { Button, Checkbox, Container, Heading, toast, usePrompt } from "@medusajs/ui"
 import { keepPreviousData } from "@tanstack/react-query"
 import { createColumnHelper } from "@tanstack/react-table"
-import { useMemo } from "react"
+import { RowSelectionState } from "@tanstack/react-table"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, Outlet, useLoaderData, useLocation } from "react-router-dom"
 
@@ -20,16 +21,22 @@ import { useProductTableQuery } from "../../../../../hooks/table/query/use-produ
 import { useDataTable } from "../../../../../hooks/use-data-table"
 import { productsLoader } from "../../loader"
 import { useFeatureFlag } from "../../../../../providers/feature-flag-provider"
+import { sdk } from "../../../../../lib/client"
+import { queryClient } from "../../../../../lib/query-client"
+import { productsQueryKeys } from "../../../../../hooks/api/products"
 
 const PAGE_SIZE = 20
 
 export const ProductListTable = () => {
   const { t } = useTranslation()
   const location = useLocation()
+  const prompt = usePrompt()
 
   const initialData = useLoaderData() as Awaited<
     ReturnType<ReturnType<typeof productsLoader>>
   >
+
+  const [selection, setSelection] = useState<RowSelectionState>({})
 
   const { searchParams, raw } = useProductTableQuery({ pageSize: PAGE_SIZE })
   const { products, count, isLoading, isError, error } = useProducts(
@@ -53,10 +60,53 @@ export const ProductListTable = () => {
     enablePagination: true,
     pageSize: PAGE_SIZE,
     getRowId: (row) => row.id,
+    enableRowSelection: true,
+    rowSelection: {
+      state: selection,
+      updater: setSelection,
+    },
   })
 
   if (isError) {
     throw error
+  }
+
+  const handleBatchDelete = async (rowSelection: Record<string, boolean>) => {
+    const ids = Object.keys(rowSelection)
+    const res = await prompt({
+      title: t("general.areYouSure"),
+      description: t("products.batchDeleteWarning", { count: ids.length }),
+      confirmText: t("actions.delete"),
+      cancelText: t("actions.cancel"),
+    })
+
+    if (!res) {
+      return
+    }
+
+    try {
+      const result = await sdk.admin.product.batchDelete({ ids })
+      const deletedCount = result.deleted?.length ?? 0
+      const notFoundCount = result.not_found?.length ?? 0
+
+      const parts = []
+      if (deletedCount > 0) {
+        parts.push(t("products.toasts.batchDelete.success", { count: deletedCount }))
+      }
+      if (notFoundCount > 0) {
+        parts.push(t("products.toasts.batchDelete.notFound", { count: notFoundCount }))
+      }
+
+      toast.success(t("products.toasts.batchDelete.header"), {
+        description: parts.join("，"),
+      })
+
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.lists() })
+    } catch (e) {
+      toast.error(t("products.toasts.batchDelete.error.header"), {
+        description: e.message,
+      })
+    }
   }
 
   return (
@@ -94,6 +144,13 @@ export const ProductListTable = () => {
         noRecords={{
           message: t("products.list.noRecordsMessage"),
         }}
+        commands={[
+          {
+            label: t("actions.delete"),
+            shortcut: "d",
+            action: handleBatchDelete,
+          },
+        ]}
       />
       <Outlet />
     </Container>
@@ -105,6 +162,32 @@ const ProductActions = ({ product }: { product: HttpTypes.AdminProduct }) => {
   const prompt = usePrompt()
   const { mutateAsync } = useDeleteProduct(product.id)
   const isTranslationsEnabled = useFeatureFlag("translation")
+
+  const handleGenerateSkus = async () => {
+    try {
+      const result = await sdk.admin.product.generateSkus(product.id)
+      const generatedCount = result.generated?.length ?? 0
+      const skippedCount = result.skipped?.length ?? 0
+
+      if (generatedCount > 0) {
+        toast.success(t("products.toasts.generateSkus.success"), {
+          description: t("products.toasts.generateSkus.description", {
+            generated: generatedCount,
+            skipped: skippedCount,
+          }),
+        })
+      } else {
+        toast.info(t("products.toasts.generateSkus.noSkusNeeded"))
+      }
+
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.detail(product.id) })
+    } catch (e) {
+      toast.error(t("products.toasts.generateSkus.error"), {
+        description: e.message,
+      })
+    }
+  }
 
   const handleDelete = async () => {
     const res = await prompt({
@@ -146,6 +229,11 @@ const ProductActions = ({ product }: { product: HttpTypes.AdminProduct }) => {
               label: t("actions.edit"),
               to: `/products/${product.id}/edit`,
             },
+            {
+              icon: <Tag />,
+              label: t("products.generateSkus"),
+              onClick: handleGenerateSkus,
+            },
           ],
         },
         ...(isTranslationsEnabled
@@ -182,6 +270,34 @@ const useColumns = () => {
 
   const columns = useMemo(
     () => [
+      columnHelper.display({
+        id: "select",
+        header: ({ table }) => {
+          return (
+            <Checkbox
+              checked={
+                table.getIsSomePageRowsSelected()
+                  ? "indeterminate"
+                  : table.getIsAllPageRowsSelected()
+              }
+              onCheckedChange={(value) =>
+                table.toggleAllPageRowsSelected(!!value)
+              }
+            />
+          )
+        },
+        cell: ({ row }) => {
+          return (
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
+            />
+          )
+        },
+      }),
       ...base,
       columnHelper.display({
         id: "actions",

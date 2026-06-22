@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { UseFormReturn, useWatch } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
+import { Button, toast } from "@medusajs/ui"
 import {
   createDataGridHelper,
   createDataGridPriceColumns,
@@ -15,6 +16,34 @@ import {
   ProductCreateVariantSchema,
 } from "../../constants"
 import { ProductCreateSchemaType } from "../../types"
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+    .replace(/^-|-$/g, "")
+    || "product"
+}
+
+/**
+ * 生成 n 位 base36 随机串（36^n 种可能，8位=2.8万亿）。
+ * 用时间戳加盐：随机字节 XOR 时间戳字节 → 即使随机数碰撞，不同毫秒产出也不同。
+ */
+function shortRandomId(length = 8): string {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+  const ts = Date.now()
+  const tsBytes = new Uint8Array(8)
+  for (let i = 0; i < 8; i++) {
+    tsBytes[i] = (ts >> (i * 8)) & 0xff
+  }
+  const randBytes = crypto.getRandomValues(new Uint8Array(length))
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    const salted = (randBytes[i] ^ tsBytes[i % 8]) % 36
+    result += chars[salted]
+  }
+  return result
+}
 
 type ProductCreateVariantsFormProps = {
   form: UseFormReturn<ProductCreateSchemaType>
@@ -29,6 +58,7 @@ export const ProductCreateVariantsForm = ({
   store,
   pricePreferences,
 }: ProductCreateVariantsFormProps) => {
+  const { t } = useTranslation()
   const { setCloseOnEscape } = useRouteModal()
 
   const currencyCodes = useMemo(
@@ -46,6 +76,12 @@ export const ProductCreateVariantsForm = ({
     control: form.control,
     name: "options",
     defaultValue: [],
+  })
+
+  const watchedTitle = useWatch({
+    control: form.control,
+    name: "title",
+    defaultValue: "",
   })
 
   /**
@@ -70,6 +106,49 @@ export const ProductCreateVariantsForm = ({
     return ret
   }, [variants])
 
+  const handleGenerateSkus = () => {
+    const base = slugify(watchedTitle || "product")
+    const existingSkus = new Set(
+      variants.filter((v) => v.sku).map((v) => v.sku!.toLowerCase()),
+    )
+    let generated = 0
+
+    variants.forEach((v, i) => {
+      if (!v.should_create || v.sku) return
+
+      const optValues = (options ?? [])
+        .map((opt) => v.options?.[opt.title])
+        .filter(Boolean)
+        .map((val) => slugify(val!).replace(/-/g, ""))
+
+      const suffix = optValues.length > 0 ? "-" + optValues.join("-") : ""
+      const randomSuffix = shortRandomId(8)
+      let sku = `${base}${suffix}-${randomSuffix}`
+
+      // 兜底去重
+      let counter = 1
+      while (existingSkus.has(sku.toLowerCase())) {
+        counter++
+        sku = `${base}${suffix}-${randomSuffix}-${counter}`
+      }
+
+      existingSkus.add(sku.toLowerCase())
+      form.setValue(`variants.${i}.sku`, sku)
+      generated++
+    })
+
+    if (generated > 0) {
+      toast.success(t("products.toasts.generateSkus.success"), {
+        description: t("products.toasts.generateSkus.description", {
+          generated,
+          skipped: variants.filter((v) => v.sku && v.should_create).length,
+        }),
+      })
+    } else {
+      toast.info(t("products.toasts.generateSkus.noSkusNeeded"))
+    }
+  }
+
   return (
     <div className="flex size-full flex-col divide-y overflow-hidden">
       <DataGrid
@@ -77,6 +156,18 @@ export const ProductCreateVariantsForm = ({
         data={variantData}
         state={form}
         onEditingChange={(editing) => setCloseOnEscape(!editing)}
+        headerContent={
+          <div className="ml-2">
+            <Button
+              size="small"
+              variant="secondary"
+              type="button"
+              onClick={handleGenerateSkus}
+            >
+              {t("products.generateSkus")}
+            </Button>
+          </div>
+        }
       />
     </div>
   )

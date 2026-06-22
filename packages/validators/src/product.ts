@@ -42,3 +42,9 @@ export type CreateProductInput = z.infer<typeof createProductSchema>
 export const updateProductSchema = createProductSchema.partial()
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>
+
+export const batchDeleteProductsSchema = z.object({
+  ids: z.array(z.string()).min(1, "至少选择一个产品"),
+})
+
+export type BatchDeleteProductsInput = z.infer<typeof batchDeleteProductsSchema>
