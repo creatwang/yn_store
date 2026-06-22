@@ -321,6 +321,7 @@ export const authService = {
       if (!credential) {
         throw new HTTPException(400, { message: "Missing Google credential (id_token) in request body" })
       }
+      console.log("[google-verify] credential length:", credential.length, "preview:", credential.slice(0, 20) + "...")
       const tokenInfo = await verifyGoogleIdToken(credential)
       if (!tokenInfo.email) {
         throw new HTTPException(401, { message: "Google token verification failed: no email" })
@@ -487,10 +488,13 @@ type GoogleTokenInfo = {
 }
 
 async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenInfo> {
-  const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+  const encoded = encodeURIComponent(idToken)
+  const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encoded}`
+  console.log("[google-verify] fetching:", url.slice(0, 80) + "...")
   const res = await fetch(url)
   if (!res.ok) {
     const err = await res.text()
+    console.log("[google-verify] failed:", res.status, err)
     throw new HTTPException(401, { message: `Google token verification failed: ${err}` })
   }
   const data = (await res.json()) as Partial<GoogleTokenInfo>

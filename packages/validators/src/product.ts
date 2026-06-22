@@ -10,7 +10,7 @@ export const productStatusEnum = z.enum([
 export const createProductSchema = z.object({
   title: z.string().min(1, "标题不能为空"),
   handle: z.string().optional(),
-  subtitle: z.string().optional(),
+  subtitle: z.string().nullish(),
   description: z.string().optional(),
   status: productStatusEnum.default("draft"),
   thumbnail: z.string().optional().nullable().or(z.literal("")),
@@ -26,7 +26,7 @@ export const createProductSchema = z.object({
   type_id: z.string().nullable().optional(),
   collection_id: z.string().nullable().optional(),
   origin_country: z.string().optional(),
-  material: z.string().optional(),
+  material: z.string().nullish(),
   mid_code: z.string().optional(),
   hs_code: z.string().optional(),
   width: z.number().optional(),

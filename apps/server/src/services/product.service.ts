@@ -183,6 +183,127 @@ async function attachVariantsForList(
   }))
 }
 
+/**
+ * 批量加载列表中所有产品关联的销售渠道
+ */
+async function attachSalesChannelsForList(
+  db: ReturnType<typeof getDb>,
+  products: Record<string, unknown>[],
+) {
+  if (!products.length) return products
+  const productIds = products.map((p) => String(p.id))
+  const rows = await db.execute(sql`
+    SELECT psc.product_id, sc.id, sc.name, sc.description, sc.is_disabled, sc.metadata
+    FROM sales_channel sc
+    JOIN product_sales_channel psc ON psc.sales_channel_id = sc.id
+    WHERE psc.product_id = ANY(ARRAY[${sql.join(productIds.map((id) => sql`${id}`), sql`, `)}])
+  `)
+  const byProduct = new Map<string, unknown[]>()
+  for (const row of sqlRows(rows) as { product_id: string }[]) {
+    const list = byProduct.get(row.product_id) ?? []
+    const { product_id, ...channel } = row
+    list.push(channel)
+    byProduct.set(row.product_id, list)
+  }
+  return products.map((p) => ({
+    ...p,
+    sales_channels: byProduct.get(String(p.id)) ?? [],
+  }))
+}
+
+/**
+ * 批量加载列表中所有产品关联的标签
+ */
+async function attachTagsForList(
+  db: ReturnType<typeof getDb>,
+  products: Record<string, unknown>[],
+) {
+  if (!products.length) return products
+  const productIds = products.map((p) => String(p.id))
+  const rows = await db.execute(sql`
+    SELECT pts.product_id, pt.id, pt.value, pt.metadata, pt.created_at, pt.updated_at, pt.deleted_at
+    FROM product_tag pt
+    JOIN product_tags pts ON pts.product_tag_id = pt.id
+    WHERE pts.product_id = ANY(ARRAY[${sql.join(productIds.map((id) => sql`${id}`), sql`, `)}])
+  `)
+  const byProduct = new Map<string, unknown[]>()
+  for (const row of sqlRows(rows) as { product_id: string }[]) {
+    const list = byProduct.get(row.product_id) ?? []
+    const { product_id, ...tag } = row
+    list.push(tag)
+    byProduct.set(row.product_id, list)
+  }
+  return products.map((p) => ({
+    ...p,
+    tags: byProduct.get(String(p.id)) ?? [],
+  }))
+}
+
+/**
+ * 批量加载列表中所有产品关联的集合（collection）
+ */
+async function attachCollectionsForList(
+  db: ReturnType<typeof getDb>,
+  products: Record<string, unknown>[],
+) {
+  if (!products.length) return products
+  const collectionIds = products
+    .map((p) => p.collection_id as string | null)
+    .filter(Boolean) as string[]
+  if (!collectionIds.length) return products
+  const collections = await db
+    .select()
+    .from(productCollection)
+    .where(inArray(productCollection.id, collectionIds))
+  const byId = new Map(collections.map((c: any) => [c.id, c]))
+  return products.map((p) => ({
+    ...p,
+    collection: p.collection_id ? (byId.get(p.collection_id as string) ?? null) : null,
+  }))
+}
+
+/**
+ * 批量加载列表中所有产品关联的类型（type）
+ */
+async function attachTypesForList(
+  db: ReturnType<typeof getDb>,
+  products: Record<string, unknown>[],
+) {
+  if (!products.length) return products
+  const typeIds = products
+    .map((p) => p.type_id as string | null)
+    .filter(Boolean) as string[]
+  if (!typeIds.length) return products
+  const types = await db
+    .select()
+    .from(productType)
+    .where(inArray(productType.id, typeIds))
+  const byId = new Map(types.map((t: any) => [t.id, t]))
+  return products.map((p) => ({
+    ...p,
+    type: p.type_id ? (byId.get(p.type_id as string) ?? null) : null,
+  }))
+}
+
+/**
+ * 解析 fields 参数，返回 effectiveFields 和 negated set
+ */
+function parseListFields(fieldsRaw: string | undefined) {
+  const fields = parseFieldsParam(fieldsRaw ?? "")
+  const hasPositives = fields.some((f) => !f.startsWith("-"))
+  const effectiveFields = hasPositives ? fields : [...defaultAdminProductFields, ...fields]
+  const negated = new Set(
+    fields.filter((f) => f.startsWith("-")).map((f) => f.slice(1)),
+  )
+  const wants = (name: string) => {
+    if (negated.has(name)) return false
+    if (effectiveFields.includes(`*${name}`) || effectiveFields.includes(name)) return true
+    const prefix = `${name}.`
+    return effectiveFields.some((f) => f.startsWith(prefix))
+  }
+  return { wants }
+}
+
 async function fetchRelations(db: any, id: string, item: any, fields: string[] = defaultAdminProductFields) {
   const hasPositives = fields.some((f) => !f.startsWith("-"))
   const effectiveFields = hasPositives ? fields : [...defaultAdminProductFields, ...fields]
@@ -410,8 +531,27 @@ export const productService = {
       db.select({ total: count() }).from(product).where(where),
     ])
 
+    // 批量加载关联关系（对齐官方 defaultAdminProductFields）
+    const { wants } = parseListFields(query.fields)
+    let enriched: Record<string, unknown>[] = products as Record<string, unknown>[]
+
+    if (wants("sales_channels")) {
+      enriched = await attachSalesChannelsForList(db, enriched)
+    }
+    if (wants("tags")) {
+      enriched = await attachTagsForList(db, enriched)
+    }
+    if (wants("collection")) {
+      enriched = await attachCollectionsForList(db, enriched)
+    }
+    if (wants("type")) {
+      enriched = await attachTypesForList(db, enriched)
+    }
+    // variants 使用已有的 batch 加载
+    enriched = await attachVariantsForList(db, enriched, parseFieldsParam(query.fields ?? ""))
+
     return {
-      products,
+      products: enriched,
       count: Number(total),
       limit,
       offset,

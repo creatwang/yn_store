@@ -1,5 +1,6 @@
 ---
 const clientId = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || ""
+console.log('客户端id_____', clientId);
 const loginUri = `${Astro.url.origin}/api/auth/google/callback`
 ---
 

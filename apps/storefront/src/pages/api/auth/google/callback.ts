@@ -27,8 +27,15 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     body: JSON.stringify({ credential }),
   })
 
+  let errorMsg = "google_auth_failed"
   if (!res.ok) {
-    return redirect("/login?error=google_auth_failed")
+    try {
+      const body = await res.json()
+      if (body?.message) {
+        errorMsg = encodeURIComponent(body.message)
+      }
+    } catch {}
+    return redirect(`/login?error=${errorMsg}`)
   }
 
   const data = await res.json()

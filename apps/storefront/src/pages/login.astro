@@ -12,11 +12,29 @@ if (redirect?.startsWith("/") && !redirect.startsWith("//")) {
     httpOnly: true,
   })
 }
+
+const errorParam = Astro.url.searchParams.get("error")
+let errorMessage = ""
+if (errorParam) {
+  const map: Record<string, string> = {
+    google_auth_failed: "Google 登录验证失败，请稍后重试",
+    google_csrf: "安全验证失败，请刷新页面重试",
+    google_bad_request: "登录请求格式错误",
+    google_no_token: "登录成功但获取令牌失败",
+    google_no_session: "登录会话已过期，请重新登录",
+  }
+  errorMessage = map[errorParam] || decodeURIComponent(errorParam)
+}
 ---
 
 <BaseLayout title="登录">
   <div class="mx-auto max-w-md rounded border bg-white p-6">
     <h1 class="mb-4 text-2xl font-bold">客户登录</h1>
+    {errorMessage && (
+      <p class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        {errorMessage}
+      </p>
+    )}
     <form id="login-form" class="space-y-4">
       <label class="block text-sm">
         邮箱
