@@ -166,7 +166,6 @@ const Header = () => {
               <Link to="/settings/store">
                 <BuildingStorefront className="text-ui-fg-subtle" />
                 {t("app.nav.main.storeSettings")}
-// @ts-nocheck
               </Link>
             </DropdownMenu.Item>
             <DropdownMenu.Separator />
