@@ -6,6 +6,7 @@ import {
   region,
   regionPaymentProvider,
   salesChannel,
+  store,
 } from "@my-store/db"
 import type {
   CreateRegionInput,
@@ -301,6 +302,21 @@ export const regionService = {
       limit,
       offset,
     }
+  },
+
+  async getDefaultSalesChannel() {
+    const db = getDb()
+    const [storeRow] = await db
+      .select({ id: store.default_sales_channel_id })
+      .from(store)
+      .where(isNull(store.deleted_at))
+      .limit(1)
+
+    if (!storeRow?.id) {
+      throw new HTTPException(404, { message: "No default sales channel configured" })
+    }
+
+    return this.getSalesChannelById(storeRow.id)
   },
 
   async getSalesChannelById(id: string) {

@@ -2,11 +2,13 @@
 import { rpcQueryValidator } from "../../lib/rpc-query-validator"
 import { StoreGetProductsParams } from "@my-store/validators/admin-list-params"
 import { productService } from "../../services/product.service"
+import type { SalesChannelVariables } from "../../middleware/sales-channel"
 
-export const storeProducts = new Hono()
+export const storeProducts = new Hono<{ Variables: SalesChannelVariables }>()
   .get("/", rpcQueryValidator(StoreGetProductsParams), async (c) => {
     const query = c.req.valid("query")
-    const result = await productService.listStore(query)
+    const salesChannelId = c.get("salesChannelId")
+    const result = await productService.listStore(query, salesChannelId)
     return c.json(result)
   })
   .get("/:id/realtime", async (c) => {

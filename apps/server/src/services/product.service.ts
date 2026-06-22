@@ -12,6 +12,8 @@ import {
   productImage,
   productCollection,
   productType,
+  productSalesChannel,
+  store,
 } from "@my-store/db"
 import type {
   CreateProductInput,
@@ -318,6 +320,16 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
   return result
 }
 
+/** 当未显式指定 sales_channel_id 时，从 store 表取默认值 */
+async function resolveDefaultSalesChannel(db: any): Promise<string | undefined> {
+  const [row] = await db
+    .select({ id: store.default_sales_channel_id })
+    .from(store)
+    .where(isNull(store.deleted_at))
+    .limit(1)
+  return row?.id ?? undefined
+}
+
 export const productService = {
   async list(query: AdminGetProductsParamsType) {
     const db = getDb()
@@ -406,13 +418,24 @@ export const productService = {
     }
   },
 
-  async listStore(query: StoreGetProductsParamsType) {
+  async listStore(query: StoreGetProductsParamsType, salesChannelId?: string) {
     const db = getDb()
     const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [
       isNull(product.deleted_at),
       eq(product.status, "published"),
     ]
+
+    const scId = salesChannelId || await resolveDefaultSalesChannel(db)
+    if (scId) {
+      conditions.push(
+        sql`exists (
+          select 1 from ${productSalesChannel} psc
+          where psc.product_id = ${product.id}
+            and psc.sales_channel_id = ${scId}
+        )`,
+      )
+    }
 
     applyInArrayCondition(product.id, query.id, conditions)
     applyInArrayCondition(product.collection_id, query.collection_id, conditions)

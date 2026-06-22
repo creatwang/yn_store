@@ -32,6 +32,7 @@ import { adminDraftOrders } from "./routes/admin/draft-orders"
 import { adminUsers, adminInvites } from "./routes/admin/users"
 import { adminProductTags, adminProductTypes, adminTaxRegions, adminReturnReasons, adminRefundReasons } from "./routes/admin/settings"
 import { adminViews, adminLocales, adminTaxProviders } from "./routes/admin/views-locales-tax"
+import { salesChannelMiddleware } from "./middleware/sales-channel"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
@@ -114,17 +115,20 @@ const apiRoutes = new Hono()
   .route("/admin/views", adminViews)
   .route("/admin/locales", adminLocales)
   .route("/admin/tax-providers", adminTaxProviders)
-  .route("/store/products", storeProducts)
-  .route("/store/orders", storeOrders)
-  .route("/store/carts", storeCarts)
-  .route("/store/customers", storeCustomers)
-  .route("/store/regions", storeRegions)
-  .route("/store/sales-channels", storeSalesChannels)
-  .route("/store/shipping-options", storeShippingOptions)
-  .route("/store/payment-collections", storePaymentCollections)
-  .route("/store/payment-providers", storePaymentProviders)
-  .route("/store/collections", storeCollections)
-  .route("/store/promotions", storePromotions)
+  // /api/store/* 统一挂载 sales channel 中间件
+  .route("/store", new Hono()
+    .use("*", salesChannelMiddleware)
+    .route("/products", storeProducts)
+    .route("/orders", storeOrders)
+    .route("/carts", storeCarts)
+    .route("/customers", storeCustomers)
+    .route("/regions", storeRegions)
+    .route("/sales-channels", storeSalesChannels)
+    .route("/shipping-options", storeShippingOptions)
+    .route("/payment-collections", storePaymentCollections)
+    .route("/payment-providers", storePaymentProviders)
+    .route("/collections", storeCollections)
+    .route("/promotions", storePromotions))
   .route("/webhooks", rebuildWebhook)
 
 const app = new Hono()

@@ -23,6 +23,10 @@ export const storeSalesChannels = new Hono()
     const result = await regionService.listSalesChannels(query)
     return c.json(result)
   })
+  .get("/default", async (c) => {
+    const result = await regionService.getDefaultSalesChannel()
+    return c.json(result)
+  })
   .get("/:id", async (c) => {
     const result = await regionService.getSalesChannelById(c.req.param("id"))
     return c.json(result)

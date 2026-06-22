@@ -1,3 +1,11 @@
+export function getSalesChannelId(): string | undefined {
+  return (
+    (typeof process !== "undefined" ? process.env.PUBLIC_SALES_CHANNEL_ID : undefined) ||
+    import.meta.env.PUBLIC_SALES_CHANNEL_ID ||
+    undefined
+  )
+}
+
 const API_BASE =
   (typeof process !== "undefined" ? process.env.PUBLIC_API_URL : undefined) ||
   import.meta.env.PUBLIC_API_URL ||
@@ -12,7 +20,12 @@ export async function fetchStoreJson<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(storeApiUrl(path), init)
+  const sc = getSalesChannelId()
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+    ...(sc ? { "X-Sales-Channel": sc } : {}),
+  }
+  const res = await fetch(storeApiUrl(path), { ...init, headers })
   if (!res.ok) {
     throw new Error(`Store API ${res.status}: ${path}`)
   }
