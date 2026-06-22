@@ -1,51 +1,40 @@
 ---
 import { Image } from "astro:assets"
 import placeholder from "../../assets/product-placeholder.svg"
+import { resolveImageUrl } from "../../lib/images"
 
 interface Props {
   src?: string | null
   alt: string
 }
 
-const API_BASE =
-  (typeof process !== "undefined" ? process.env.PUBLIC_API_URL : undefined) ||
-  import.meta.env.PUBLIC_API_URL ||
-  "http://localhost:7000"
-
 const { src, alt } = Astro.props
-const resolvedSrc = src
-  ? src.startsWith("http")
-    ? src
-    : src.startsWith("/")
-      ? `${API_BASE}${src}`
-      : `${API_BASE}/${src}`
-  : null
+const resolvedSrc = resolveImageUrl(src)
 const hasRemote = Boolean(resolvedSrc)
 ---
 
 {
-
-        hasRemote ? (
-                <Image
-                        src={resolvedSrc!}
-                        alt={alt}
-                        width={400}
-                        height={400}
-                        layout="constrained"
-                        loading="lazy"
-                        decoding="async"
-                        class="h-48 w-full object-cover"
-                />
-        ) : (
-                <Image
-                        src={placeholder}
-                        alt={alt}
-                        width={400}
-                        height={400}
-                        layout="constrained"
-                        loading="lazy"
-                        decoding="async"
-                        class="h-48 w-full object-cover"
-                />
-        )
+  hasRemote ? (
+    <Image
+      src={resolvedSrc!}
+      alt={alt}
+      width={400}
+      height={400}
+      layout="constrained"
+      loading="lazy"
+      decoding="async"
+      class="h-48 w-full object-cover"
+    />
+  ) : (
+    <Image
+      src={placeholder}
+      alt={alt}
+      width={400}
+      height={400}
+      layout="constrained"
+      loading="lazy"
+      decoding="async"
+      class="h-48 w-full object-cover"
+    />
+  )
 }

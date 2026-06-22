@@ -1,6 +1,7 @@
 ---
 import { getImage } from "astro:assets"
 import { getProductByHandle } from "../../lib/catalog"
+import { resolveImageUrl } from "../../lib/images"
 import BaseLayout from "../../layouts/BaseLayout.astro"
 import ProductAddToCart from "../../components/product/ProductAddToCart.astro"
 import ProductDetailPicture from "../../components/product/ProductDetailPicture.astro"
@@ -18,18 +19,19 @@ if (!product) {
 
 const site = Astro.site?.href ?? "http://localhost:4321"
 
+const resolvedImage = resolveImageUrl(product.coverImage)
 let ogImage: string | undefined
-if (product.coverImage) {
+if (resolvedImage) {
   try {
     const og = await getImage({
-      src: product.coverImage,
+      src: resolvedImage,
       width: 1200,
       height: 630,
       format: "webp",
     })
     ogImage = new URL(og.src, site).href
   } catch {
-    ogImage = product.coverImage
+    ogImage = resolvedImage
   }
 }
 
@@ -47,7 +49,7 @@ const desc =
   <ProductJsonLd
     name={product.title}
     description={product.description}
-    image={product.coverImage}
+    image={resolvedImage ?? ""}
     sku={product.handle}
     price={product.price}
     inStock={product.stock > 0}
