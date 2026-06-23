@@ -21,11 +21,9 @@ import {
   useDraftOrderAddPromotions,
   useDraftOrderConfirmEdit,
   useDraftOrderRemovePromotions,
+  useDraftOrderRequestEdit,
 } from "../../../../hooks/api/draft-orders"
-import {
-  useOrderEditRequest,
-  useOrderPreview,
-} from "../../../../hooks/api/orders"
+import { useOrderPreview } from "../../../../hooks/api/orders"
 import { usePromotions } from "../../../../hooks/api/promotions"
 import { useComboboxData } from "../../../../hooks/use-combobox-data"
 import { useCancelOrderEdit } from "../../../../hooks/order-edits/use-cancel-order-edit"
@@ -132,7 +130,7 @@ const PromotionForm = ({ preview }: PromotionFormProps) => {
   }
 
   const { mutateAsync: confirmOrderEdit } = useDraftOrderConfirmEdit(preview.id)
-  const { mutateAsync: requestOrderEdit } = useOrderEditRequest(preview.id)
+  const { mutateAsync: requestOrderEdit } = useDraftOrderRequestEdit(preview.id)
 
   const onSubmit = async () => {
     setIsSubmitting(true)

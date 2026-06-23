@@ -6,7 +6,7 @@ name: e2e
 #
 # Local equivalent:
 #   ADMIN_E2E_EMAIL=admin@medusa-test.com ADMIN_E2E_PASSWORD=supersecret \
-#   PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://localhost:5174/app/ \
+#   PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://localhost:7000/app/ \
 #   pnpm --filter=@my-store/admin test:e2e
 
 on:
@@ -18,6 +18,7 @@ on:
       - 'apps/admin/e2e/**'
       - 'apps/admin/playwright.config.ts'
       - 'apps/server/src/**'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/e2e.yml'
   pull_request:
     branches: [main, master]
@@ -26,6 +27,7 @@ on:
       - 'apps/admin/e2e/**'
       - 'apps/admin/playwright.config.ts'
       - 'apps/server/src/**'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/e2e.yml'
 
 jobs:
@@ -48,62 +50,84 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check E2E prerequisites
+        id: e2e
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          if [ -z "${DATABASE_URL:-}" ] || [ -z "${JWT_SECRET:-}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 DATABASE_URL / JWT_SECRET，跳过 Admin E2E。请在仓库 Settings → Secrets 中配置后再跑完整测试。"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Playwright browsers
+        if: steps.e2e.outputs.skip != 'true'
         working-directory: apps/admin
         run: pnpm exec playwright install chromium --with-deps
 
       - name: Build admin UI (outputs to apps/server/public/app)
+        if: steps.e2e.outputs.skip != 'true'
         run: pnpm build:admin
 
       - name: Seed admin user & run E2E
+        if: steps.e2e.outputs.skip != 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SEED_ADMIN_EMAIL: admin@medusa-test.com
+          SEED_ADMIN_PASSWORD: supersecret
           PORT: 7000
           NODE_ENV: test
           SERVE_ADMIN: "1"
         run: |
+          set -euo pipefail
           cd apps/server
 
-          # Seed admin user
+          echo "Seeding admin user..."
           npx tsx scripts/seed-admin.ts
 
-          # Start server (serves both API + built Admin SPA at /app)
+          echo "Starting server..."
           npx tsx entry.node.ts &
           SERVER_PID=$!
           echo "Server PID: $SERVER_PID"
 
-          # Wait for health check
+          READY=0
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:7000/api/health > /dev/null; then
+            if curl -sf http://localhost:7000/api/health > /tmp/health.json; then
               echo "Server ready"
+              cat /tmp/health.json | head -c 500
+              echo ""
+              READY=1
               break
             fi
             echo "Waiting for server... ($i)"
             sleep 2
           done
 
-          # Verify server health
-          curl -s http://localhost:7000/api/health | head -c 500
+          if [ "$READY" != "1" ]; then
+            echo "::error::无法连接 E2E 服务（/api/health 超时）。请检查 DATABASE_URL 是否可达、JWT_SECRET 是否已设置。"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
 
-          # Run Playwright against the built-in server
           cd ../admin
           PLAYWRIGHT_SKIP_WEBSERVER=1 \
           PLAYWRIGHT_BASE_URL=http://localhost:7000/app/ \
           PLAYWRIGHT_API_URL=http://localhost:7000 \
           ADMIN_E2E_EMAIL=admin@medusa-test.com \
-          ADMIN_E2E_PASSWORD="${ADMIN_E2E_PASSWORD:-supersecret}" \
+          ADMIN_E2E_PASSWORD=supersecret \
           CI=true \
           pnpm test:e2e
 
           PLAYWRIGHT_EXIT=$?
-
-          # Cleanup
           kill $SERVER_PID 2>/dev/null || true
           exit $PLAYWRIGHT_EXIT
 
       - name: Upload Playwright report
-        if: failure()
+        if: failure() && steps.e2e.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

@@ -95,6 +95,8 @@ jobs:
           STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SEED_ADMIN_EMAIL: admin@medusa-test.com
+          SEED_ADMIN_PASSWORD: supersecret
         run: |
           set -euo pipefail
           export PUBLIC_API_URL="${STAGING_API_URL:-http://localhost:7000}"
@@ -106,10 +108,19 @@ jobs:
             cd apps/server
             npx tsx entry.node.ts &
             SERVER_PID=$!
+            READY=0
             for i in $(seq 1 30); do
-              curl -sf http://localhost:7000/api/health > /dev/null && break
+              if curl -sf http://localhost:7000/api/health > /dev/null; then
+                READY=1
+                break
+              fi
               sleep 2
             done
+            if [ "$READY" != "1" ]; then
+              echo "::error::Storefront E2E：无法连接 API server，请检查 DATABASE_URL"
+              kill $SERVER_PID 2>/dev/null || true
+              exit 1
+            fi
             cd ../..
           fi
 

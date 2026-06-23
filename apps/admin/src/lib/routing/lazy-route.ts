@@ -1,25 +1,23 @@
-import { createElement } from "react"
-import type { UIMatch } from "react-router-dom"
+import { createElement, type ComponentType } from "react"
+import type { LazyRouteFunction, NonIndexRouteObject, UIMatch } from "react-router-dom"
 
 type DetailRouteModule = {
-  Component: React.ComponentType
-  Breadcrumb?: React.ComponentType<UIMatch>
-  loader?: (...args: unknown[]) => unknown
+  Component: ComponentType
+  Breadcrumb?: ComponentType<any>
+  loader?: (...args: any[]) => unknown
 }
 
-export function lazyDetailRoute(importer: () => Promise<DetailRouteModule>) {
-  return async () => {
+export function lazyDetailRoute(
+  importer: () => Promise<DetailRouteModule>,
+): LazyRouteFunction<NonIndexRouteObject> {
+  const load = async () => {
     const mod = await importer()
-    const route: {
-      Component: React.ComponentType
-      loader?: (...args: unknown[]) => unknown
-      handle?: { breadcrumb: (match?: UIMatch) => ReturnType<typeof createElement> }
-    } = {
+    const route: NonIndexRouteObject = {
       Component: mod.Component,
     }
 
     if (mod.loader) {
-      route.loader = mod.loader
+      route.loader = mod.loader as NonIndexRouteObject["loader"]
     }
 
     if (mod.Breadcrumb) {
@@ -32,4 +30,6 @@ export function lazyDetailRoute(importer: () => Promise<DetailRouteModule>) {
 
     return route
   }
+
+  return load as LazyRouteFunction<NonIndexRouteObject>
 }

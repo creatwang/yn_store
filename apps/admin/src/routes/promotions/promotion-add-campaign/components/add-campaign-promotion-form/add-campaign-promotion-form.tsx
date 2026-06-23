@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AdminCampaign, AdminPromotion } from "@medusajs/types"
+import { AdminCampaign, AdminPromotion, HttpTypes } from "@medusajs/types"
 import { Button, RadioGroup, toast } from "@medusajs/ui"
 import { useEffect } from "react"
 import { useForm, useWatch } from "react-hook-form"
@@ -48,14 +48,17 @@ export const AddCampaignPromotionFields = ({
     name: "campaign_choice",
   })
 
-  const campaignsCombobox = useComboboxData({
+  const campaignsCombobox = useComboboxData<
+    HttpTypes.AdminCampaignListResponse,
+    HttpTypes.AdminGetCampaignsParams
+  >({
     queryFn: (params) =>
       sdk.admin.campaign.list({
         ...params,
-      }),
+      }) as Promise<HttpTypes.AdminCampaignListResponse>,
     queryKey: ["campaigns"],
     getOptions: (data) =>
-      data.campaigns.map((campaign) => ({
+      data.campaigns.map((campaign: AdminCampaign) => ({
         label: campaign.name.toUpperCase(),
         value: campaign.id,
         disabled:

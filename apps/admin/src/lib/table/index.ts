@@ -1,5 +1,5 @@
 export * from "./table-adapters"
 export * from "./field-utils"
-export * from "./entity-defaults"
-export * from "./entity-adapters"
+export { ENTITY_DEFAULT_FIELDS, getEntityDefaultFields } from "./entity-defaults"
+export { entityAdapters, getEntityAdapter } from "./entity-adapters"
 export * from "./cell-renderers"

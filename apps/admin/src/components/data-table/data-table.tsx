@@ -117,7 +117,7 @@ export const DataTable = <TData,>({
   enablePagination = true,
   enableSearch = true,
   autoFocusSearch = false,
-  enableFilterMenu,
+  enableFilterMenu: _enableFilterMenu,
   rowHref,
   heading,
   headingLevel = "h1",

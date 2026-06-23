@@ -1,3 +1,4 @@
+import { HttpTypes } from "@medusajs/types"
 import { useLoaderData, useParams } from "react-router-dom"
 
 import { TwoColumnPageSkeleton } from "../../../components/common/skeleton"
@@ -20,7 +21,7 @@ export const ReservationDetail = () => {
     id!,
     undefined,
     {
-      initialData,
+      initialData: initialData as HttpTypes.AdminReservationResponse | undefined,
     }
   )
 

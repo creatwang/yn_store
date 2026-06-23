@@ -1,4 +1,5 @@
 import { Heading } from "@medusajs/ui"
+import { HttpTypes } from "@medusajs/types"
 import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
@@ -57,10 +58,15 @@ export const ReservationEdit = () => {
     if (stock_locations?.length) {
       return stock_locations
     }
-    return (itemWithLevels?.location_levels ?? []).map((level) => ({
-      id: level.location_id,
-      name: level.stock_locations?.[0]?.name ?? level.location_id,
-    }))
+    return (itemWithLevels?.location_levels ?? []).map((level) => {
+      const enriched = level as HttpTypes.AdminInventoryLevel & {
+        stock_locations?: { name?: string }[]
+      }
+      return {
+        id: level.location_id,
+        name: enriched.stock_locations?.[0]?.name ?? level.location_id,
+      }
+    })
   }, [stock_locations, itemWithLevels])
 
   const ready =
@@ -82,7 +88,7 @@ export const ReservationEdit = () => {
       </RouteDrawer.Header>
       {ready && (
         <EditReservationForm
-          locations={locationsForForm}
+          locations={locationsForForm as HttpTypes.AdminStockLocation[]}
           reservation={reservation}
           item={itemWithLevels}
         />
