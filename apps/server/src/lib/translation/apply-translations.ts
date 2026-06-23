@@ -52,7 +52,7 @@ export async function applyTranslations<T extends RecordLike>(
     if (!patch) {
       return record
     }
-    const next = { ...record }
+    const next: Record<string, unknown> = { ...record }
     for (const [field, value] of Object.entries(patch)) {
       if (typeof value === "string" && value.trim()) {
         next[field] = value

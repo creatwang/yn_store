@@ -61,7 +61,7 @@ export const fulfillmentCreateWorkflow = createWorkflow("fulfillment-create", [
     if (input.location_id?.trim()) {
       inventoryDeductions = await deductInventoryForFulfillment({
         location_id: input.location_id,
-        items: input.items.map((i) => ({
+        items: input.items.map((i: { item_id: string; quantity: number }) => ({
           line_item_id: i.item_id,
           quantity: i.quantity,
         })),

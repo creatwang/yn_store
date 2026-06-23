@@ -2,7 +2,6 @@
 import { sql } from "drizzle-orm"
 import {
   generateId,
-  getDb,
   reservationItem,
 } from "@my-store/db"
 import type { AdminBulkCreateReservationsType } from "@my-store/validators/admin-list-params"

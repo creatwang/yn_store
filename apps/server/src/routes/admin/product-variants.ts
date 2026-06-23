@@ -1,4 +1,4 @@
-﻿import { Hono } from "hono"
+import { Hono } from "hono"
 import { eq } from "drizzle-orm"
 import { generateId, getDb, productVariantInventoryItem } from "@my-store/db"
 import { variantService } from "../../services/variant.service"

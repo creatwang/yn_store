@@ -9,6 +9,7 @@ import {
   isNull,
   or,
   sql,
+  type AnyColumn,
 } from "drizzle-orm"
 import {
   generateId,
@@ -33,8 +34,6 @@ import {
   promotionCampaign,
   campaignBudget,
   applicationMethod,
-  promotionRule,
-  promotionRuleValue,
   apiKey,
   workflowExecution,
   pricePreference,
@@ -59,9 +58,11 @@ import {
   applyDateRangeConditions,
   applyInArrayCondition,
   applyNumberOperatorConditions,
+  asArray,
   asDateRange,
   listLimitOffset,
   normalizeFilterIds,
+  type OperatorMapValue,
 } from "../lib/infra/query/query-filters"
 import { stockLocationService, shippingOptionService } from "./stock-location.service"
 import { getPromotionDetail } from "./promotion-detail.service"
@@ -359,7 +360,7 @@ async function listPriceListsFiltered(query: AdminGetPriceListsParamsType) {
     conditions.push(ilike(priceList.title, `%${query.q}%`))
   }
 
-  applyInArrayCondition(priceList.id, query.id, conditions)
+  applyInArrayCondition(priceList.id, query.id as OperatorMapValue | undefined, conditions)
   applyDateRangeConditions(
     priceList.starts_at,
     asDateRange(query.starts_at),
@@ -373,8 +374,9 @@ async function listPriceListsFiltered(query: AdminGetPriceListsParamsType) {
     sql,
   )
 
-  if (query.status?.length) {
-    conditions.push(inArray(priceList.status, query.status))
+  const statuses = asArray(query.status as string | string[] | undefined)
+  if (statuses?.length) {
+    conditions.push(inArray(priceList.status, statuses))
   }
 
   const where = and(...(conditions as Parameters<typeof and>[0][]))
@@ -409,9 +411,13 @@ async function listPromotionsFiltered(query: AdminGetPromotionsParamsType) {
     )
   }
 
-  applyInArrayCondition(promotion.id, query.id, conditions)
-  applyInArrayCondition(promotion.code, query.code, conditions)
-  applyInArrayCondition(promotion.campaign_id, query.campaign_id, conditions)
+  applyInArrayCondition(promotion.id, query.id as OperatorMapValue | undefined, conditions)
+  applyInArrayCondition(promotion.code, query.code as OperatorMapValue | undefined, conditions)
+  applyInArrayCondition(
+    promotion.campaign_id,
+    query.campaign_id as OperatorMapValue | undefined,
+    conditions,
+  )
   applyDateRangeConditions(
     promotion.created_at,
     asDateRange(query.created_at),
@@ -633,7 +639,7 @@ export const priceListService = {
     const db = getDb()
     const { rules, ...fields } = input
     const id = generateId("plist")
-    const [created] = await db
+    await db
       .insert(priceList)
       .values({
         id,
@@ -721,14 +727,14 @@ export const inventoryItemService = {
       )
     }
 
-    applyInArrayCondition(inventoryItem.id, query.id, conditions)
-    applyInArrayCondition(inventoryItem.sku, query.sku, conditions)
-    applyInArrayCondition(inventoryItem.material, query.material, conditions)
-    applyInArrayCondition(inventoryItem.mid_code, query.mid_code, conditions)
-    applyInArrayCondition(inventoryItem.hs_code, query.hs_code, conditions)
+    applyInArrayCondition(inventoryItem.id, query.id as OperatorMapValue | undefined, conditions)
+    applyInArrayCondition(inventoryItem.sku, query.sku as OperatorMapValue | undefined, conditions)
+    applyInArrayCondition(inventoryItem.material, query.material as OperatorMapValue | undefined, conditions)
+    applyInArrayCondition(inventoryItem.mid_code, query.mid_code as OperatorMapValue | undefined, conditions)
+    applyInArrayCondition(inventoryItem.hs_code, query.hs_code as OperatorMapValue | undefined, conditions)
     applyInArrayCondition(
       inventoryItem.origin_country,
-      query.origin_country,
+      query.origin_country as OperatorMapValue | undefined,
       conditions,
     )
 
@@ -749,7 +755,8 @@ export const inventoryItemService = {
     applyNumberOperatorConditions(inventoryItem.height, query.height, conditions)
 
     const locationIds = normalizeFilterIds(
-      query.location_levels?.location_id as never,
+      (query.location_levels as { location_id?: OperatorMapValue } | undefined)
+        ?.location_id,
     )
     if (locationIds?.length) {
       conditions.push(
@@ -758,20 +765,15 @@ export const inventoryItemService = {
           db
             .select({ id: inventoryLevel.inventory_item_id })
             .from(inventoryLevel)
-            .where(
-              and(
-                inArray(inventoryLevel.location_id, locationIds),
-                isNull(inventoryLevel.deleted_at),
-              ),
-            ),
+            .where(inArray(inventoryLevel.location_id, locationIds)),
         ),
       )
     }
 
-    const orderParam = query.order ?? "-created_at"
+    const orderParam = String(query.order ?? "-created_at")
     const orderDesc = orderParam.startsWith("-")
     const orderKey = orderDesc ? orderParam.slice(1) : orderParam
-    const orderColumns: Record<string, typeof inventoryItem.created_at> = {
+    const orderColumns: Record<string, AnyColumn> = {
       created_at: inventoryItem.created_at,
       updated_at: inventoryItem.updated_at,
       title: inventoryItem.title,
@@ -801,7 +803,7 @@ export const inventoryItemService = {
   async create(input: Record<string, unknown>) {
     const db = getDb()
     const id = generateId("iitem")
-    const [created] = await db
+    await db
       .insert(inventoryItem)
       .values({
         id,
@@ -1217,7 +1219,7 @@ export const apiKeyService = {
     const conditions: Parameters<typeof and>[0][] = [isNull(apiKey.deleted_at)]
 
     if (query.type) {
-      conditions.push(eq(apiKey.type, query.type))
+      conditions.push(eq(apiKey.type, String(query.type)))
     }
     if (query.q) {
       conditions.push(ilike(apiKey.title, `%${query.q}%`))
@@ -1315,7 +1317,8 @@ export const inventoryLevelService = {
     if (!u) throw new HTTPException(404, { message: "未找到" })
     const levels = await loadInventoryLevelsForItem(iid)
     const level = levels.find((row) => row.location_id === lid)
-    return { inventory_level: level ?? u }
+    if (!level) throw new HTTPException(404, { message: "未找到" })
+    return { inventory_level: level }
   },
   async delete(iid: string, lid: string) {
     const db = getDb()
@@ -1388,7 +1391,7 @@ export const inventoryLevelService = {
   }) {
     const db = getDb()
     const created: typeof inventoryLevel.$inferSelect[] = []
-    const updated: typeof inventoryLevel.$inferSelect[] = []
+    const updated: Awaited<ReturnType<typeof loadInventoryLevelsForItem>>[number][] = []
 
     for (const row of input.create ?? []) {
       const locationId = row.location_id?.trim()

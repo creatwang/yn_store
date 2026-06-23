@@ -3,7 +3,6 @@ import {
   integer,
   jsonb,
   pgTable,
-  primaryKey,
   real,
   text,
 } from "drizzle-orm/pg-core"

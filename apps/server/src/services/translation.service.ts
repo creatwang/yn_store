@@ -16,10 +16,12 @@ import {
 import type {
   AdminBatchTranslationsType,
   AdminBatchTranslationSettingsType,
+  AdminCreateTranslationType,
   AdminGetTranslationsParamsType,
   AdminTranslationEntitiesParamsType,
   AdminTranslationSettingsParamsType,
-  AdminTranslationStatisticsParamsType,
+  AdminTranslationStatisticsType,
+  AdminUpdateTranslationType,
 } from "@my-store/validators/medusa/admin/translations/validators"
 import { HTTPException } from "hono/http-exception"
 import {
@@ -138,10 +140,10 @@ export const translationService = {
     const conditions = [isNull(translation.deleted_at)]
 
     if (query.reference) {
-      conditions.push(eq(translation.reference, query.reference))
+      conditions.push(eq(translation.reference, String(query.reference)))
     }
     if (query.locale_code) {
-      conditions.push(eq(translation.locale_code, query.locale_code))
+      conditions.push(eq(translation.locale_code, String(query.locale_code)))
     }
     if (query.reference_id) {
       const ids = Array.isArray(query.reference_id) ? query.reference_id : [query.reference_id]
@@ -168,7 +170,7 @@ export const translationService = {
     const updated: ReturnType<typeof mapTranslationRow>[] = []
     const deleted: string[] = []
 
-    for (const item of body.create ?? []) {
+    for (const item of (body.create ?? []) as AdminCreateTranslationType[]) {
       const id = generateId("transl")
       const [row] = await db
         .insert(translation)
@@ -183,7 +185,7 @@ export const translationService = {
       created.push(mapTranslationRow(row))
     }
 
-    for (const item of body.update ?? []) {
+    for (const item of (body.update ?? []) as AdminUpdateTranslationType[]) {
       const patch: Partial<typeof translation.$inferInsert> = {
         updated_at: new Date(),
       }
@@ -210,7 +212,7 @@ export const translationService = {
       }
     }
 
-    for (const id of body.delete ?? []) {
+    for (const id of (body.delete ?? []) as string[]) {
       await db
         .update(translation)
         .set({ deleted_at: new Date() })
@@ -305,7 +307,11 @@ export const translationService = {
     const created: ReturnType<typeof mapSettingRow>[] = []
     const updated: ReturnType<typeof mapSettingRow>[] = []
 
-    for (const item of body.create ?? []) {
+    for (const item of (body.create ?? []) as Array<{
+      entity_type: string
+      fields: string[]
+      is_active?: boolean
+    }>) {
       const id = generateId("trset")
       const [row] = await db
         .insert(translationSetting)
@@ -319,7 +325,12 @@ export const translationService = {
       created.push(mapSettingRow(row))
     }
 
-    for (const item of body.update ?? []) {
+    for (const item of (body.update ?? []) as Array<{
+      id: string
+      entity_type?: string
+      fields?: string[]
+      is_active?: boolean
+    }>) {
       const patch: Partial<typeof translationSetting.$inferInsert> = {
         updated_at: new Date(),
       }
@@ -346,7 +357,7 @@ export const translationService = {
     return { created, updated }
   },
 
-  async statistics(query: AdminTranslationStatisticsParamsType) {
+  async statistics(query: AdminTranslationStatisticsType) {
     await ensureDefaultSettings()
     const db = getDb()
     const settingsRows = await db

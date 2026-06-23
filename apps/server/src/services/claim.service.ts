@@ -214,7 +214,7 @@ export const claimService = {
     if (!updated) throw new HTTPException(404, { message: "Claim not found" })
     await notifyClaimRequested(
       claimId,
-      existing.claim.order_id,
+      existing.order_id,
       input?.no_notification,
     )
     return { claim: updated }

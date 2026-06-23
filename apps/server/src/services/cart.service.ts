@@ -6,7 +6,6 @@ import {
   cartShippingMethod,
   order,
   promotion,
-  promotionRule,
   promotionRuleValue,
   getDb,
   generateId,
@@ -17,7 +16,6 @@ import { sendOrderConfirmationEmail } from "../lib/mail/mail"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
 import { runInTransaction, type DbTx } from "../lib/infra/db/transaction"
-import { sqlInIds } from "../lib/infra/sql/sql-in-ids"
 import {
   loadPromotionRulesForType,
   selectApplicationMethodByPromotionId,
@@ -75,7 +73,7 @@ export const cartService = {
         ? await db
             .select()
             .from(cartLineItemAdjustment)
-            .where(sqlInIds(cartLineItemAdjustment.item_id, itemIds))
+            .where(inArray(cartLineItemAdjustment.item_id, itemIds))
         : []
 
     return { cart: cartItem, items, shipping_methods: shippingMethods, adjustments }

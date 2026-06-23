@@ -17,7 +17,7 @@ export function asArray<T>(value: T | T[] | undefined | null): T[] | undefined {
   return Array.isArray(value) ? value : [value]
 }
 
-type OperatorMapValue =
+export type OperatorMapValue =
   | string
   | string[]
   | {

@@ -118,11 +118,16 @@ async function loadTaxRatesByRegionIds(regionIds: string[]) {
   return map
 }
 
+type TaxRegionWithRates = typeof taxRegion.$inferSelect & {
+  tax_rates: (typeof taxRate.$inferSelect)[]
+  children: TaxRegionWithRates[]
+}
+
 function attachTaxRates(
   region: typeof taxRegion.$inferSelect,
   ratesByRegion: Map<string, (typeof taxRate.$inferSelect)[]>,
   childrenByParent: Map<string, (typeof taxRegion.$inferSelect)[]>,
-) {
+): TaxRegionWithRates {
   const children = childrenByParent.get(region.id) ?? []
   return {
     ...region,
