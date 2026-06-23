@@ -1,6 +1,6 @@
 import { defineMiddleware } from "astro:middleware"
 
-import { storeClient } from "./lib/store-api"
+import { storeClient } from "./lib/api"
 
 import {
 

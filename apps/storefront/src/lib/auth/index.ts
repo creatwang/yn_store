@@ -89,7 +89,7 @@ export async function registerCustomer(payload: {
 export async function linkCartToCustomer(cartId: string) {
   const customer = getCustomer()
   if (!customer) return
-  const { apiFetch } = await import("./cart")
+  const { apiFetch } = await import("../cart")
   await apiFetch(`/store/carts/${cartId}`, {
     method: "POST",
     body: JSON.stringify({ customer_id: customer.id, email: customer.email }),

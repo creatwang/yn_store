@@ -2,7 +2,7 @@
 export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
 import { localeUrlPath } from "../lib/i18n"
-import { storeClient } from "../lib/store-api"
+import { storeClient } from "../lib/api"
 import ProductCard from "../components/product/ProductCard.astro"
 
 const locale = Astro.locals.locale ?? "zh-CN"
