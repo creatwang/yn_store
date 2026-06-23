@@ -1,4 +1,11 @@
-<a href="/cart" class="relative inline-flex items-center hover:text-gray-900">
+---
+import { localeUrlPath } from "../../lib/i18n"
+
+const locale = Astro.locals.locale ?? "zh-CN"
+const cartHref = localeUrlPath(locale, "/cart")
+---
+
+<a href={cartHref} class="relative inline-flex items-center hover:text-gray-900">
   购物车
   <span
     id="cart-badge"

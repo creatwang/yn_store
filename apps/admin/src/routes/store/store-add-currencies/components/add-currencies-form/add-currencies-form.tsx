@@ -23,7 +23,7 @@ import { useCurrencies } from "../../../../../hooks/api/currencies"
 import { pricePreferencesQueryKeys } from "../../../../../hooks/api/price-preferences"
 import { useUpdateStore } from "../../../../../hooks/api/store"
 import { useDataTable } from "../../../../../hooks/use-data-table"
-import { queryClient } from "../../../../../lib/query-client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { useCurrenciesTableColumns } from "../../../common/hooks/use-currencies-table-columns"
 import { useCurrenciesTableQuery } from "../../../common/hooks/use-currencies-table-query"
 

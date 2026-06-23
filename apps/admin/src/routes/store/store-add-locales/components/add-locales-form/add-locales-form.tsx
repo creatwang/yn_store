@@ -130,6 +130,9 @@ export const AddLocalesForm = ({ store }: AddLocalesFormProps) => {
         className="flex h-full flex-col overflow-hidden"
       >
         <RouteFocusModal.Header>
+          <RouteFocusModal.Title className="sr-only">
+            {t("translations.actions.manageLocales")}
+          </RouteFocusModal.Title>
           <div className="flex flex-1 items-center justify-between">
             <div className="flex items-center">
               {form.formState.errors.locales && (

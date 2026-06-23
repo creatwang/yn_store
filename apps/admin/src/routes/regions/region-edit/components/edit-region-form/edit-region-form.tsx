@@ -17,7 +17,7 @@ import { CurrencyInfo } from "../../../../../lib/data/currencies.ts"
 import { formatProvider } from "../../../../../lib/format-provider.ts"
 import { useDocumentDirection } from "../../../../../hooks/use-document-direction"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data.tsx"
-import { sdk } from "../../../../../lib/client/index.ts"
+import { sdk } from "../../../../../lib/api/client"
 
 type EditRegionFormProps = {
   region: HttpTypes.AdminRegion

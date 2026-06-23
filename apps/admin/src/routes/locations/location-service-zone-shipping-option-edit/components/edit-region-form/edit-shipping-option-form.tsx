@@ -12,14 +12,14 @@ import { RouteDrawer, useRouteModal } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useUpdateShippingOptions } from "../../../../../hooks/api/shipping-options"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../lib/client"
-import { pick } from "../../../../../lib/common"
-import { isOptionEnabledInStore } from "../../../../../lib/shipping-options"
+import { sdk } from "../../../../../lib/api/client"
+import { pick } from "../../../../../lib/common/common"
+import { isOptionEnabledInStore } from "../../../../../lib/shipping/shipping-options"
 import {
   FulfillmentSetType,
   ShippingOptionPriceType,
 } from "../../../common/constants"
-import { formatProvider } from "../../../../../lib/format-provider"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
 import { useDocumentDirection } from "../../../../../hooks/use-document-direction"
 
 type EditShippingOptionFormProps = {

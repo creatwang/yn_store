@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { QueryKey, UseQueryOptions, useQuery } from "@tanstack/react-query"
-import { sdk } from "../../lib/client"
-import { queryKeysFactory } from "../../lib/query-key-factory"
+import { sdk } from "../../lib/api/client"
+import { queryKeysFactory } from "../../lib/query/query-key-factory"
 import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 

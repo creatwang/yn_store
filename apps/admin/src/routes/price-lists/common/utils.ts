@@ -2,7 +2,7 @@
 import { HttpTypes } from "@medusajs/types"
 import { TFunction } from "i18next"
 import { json } from "react-router-dom"
-import { castNumber } from "../../../lib/cast-number"
+import { castNumber } from "../../../lib/money/cast-number"
 import { PriceListDateStatus, PriceListStatus } from "./constants"
 import {
   PriceListCreateCurrencyPrice,

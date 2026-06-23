@@ -1,0 +1,53 @@
+---
+import {
+  buildLocaleIndexPaths,
+  resolveProducts,
+  localeUrlPath,
+  normalizeLocaleSegment,
+  DEFAULT_LOCALE,
+  isStaticContentMode,
+} from "../../lib/i18n"
+import BaseLayout from "../../layouts/BaseLayout.astro"
+import ProductCard from "../../components/product/ProductCard.astro"
+
+export async function getStaticPaths() {
+  if (!isStaticContentMode()) return []
+  return buildLocaleIndexPaths()
+}
+
+const localeParam = Astro.params.locale
+const locale = localeParam
+  ? normalizeLocaleSegment(localeParam) ?? DEFAULT_LOCALE
+  : Astro.locals.locale ?? DEFAULT_LOCALE
+Astro.locals.locale = locale
+
+const products = await resolveProducts(locale)
+const sorted = [...products].sort((a, b) => a.title.localeCompare(b.title))
+const site = Astro.site?.href ?? "http://localhost:4321"
+const modeLabel = isStaticContentMode() ? "SSG" : "SSR"
+---
+
+<BaseLayout
+  title="首页 — 跨境商城"
+  description="精选跨境商品，基于 Hono Store API 与 Astro 构建的高性能商城。"
+  canonical={`${site}${localeUrlPath(locale, "/")}`}
+>
+  <h1 class="mb-2 text-3xl font-bold">精选商品</h1>
+  <p class="mb-8 text-gray-600">Store API · {modeLabel}</p>
+
+  {sorted.length === 0 ? (
+    <p class="text-gray-500">暂无已发布商品</p>
+  ) : (
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {sorted.map((product) => (
+        <ProductCard
+          handle={product.handle}
+          title={product.title}
+          subtitle={product.subtitle}
+          thumbnail={product.thumbnail}
+          price={product.price}
+        />
+      ))}
+    </div>
+  )}
+</BaseLayout>

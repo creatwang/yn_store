@@ -8,9 +8,9 @@ import {
   useQuery,
   UseQueryOptions,
 } from "@tanstack/react-query"
-import { sdk } from "../../lib/client"
-import { queryClient } from "../../lib/query-client"
-import { queryKeysFactory } from "../../lib/query-key-factory"
+import { sdk } from "../../lib/api/client"
+import { queryClient } from "../../lib/query/query-client"
+import { queryKeysFactory } from "../../lib/query/query-key-factory"
 import { campaignsQueryKeys } from "./campaigns"
 
 const PROMOTIONS_QUERY_KEY = "promotions" as const

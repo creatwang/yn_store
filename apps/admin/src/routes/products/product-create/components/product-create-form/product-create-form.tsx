@@ -11,7 +11,7 @@ import {
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useExtendableForm } from "../../../../../dashboard-app/forms/hooks"
 import { useCreateProduct } from "../../../../../hooks/api/products"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import { useExtension } from "../../../../../providers/extension-provider"
 import {
   PRODUCT_CREATE_FORM_DEFAULTS,

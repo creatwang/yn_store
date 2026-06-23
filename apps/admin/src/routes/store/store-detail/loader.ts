@@ -2,7 +2,7 @@
 import { HttpTypes } from "@medusajs/types"
 
 import { retrieveActiveStore, storeQueryKeys } from "../../../hooks/api/store"
-import { queryClient } from "../../../lib/query-client"
+import { queryClient } from "../../../lib/query/query-client"
 
 const storeDetailQuery = () => ({
   queryKey: storeQueryKeys.details(),

@@ -8,9 +8,9 @@ import {
   useQuery,
   UseQueryOptions,
 } from "@tanstack/react-query"
-import { sdk } from "../../lib/client"
-import { queryClient } from "../../lib/query-client"
-import { queryKeysFactory, TQueryKey } from "../../lib/query-key-factory"
+import { sdk } from "../../lib/api/client"
+import { queryClient } from "../../lib/query/query-client"
+import { queryKeysFactory, TQueryKey } from "../../lib/query/query-key-factory"
 import { inventoryItemsQueryKeys } from "./inventory"
 import { reservationItemsQueryKeys } from "./reservations"
 

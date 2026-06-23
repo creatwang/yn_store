@@ -2,6 +2,10 @@
 export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
 import GoogleSignIn from "../components/GoogleSignIn.astro"
+import { localeUrlPath } from "../lib/i18n"
+
+const locale = Astro.locals.locale ?? "zh-CN"
+const registerHref = localeUrlPath(locale, "/register")
 
 const redirect = Astro.url.searchParams.get("redirect")
 if (redirect?.startsWith("/") && !redirect.startsWith("//")) {
@@ -54,14 +58,14 @@ if (errorParam) {
       <GoogleSignIn />
     </div>
     <p class="mt-4 text-center text-sm text-gray-600">
-      还没有账号？<a href="/register" class="underline">注册</a>
+      还没有账号？<a href={registerHref} class="underline">注册</a>
     </p>
   </div>
 </BaseLayout>
 
 <script>
-  import { loginCustomer, linkCartToCustomer, setSessionCookie } from "../lib/auth"
-  import { getCartId } from "../lib/cart"
+  import { loginCustomer, linkCartToCustomer, setSessionCookie } from "../lib/auth/index"
+  import { getCartId } from "../lib/cart/index"
 
   const form = document.getElementById("login-form") as HTMLFormElement
   const errorEl = document.getElementById("login-error")!
@@ -79,7 +83,8 @@ if (errorParam) {
       const cartId = getCartId()
       if (cartId) await linkCartToCustomer(cartId)
       const redirect = new URLSearchParams(window.location.search).get("redirect")
-      window.location.href = redirect || "/account"
+      const accountHref = document.body.dataset.accountHref || "/account"
+      window.location.href = redirect || accountHref
     } catch (err) {
       errorEl.textContent = err instanceof Error ? err.message : "登录失败"
       errorEl.classList.remove("hidden")

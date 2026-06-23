@@ -15,9 +15,9 @@ import { useNavigate } from "react-router-dom"
 
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { useDeletePromotion } from "../../../../../hooks/api/promotions"
-import { formatCurrency } from "../../../../../lib/format-currency"
-import { formatPercentage } from "../../../../../lib/percentage-helpers"
-import { getPromotionStatus } from "../../../../../lib/promotions"
+import { formatCurrency } from "../../../../../lib/money/format-currency"
+import { formatPercentage } from "../../../../../lib/money/percentage-helpers"
+import { getPromotionStatus } from "../../../../../lib/promotions/promotions"
 
 type PromotionGeneralSectionProps = {
   promotion: HttpTypes.AdminPromotion

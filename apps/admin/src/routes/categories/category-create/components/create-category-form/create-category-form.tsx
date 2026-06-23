@@ -11,7 +11,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useCreateProductCategory } from "../../../../../hooks/api/categories"
-import { transformNullableFormData } from "../../../../../lib/form-helpers"
+import { transformNullableFormData } from "../../../../../lib/forms/form-helpers"
 import { CreateCategoryDetails } from "./create-category-details"
 import { CreateCategoryNesting } from "./create-category-nesting"
 import { CreateCategoryDetailsSchema, CreateCategorySchema } from "./schema"

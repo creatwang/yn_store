@@ -1,0 +1,157 @@
+---
+import { getImage } from "astro:assets"
+import {
+  buildLocaleProductPaths,
+  resolveProductByHandle,
+  localeUrlPath,
+  normalizeLocaleSegment,
+  DEFAULT_LOCALE,
+  isStaticContentMode,
+} from "../../../lib/i18n"
+import { resolveImageUrl } from "../../../lib/media/images"
+import BaseLayout from "../../../layouts/BaseLayout.astro"
+import ProductAddToCart from "../../../components/product/ProductAddToCart.astro"
+import ProductDetailPicture from "../../../components/product/ProductDetailPicture.astro"
+import ProductJsonLd from "../../../components/seo/ProductJsonLd.astro"
+
+export async function getStaticPaths() {
+  if (!isStaticContentMode()) return []
+  return buildLocaleProductPaths()
+}
+
+const localeParam = Astro.params.locale
+const locale = localeParam
+  ? normalizeLocaleSegment(localeParam) ?? DEFAULT_LOCALE
+  : Astro.locals.locale ?? DEFAULT_LOCALE
+Astro.locals.locale = locale
+
+const handle = Astro.params.handle
+if (!handle) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
+}
+
+const product = await resolveProductByHandle(locale, handle)
+if (!product) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
+}
+
+const site = Astro.site?.href ?? "http://localhost:4321"
+const canonicalPath = localeUrlPath(locale, `/products/${product.handle}`)
+
+const resolvedImage = resolveImageUrl(product.coverImage)
+let ogImage: string | undefined
+if (resolvedImage) {
+  try {
+    const og = await getImage({
+      src: resolvedImage,
+      width: 1200,
+      height: 630,
+      format: "webp",
+    })
+    ogImage = new URL(og.src, site).href
+  } catch {
+    ogImage = resolvedImage
+  }
+}
+
+const desc =
+  product.description.slice(0, 160) ||
+  `${product.title} — 跨境商城精选商品`
+---
+
+<BaseLayout
+  title={`${product.title} — 跨境商城`}
+  description={desc}
+  canonical={`${site}${canonicalPath}`}
+  ogImage={ogImage}
+>
+  <ProductJsonLd
+    name={product.title}
+    description={product.description}
+    image={resolvedImage ?? ""}
+    sku={product.handle}
+    price={product.price}
+    inStock={product.stock > 0}
+  />
+
+  <article class="grid gap-8 md:grid-cols-2">
+    <div>
+      {product.coverImage ? (
+        <ProductDetailPicture
+          src={product.coverImage}
+          alt={product.title}
+        />
+      ) : (
+        <ProductDetailPicture src="" alt={product.title} />
+      )}
+    </div>
+    <div>
+      <h1 class="text-3xl font-bold">{product.title}</h1>
+      {product.subtitle && (
+        <p class="mt-2 text-lg text-gray-600">{product.subtitle}</p>
+      )}
+      {product.description && (
+        <div class="prose mt-6 max-w-none text-gray-700">
+          <p>{product.description}</p>
+        </div>
+      )}
+
+      <p class="mt-4 text-sm text-gray-600">
+        库存：
+        <meter
+          id="live-stock-meter"
+          min="0"
+          max={Math.max(product.stock, 1)}
+          value={product.stock}
+          class="ml-1 align-middle"
+        >
+          {product.stock}
+        </meter>
+        <span id="live-stock-label" class="ml-2">
+          {product.stock > 0 ? "有现货" : "已售罄"}
+        </span>
+      </p>
+
+      <p class="mt-2 font-mono text-xs text-gray-400">
+        <abbr title="Stock Keeping Unit">SKU</abbr> / {product.handle}
+      </p>
+
+      <ProductAddToCart
+        productId={product.id}
+        variants={product.variants}
+      />
+    </div>
+  </article>
+
+  <script
+    is:inline
+    define:vars={{
+      handle: product.handle,
+      basePrice: product.price,
+      baseStock: product.stock,
+      apiUrl: import.meta.env.PUBLIC_API_URL || "http://localhost:7000",
+    }}
+  >
+    const meter = document.getElementById("live-stock-meter")
+    const stockLabel = document.getElementById("live-stock-label")
+    const priceEl = document.getElementById("variant-price")
+
+    fetch(`${apiUrl}/api/store/products/${handle}/realtime`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (!body) return
+        const livePrice = body.price
+        const liveStock = body.stock
+        if (livePrice != null && priceEl) {
+          priceEl.textContent = Number(livePrice).toFixed(2)
+        }
+        if (liveStock != null && meter && stockLabel) {
+          const max = Math.max(liveStock, 1)
+          meter.max = String(max)
+          meter.value = String(liveStock)
+          stockLabel.textContent = liveStock > 0 ? "有现货" : "已售罄"
+        }
+      })
+      .catch(() => {})
+  </script>
+</BaseLayout>

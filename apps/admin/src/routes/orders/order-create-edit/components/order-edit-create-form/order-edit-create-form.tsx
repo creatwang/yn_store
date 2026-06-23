@@ -16,7 +16,7 @@ import {
   useCancelOrderEdit,
   useRequestOrderEdit,
 } from "../../../../../hooks/api/order-edits"
-import { getStylizedAmount } from "../../../../../lib/money-amount-helpers"
+import { getStylizedAmount } from "../../../../../lib/money/money-amount-helpers"
 import { OrderEditItemsSection } from "./order-edit-items-section"
 import { CreateOrderEditSchemaType, OrderEditCreateSchema } from "./schema"
 

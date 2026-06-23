@@ -16,18 +16,18 @@ import {
   applyDateRangeConditions,
   applyInArrayCondition,
   listLimitOffset,
-} from "../lib/query-filters"
+} from "../lib/infra/query/query-filters"
 import { HTTPException } from "hono/http-exception"
-import { eventBus } from "../lib/events"
+import { eventBus } from "../lib/infra/events/events"
 import { returnCreateWorkflow } from "../workflows/return-create"
-import { runInTransaction } from "../lib/transaction"
+import { runInTransaction } from "../lib/infra/db/transaction"
 import {
   addChangeShippingAction,
   getPendingChangeByReturnId,
   removeChangeShippingAction,
   updateChangeShippingAction,
-} from "../lib/order-change-shipping"
-import { notifyReturnRequested } from "../lib/notify-customer"
+} from "../lib/order/order-change-shipping"
+import { notifyReturnRequested } from "../lib/mail/notify-customer"
 
 type ReturnItemInput = {
   item_id: string

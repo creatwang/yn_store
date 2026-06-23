@@ -26,6 +26,7 @@ const variantSchema = z.object({
 const productsCollection = defineCollection({
   loader: useContentLoader ? honoStoreLoader() : noopLoader("noop-products"),
   schema: z.object({
+    locale: z.string(),
     id: z.string(),
     handle: z.string(),
     title: z.string(),
@@ -42,6 +43,7 @@ const productsCollection = defineCollection({
 const collectionsCollection = defineCollection({
   loader: useContentLoader ? honoCollectionsLoader() : noopLoader("noop-collections"),
   schema: z.object({
+    locale: z.string(),
     id: z.string(),
     handle: z.string(),
     title: z.string(),
@@ -60,6 +62,7 @@ const collectionsCollection = defineCollection({
 const promotionsCollection = defineCollection({
   loader: useContentLoader ? honoPromotionsLoader() : noopLoader("noop-promotions"),
   schema: z.object({
+    locale: z.string(),
     code: z.string(),
     type: z.string(),
     isAutomatic: z.boolean(),

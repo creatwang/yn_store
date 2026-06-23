@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { LoaderFunctionArgs } from "react-router-dom"
 import { priceListsQueryKeys } from "../../../hooks/api/price-lists"
-import { sdk } from "../../../lib/client"
-import { queryClient } from "../../../lib/query-client"
+import { sdk } from "../../../lib/api/client"
+import { queryClient } from "../../../lib/query/query-client"
 
 const pricingDetailQuery = (id: string) => ({
   queryKey: priceListsQueryKeys.detail(id),

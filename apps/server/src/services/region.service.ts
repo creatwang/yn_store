@@ -19,12 +19,12 @@ import type {
   AdminGetSalesChannelsParamsType,
   StoreGetRegionsParamsType,
 } from "@my-store/validators/admin-list-params"
-import { listLimitOffset } from "../lib/query-filters"
+import { listLimitOffset } from "../lib/infra/query/query-filters"
 import {
   loadCountriesByRegionIds,
   syncRegionCountries,
   type RegionCountryDto,
-} from "../lib/region-country-sync"
+} from "../lib/region/region-country-sync"
 import { HTTPException } from "hono/http-exception"
 
 type RegionPaymentProviderDto = { id: string; is_enabled: boolean }

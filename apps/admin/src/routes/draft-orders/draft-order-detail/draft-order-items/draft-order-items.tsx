@@ -55,7 +55,7 @@ import {
   getLocaleAmount,
   getNativeSymbol,
   getStylizedAmount,
-} from "../../../../lib/money-amount-helpers"
+} from "../../../../lib/money/money-amount-helpers"
 import { getFullDate } from "../../../../lib/utils/date-utils"
 import { convertNumber } from "../../../../lib/utils/number-utils"
 

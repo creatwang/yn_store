@@ -38,16 +38,16 @@ import {
   useCreateStockLocationFulfillmentSet,
   useDeleteStockLocation,
 } from "../../../../../hooks/api/stock-locations"
-import { getFormattedAddress } from "../../../../../lib/addresses"
+import { getFormattedAddress } from "../../../../../lib/addresses/addresses"
 import {
   StaticCountry,
   countries as staticCountries,
 } from "../../../../../lib/data/countries"
-import { formatProvider } from "../../../../../lib/format-provider"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
 import {
   isOptionEnabledInStore,
   isReturnOption,
-} from "../../../../../lib/shipping-options"
+} from "../../../../../lib/shipping/shipping-options"
 import {
   FulfillmentSetType,
   ShippingOptionPriceType,

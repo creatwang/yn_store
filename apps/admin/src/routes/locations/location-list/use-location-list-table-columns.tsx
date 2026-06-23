@@ -13,12 +13,12 @@ import { useNavigate } from "react-router-dom"
 import { FetchError } from "@medusajs/js-sdk"
 
 import { PlaceholderCell } from "../../../components/table/table-cells/common/placeholder-cell"
-import { getFormattedAddress } from "../../../lib/addresses"
+import { getFormattedAddress } from "../../../lib/addresses/addresses"
 import { FulfillmentSetType } from "../common/constants"
-import { queryClient } from "../../../lib/query-client"
+import { queryClient } from "../../../lib/query/query-client"
 import { stockLocationsQueryKeys } from "../../../hooks/api/stock-locations"
 import { ListSummary } from "../../../components/common/list-summary"
-import { sdk } from "../../../lib/client"
+import { sdk } from "../../../lib/api/client"
 
 const columnHelper = createDataTableColumnHelper<HttpTypes.AdminStockLocation>()
 

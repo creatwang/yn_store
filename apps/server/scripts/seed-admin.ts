@@ -15,7 +15,7 @@ import {
   user,
 } from "@my-store/db"
 import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from "@my-store/config"
-import { hashPassword } from "../src/lib/password-hash"
+import { hashPassword } from "../src/lib/auth/password-hash"
 
 loadEnv()
 

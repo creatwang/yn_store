@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm"
-import { getDb, store, storeCurrency, generateId } from "@my-store/db"
+import { getDb, store, storeCurrency, storeLocale, generateId } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import { toAdminLocale } from "../lib/translation"
 
 export const storeService = {
   // 参考: @medusajs/medusa/dist/api/admin/stores/route.js (GET)
@@ -30,17 +31,34 @@ export const storeService = {
             .from(storeCurrency)
             .where(inArray(storeCurrency.store_id, storeIds))
         : []
+    const locales =
+      storeIds.length > 0
+        ? await db
+            .select()
+            .from(storeLocale)
+            .where(inArray(storeLocale.store_id, storeIds))
+        : []
     const currenciesByStore = new Map<string, typeof currencies>()
     for (const c of currencies) {
       const list = currenciesByStore.get(c.store_id) ?? []
       list.push(c)
       currenciesByStore.set(c.store_id, list)
     }
+    const localesByStore = new Map<string, typeof locales>()
+    for (const l of locales) {
+      const list = localesByStore.get(l.store_id) ?? []
+      list.push(l)
+      localesByStore.set(l.store_id, list)
+    }
 
     return {
       stores: rows.map((row) => ({
         ...row,
         supported_currencies: currenciesByStore.get(row.id) ?? [],
+        supported_locales: (localesByStore.get(row.id) ?? []).map((l) => ({
+          locale_code: l.locale_code,
+          locale: toAdminLocale(l.locale_code),
+        })),
       })),
       count,
       offset: 0,
@@ -67,13 +85,28 @@ export const storeService = {
       .from(storeCurrency)
       .where(eq(storeCurrency.store_id, id))
 
-    return { store: { ...row, supported_currencies: currencies } }
+    const localeRows = await db
+      .select()
+      .from(storeLocale)
+      .where(eq(storeLocale.store_id, id))
+
+    return {
+      store: {
+        ...row,
+        supported_currencies: currencies,
+        supported_locales: localeRows.map((l) => ({
+          locale_code: l.locale_code,
+          locale: toAdminLocale(l.locale_code),
+        })),
+      },
+    }
   },
 
   // 参考: @medusajs/medusa/dist/api/admin/stores/[id]/route.js (POST)
   async updateStore(id: string, input: {
     name?: string
     supported_currencies?: { currency_code: string; is_default?: boolean }[]
+    supported_locales?: { locale_code: string }[]
     default_sales_channel_id?: string | null
     default_region_id?: string | null
     default_location_id?: string | null
@@ -119,12 +152,39 @@ export const storeService = {
       }
     }
 
+    if (input.supported_locales !== undefined) {
+      await db.delete(storeLocale).where(eq(storeLocale.store_id, id))
+      if (input.supported_locales.length) {
+        await db.insert(storeLocale).values(
+          input.supported_locales.map((l) => ({
+            id: generateId("stloc"),
+            locale_code: l.locale_code,
+            store_id: id,
+          }))
+        )
+      }
+    }
+
     const currencies = await db
       .select()
       .from(storeCurrency)
       .where(eq(storeCurrency.store_id, id))
 
-    return { store: { ...updated, supported_currencies: currencies } }
+    const localeRows = await db
+      .select()
+      .from(storeLocale)
+      .where(eq(storeLocale.store_id, id))
+
+    return {
+      store: {
+        ...updated,
+        supported_currencies: currencies,
+        supported_locales: localeRows.map((l) => ({
+          locale_code: l.locale_code,
+          locale: toAdminLocale(l.locale_code),
+        })),
+      },
+    }
   },
 
   async listCurrencies(storeId: string) {

@@ -12,7 +12,7 @@ import { RouteDrawer, useRouteModal } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useUpdateStore } from "../../../../../hooks/api/store"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import { useDocumentDirection } from "../../../../../hooks/use-document-direction"
 
 type EditStoreFormProps = {

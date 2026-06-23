@@ -17,8 +17,8 @@ import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useCreateTaxRegion } from "../../../../../hooks/api"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
 import { Combobox } from "../../../../../components/inputs/combobox"
-import { formatProvider } from "../../../../../lib/format-provider"
-import { sdk } from "../../../../../lib/client"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
+import { sdk } from "../../../../../lib/api/client"
 import { i18n } from "../../../../../components/utilities/i18n"
 
 type TaxRegionCreateFormProps = {

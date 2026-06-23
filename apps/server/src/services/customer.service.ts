@@ -15,8 +15,8 @@ import type {
 } from "@my-store/validators"
 import type { AdminCustomersParamsType } from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
-import { applyDateRangeConditions, listLimitOffset } from "../lib/query-filters"
-import { hashPassword } from "../lib/password-hash"
+import { applyDateRangeConditions, listLimitOffset } from "../lib/infra/query/query-filters"
+import { hashPassword } from "../lib/auth/password-hash"
 
 export const customerService = {
   async list(query: AdminCustomersParamsType) {

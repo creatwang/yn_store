@@ -4,11 +4,11 @@ import {
   orderLineItem, orderItem, orderSummary,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import { eventBus } from "../lib/events"
-import { runInTransaction } from "../lib/transaction"
+import { eventBus } from "../lib/infra/events/events"
+import { runInTransaction } from "../lib/infra/db/transaction"
 import { notificationService } from "./notification.service"
-import { sendOrderUpdatedEmail } from "../lib/mail"
-import { loadActionsGroupedByChangeId } from "../lib/order-change-actions-batch"
+import { sendOrderUpdatedEmail } from "../lib/mail/mail"
+import { loadActionsGroupedByChangeId } from "../lib/order/order-change-actions-batch"
 import { buildAdminOrderPreview } from "./order/admin-order-preview"
 import { variantService } from "./variant.service"
 

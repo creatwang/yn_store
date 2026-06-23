@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm"
 import crypto from "node:crypto"
-import { hashPassword, verifyPassword } from "../lib/password-hash"
+import { hashPassword, verifyPassword } from "../lib/auth/password-hash"
 import {
   authIdentity,
   generateId,
@@ -9,8 +9,8 @@ import {
   user,
   customer,
 } from "@my-store/db"
-import { signToken, signResetPasswordToken, verifyOpaqueToken } from "../lib/jwt"
-import { adminAppUrl, sendPasswordResetEmail } from "../lib/mail"
+import { signToken, signResetPasswordToken, verifyOpaqueToken } from "../lib/auth/jwt"
+import { adminAppUrl, sendPasswordResetEmail } from "../lib/mail/mail"
 import { HTTPException } from "hono/http-exception"
 
 type ProviderMetadata = {

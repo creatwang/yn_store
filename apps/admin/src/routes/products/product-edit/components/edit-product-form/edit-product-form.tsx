@@ -9,7 +9,7 @@ import { SwitchBox } from "../../../../../components/common/switch-box"
 import { RouteDrawer, useRouteModal } from "../../../../../components/modals"
 import { useExtendableForm } from "../../../../../dashboard-app/forms/hooks"
 import { useUpdateProduct } from "../../../../../hooks/api/products"
-import { transformNullableFormData } from "../../../../../lib/form-helpers"
+import { transformNullableFormData } from "../../../../../lib/forms/form-helpers"
 
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { FormExtensionZone } from "../../../../../dashboard-app"

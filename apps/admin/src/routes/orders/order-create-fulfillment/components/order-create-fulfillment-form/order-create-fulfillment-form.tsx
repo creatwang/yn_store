@@ -15,15 +15,15 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useCreateOrderFulfillment } from "../../../../../hooks/api/orders"
-import { getFulfillableQuantity } from "../../../../../lib/order-item"
+import { getFulfillableQuantity } from "../../../../../lib/orders/order-item"
 import { CreateFulfillmentSchema } from "./constants"
 import { OrderCreateFulfillmentItem } from "./order-create-fulfillment-item"
 import {
   useReservationItems,
   useShippingOptions,
 } from "../../../../../hooks/api"
-import { getReservationsLimitCount } from "../../../../../lib/orders"
-import { sdk } from "../../../../../lib/client"
+import { getReservationsLimitCount } from "../../../../../lib/orders/orders"
+import { sdk } from "../../../../../lib/api/client"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
 import { Combobox } from "../../../../../components/inputs/combobox"
 import { useDocumentDirection } from "../../../../../hooks/use-document-direction"

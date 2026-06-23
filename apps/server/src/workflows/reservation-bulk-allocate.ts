@@ -6,9 +6,9 @@ import {
   reservationItem,
 } from "@my-store/db"
 import type { AdminBulkCreateReservationsType } from "@my-store/validators/admin-list-params"
-import { createWorkflow, step } from "../lib/workflow"
-import { runInTransaction } from "../lib/transaction"
-import { providers } from "../lib/providers"
+import { createWorkflow, step } from "../lib/infra/workflow/workflow"
+import { runInTransaction } from "../lib/infra/db/transaction"
+import { providers } from "../lib/payment/providers"
 import {
   adjustReservedQuantity,
   releaseReservations,

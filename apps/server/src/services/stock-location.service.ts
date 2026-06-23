@@ -3,7 +3,7 @@ import type {
   AdminGetShippingOptionsParamsType,
   AdminGetStockLocationsParamsType,
 } from "@my-store/validators/admin-list-params"
-import { listLimitOffset } from "../lib/query-filters"
+import { listLimitOffset } from "../lib/infra/query/query-filters"
 import {
   generateId,
   getDb,
@@ -22,8 +22,8 @@ import {
   priceRule,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import { enrichShippingOptionsBatch } from "../lib/shipping-option-enrich-batch"
-import { listShippingOptionRowsFiltered } from "../lib/shipping-option-list-filter"
+import { enrichShippingOptionsBatch } from "../lib/shipping/shipping-option-enrich-batch"
+import { listShippingOptionRowsFiltered } from "../lib/shipping/shipping-option-list-filter"
 
 function sqlRows(result: unknown): Record<string, unknown>[] {
   return (Array.isArray(result) ? result : ((result as { rows?: Record<string, unknown>[] }).rows ?? [])) as Record<string, unknown>[]

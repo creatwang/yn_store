@@ -9,9 +9,9 @@ import {
 
 import { FetchError } from "@medusajs/js-sdk"
 import { HttpTypes } from "@medusajs/types"
-import { sdk } from "../../lib/client"
-import { queryClient } from "../../lib/query-client"
-import { queryKeysFactory } from "../../lib/query-key-factory"
+import { sdk } from "../../lib/api/client"
+import { queryClient } from "../../lib/query/query-client"
+import { queryKeysFactory } from "../../lib/query/query-key-factory"
 import { stockLocationsQueryKeys } from "./stock-locations"
 
 const SHIPPING_OPTIONS_QUERY_KEY = "shipping_options" as const

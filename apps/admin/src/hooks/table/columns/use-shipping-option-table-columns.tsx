@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 
 import { DateCell } from "../../../components/table/table-cells/common/date-cell"
 import { TextCell } from "../../../components/table/table-cells/common/text-cell"
-import { getFormattedShippingOptionLocationName } from "../../../lib/shipping-options"
+import { getFormattedShippingOptionLocationName } from "../../../lib/shipping/shipping-options"
 
 const columnHelper = createColumnHelper<HttpTypes.AdminShippingOption>()
 

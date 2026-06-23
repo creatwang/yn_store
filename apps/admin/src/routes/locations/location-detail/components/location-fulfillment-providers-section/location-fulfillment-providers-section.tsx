@@ -8,7 +8,7 @@ import { ActionMenu } from "../../../../../components/common/action-menu"
 import { NoRecords } from "../../../../../components/common/empty-table-content"
 import { IconAvatar } from "../../../../../components/common/icon-avatar"
 import { useFulfillmentProviders } from "../../../../../hooks/api"
-import { formatProvider } from "../../../../../lib/format-provider"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
 
 type LocationsFulfillmentProvidersSectionProps = {
   location: HttpTypes.AdminStockLocation

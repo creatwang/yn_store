@@ -6,7 +6,7 @@ import {
   applyDateRangeConditions,
   applyInArrayCondition,
   listLimitOffset,
-} from "../lib/query-filters"
+} from "../lib/infra/query/query-filters"
 import { HTTPException } from "hono/http-exception"
 import { exchangeCreateWorkflow } from "../workflows/exchange-create"
 import {
@@ -14,7 +14,7 @@ import {
   getPendingChangeByExchangeId,
   removeChangeShippingAction,
   updateChangeShippingAction,
-} from "../lib/order-change-shipping"
+} from "../lib/order/order-change-shipping"
 import {
   addChangeInboundReturnItems,
   addChangeOutboundItems,
@@ -22,8 +22,8 @@ import {
   removeChangeOutboundItem,
   updateChangeInboundReturnItem,
   updateChangeOutboundItem,
-} from "../lib/order-change-items"
-import { notifyExchangeRequested } from "../lib/notify-customer"
+} from "../lib/order/order-change-items"
+import { notifyExchangeRequested } from "../lib/mail/notify-customer"
 
 export const exchangeService = {
   async list(query: AdminListExchangesParamsType) {

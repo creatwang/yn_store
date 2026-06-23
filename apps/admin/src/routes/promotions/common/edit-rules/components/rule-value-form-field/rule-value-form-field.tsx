@@ -13,7 +13,7 @@ import { Form } from "../../../../../../components/common/form"
 import { Combobox } from "../../../../../../components/inputs/combobox"
 import { useStore } from "../../../../../../hooks/api"
 import { useComboboxData } from "../../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../../lib/client"
+import { sdk } from "../../../../../../lib/api/client"
 
 type RuleValueFormFieldType = {
   form: any

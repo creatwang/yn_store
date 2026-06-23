@@ -1,0 +1,35 @@
+---
+import {
+  LOCALE_SWITCH_OPTIONS,
+  parseLocaleFromPathname,
+  switchLocaleUrlPath,
+} from "../lib/i18n"
+
+const { locale: currentLocale } = parseLocaleFromPathname(Astro.url.pathname)
+
+const links = LOCALE_SWITCH_OPTIONS.map((opt) => ({
+  ...opt,
+  href: switchLocaleUrlPath(Astro.url.pathname + Astro.url.search, opt.locale),
+  active: opt.locale === currentLocale,
+}))
+---
+
+<div class="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 p-0.5 text-xs">
+  {
+    links.map((link) => (
+      <a
+        href={link.href}
+        class:list={[
+          "rounded px-2 py-1 font-medium transition",
+          link.active
+            ? "bg-white text-gray-900 shadow-sm"
+            : "text-gray-500 hover:text-gray-900",
+        ]}
+        hreflang={link.locale}
+        aria-current={link.active ? "page" : undefined}
+      >
+        {link.label}
+      </a>
+    ))
+  }
+</div>

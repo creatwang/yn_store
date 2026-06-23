@@ -1,0 +1,48 @@
+---
+import {
+  buildLocaleIndexPaths,
+  resolveCollectionSummaries,
+  localeUrlPath,
+  normalizeLocaleSegment,
+  DEFAULT_LOCALE,
+  isStaticContentMode,
+} from "../../../lib/i18n"
+import BaseLayout from "../../../layouts/BaseLayout.astro"
+
+export async function getStaticPaths() {
+  if (!isStaticContentMode()) return []
+  return buildLocaleIndexPaths()
+}
+
+const localeParam = Astro.params.locale
+const locale = localeParam
+  ? normalizeLocaleSegment(localeParam) ?? DEFAULT_LOCALE
+  : Astro.locals.locale ?? DEFAULT_LOCALE
+Astro.locals.locale = locale
+
+const collections = await resolveCollectionSummaries(locale)
+const site = Astro.site?.href ?? "http://localhost:4321"
+---
+
+<BaseLayout
+  title="商品合集 — 跨境商城"
+  description="浏览全部商品合集与分类。"
+  canonical={`${site}${localeUrlPath(locale, "/collections")}`}
+>
+  <h1 class="mb-6 text-2xl font-bold">商品合集</h1>
+
+  {collections.length === 0 ? (
+    <p class="text-gray-500">暂无合集</p>
+  ) : (
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {collections.map((collection) => (
+        <a
+          href={localeUrlPath(locale, `/collections/${collection.handle || collection.id}`)}
+          class="block rounded border bg-white p-4 shadow-sm hover:shadow-md"
+        >
+          <h2 class="font-medium">{collection.title}</h2>
+        </a>
+      ))}
+    </div>
+  )}
+</BaseLayout>

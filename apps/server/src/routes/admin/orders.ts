@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { existsSync } from "node:fs"
 import { zValidator } from "@hono/zod-validator"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import {
   createOrderSchema,
   updateOrderSchema,

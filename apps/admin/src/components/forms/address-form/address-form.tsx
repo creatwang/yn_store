@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import { HttpTypes } from "@medusajs/types"
 import { Control } from "react-hook-form"
-import { AddressSchema } from "../../../lib/schemas"
+import { AddressSchema } from "../../../lib/forms/schemas"
 import { Form } from "../../common/form"
 import { CountrySelect } from "../../inputs/country-select"
 import { useDocumentDirection } from "../../../hooks/use-document-direction"

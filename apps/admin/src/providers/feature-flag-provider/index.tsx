@@ -1,5 +1,9 @@
 import React, { createContext, useContext } from "react"
-import { useFeatureFlags, FeatureFlags } from "../../hooks/api/feature-flags"
+import {
+  DEFAULT_FEATURE_FLAGS,
+  useFeatureFlags,
+  type FeatureFlags,
+} from "../../hooks/api/feature-flags"
 
 interface FeatureFlagContextValue {
   flags: FeatureFlags
@@ -35,11 +39,10 @@ interface FeatureFlagProviderProps {
 export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({
   children,
 }) => {
-  const { data: flags = {}, isLoading } = useFeatureFlags()
+  const { data: flags = DEFAULT_FEATURE_FLAGS, isLoading } = useFeatureFlags()
 
   const isFeatureEnabled = (flag: keyof FeatureFlags): boolean => {
-    const enabled = flags[flag] === true
-    return enabled
+    return flags[flag] === true
   }
 
   return (

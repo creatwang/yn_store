@@ -1,7 +1,8 @@
 import { Hono } from "hono"
 import { eq, and, isNull, desc } from "drizzle-orm"
-import { generateId, getDb, viewConfiguration, storeLocale, taxProvider } from "@my-store/db"
+import { generateId, getDb, viewConfiguration, taxProvider } from "@my-store/db"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
+import { translationService } from "../../services/translation.service"
 
 /** 表格视图 — 读写 view_configuration 表，支持列配置持久化 */
 export const adminViews = new Hono<{ Variables: AuthVariables }>()
@@ -214,17 +215,17 @@ export const adminViews = new Hono<{ Variables: AuthVariables }>()
 export const adminLocales = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
   .get("/", async (c) => {
-    const db = getDb()
-    const rows = await db.select().from(storeLocale)
-    const locales = rows.map((r) => ({
-      code: r.locale_code,
-      name: r.locale_code,
-    }))
-    return c.json({ locales, count: locales.length })
+    const code = c.req.query("code")
+    const codes = code
+      ? (Array.isArray(code) ? code : code.split(",")).map((v) => v.trim()).filter(Boolean)
+      : undefined
+    return c.json(translationService.listCatalogLocales(codes))
   })
   .get("/:code", async (c) => {
     const code = c.req.param("code")
-    return c.json({ locale: { code, name: code } })
+    const { locales } = translationService.listCatalogLocales([code])
+    const locale = locales[0] ?? { code, name: code }
+    return c.json({ locale })
   })
 
 export const adminTaxProviders = new Hono<{ Variables: AuthVariables }>()

@@ -32,7 +32,7 @@ import { useFieldArray, UseFormReturn } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { ActionMenu } from "../../../../../../../components/common/action-menu"
-import { formatFileSize } from "../../../../../../../lib/format-file-size"
+import { formatFileSize } from "../../../../../../../lib/display/format-file-size"
 import { UploadMediaFormItem } from "../../../../../common/components/upload-media-form-item"
 import { ProductCreateSchemaType } from "../../../../types"
 

@@ -21,7 +21,7 @@ import { StackedDrawer } from "../../../../../components/modals/stacked-drawer"
 import { useStackedModal } from "../../../../../components/modals/stacked-modal-provider"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useUpdatePriceList } from "../../../../../hooks/api/price-lists"
-import { toIsoStringOrNull } from "../../../../../lib/date-iso"
+import { toIsoStringOrNull } from "../../../../../lib/date/date-iso"
 import { PriceListCustomerGroupRuleForm } from "../../../common/components/price-list-customer-group-rule-form"
 import { PricingCustomerGroupsArrayType } from "../../../price-list-create/components/price-list-create-form/schema"
 

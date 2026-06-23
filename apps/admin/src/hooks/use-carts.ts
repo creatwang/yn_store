@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { api, parseJsonResponse } from "@/lib/api"
+import { api, parseJsonResponse } from "@/lib/api/api"
 import type {
   CreateCartInput,
   CreateCartLineItemInput,

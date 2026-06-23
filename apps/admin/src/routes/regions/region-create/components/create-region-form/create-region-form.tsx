@@ -35,13 +35,13 @@ import {
   StaticCountry,
 } from "../../../../../lib/data/countries"
 import { CurrencyInfo } from "../../../../../lib/data/currencies"
-import { formatProvider } from "../../../../../lib/format-provider"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
 import { useCountries } from "../../../common/hooks/use-countries"
 import { useCountryTableColumns } from "../../../common/hooks/use-country-table-columns"
 import { useCountryTableQuery } from "../../../common/hooks/use-country-table-query"
 import { useDocumentDirection } from "../../../../../hooks/use-document-direction"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 
 type CreateRegionFormProps = {
   currencies: CurrencyInfo[]

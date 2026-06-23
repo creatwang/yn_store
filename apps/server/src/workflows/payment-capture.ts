@@ -1,8 +1,8 @@
 /** Workflow: payment.capture — 支付捕获 */
 import { eq, sql } from "drizzle-orm"
 import { generateId, getDb, payment, capture } from "@my-store/db"
-import { createWorkflow, step } from "../lib/workflow"
-import { providers } from "../lib/providers"
+import { createWorkflow, step } from "../lib/infra/workflow/workflow"
+import { providers } from "../lib/payment/providers"
 
 export const paymentCaptureWorkflow = createWorkflow("payment-capture", [
   step("validate", async ({ input }) => {

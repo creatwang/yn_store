@@ -22,7 +22,7 @@ import {
   useRemoveDraftOrderShippingMethod,
 } from "../../../../hooks/api/draft-orders"
 import { useShippingOptions } from "../../../../hooks/api/shipping-options"
-import { getStylizedAmount } from "../../../../lib/money-amount-helpers"
+import { getStylizedAmount } from "../../../../lib/money/money-amount-helpers"
 
 type DraftOrderShippingSectionProps = {
   draftOrder: DraftOrderRecord

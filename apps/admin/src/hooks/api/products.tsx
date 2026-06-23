@@ -10,9 +10,9 @@ import {
   UseQueryOptions,
 } from "@tanstack/react-query"
 import { InfiniteData } from "@tanstack/query-core"
-import { sdk } from "../../lib/client"
-import { queryClient } from "../../lib/query-client"
-import { queryKeysFactory } from "../../lib/query-key-factory"
+import { sdk } from "../../lib/api/client"
+import { queryClient } from "../../lib/query/query-client"
+import { queryKeysFactory } from "../../lib/query/query-key-factory"
 import { inventoryItemsQueryKeys } from "./inventory.tsx"
 import { useInfiniteList } from "../use-infinite-list.tsx"
 

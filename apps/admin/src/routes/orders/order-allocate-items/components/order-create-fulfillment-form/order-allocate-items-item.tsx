@@ -12,7 +12,7 @@ import { Input, Text, clx } from "@medusajs/ui"
 import * as zod from "zod"
 
 import { Thumbnail } from "../../../../../components/common/thumbnail"
-import { getFulfillableQuantity } from "../../../../../lib/order-item"
+import { getFulfillableQuantity } from "../../../../../lib/orders/order-item"
 import { Form } from "../../../../../components/common/form"
 import { AllocateItemsSchema } from "./constants"
 import { checkInventoryKit } from "./utils"

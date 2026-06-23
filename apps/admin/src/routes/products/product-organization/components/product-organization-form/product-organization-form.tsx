@@ -14,7 +14,7 @@ import {
 } from "../../../../../dashboard-app"
 import { useUpdateProduct } from "../../../../../hooks/api/products"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import { useExtension } from "../../../../../providers/extension-provider"
 import { CategoryCombobox } from "../../../common/components/category-combobox"
 

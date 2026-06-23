@@ -19,13 +19,13 @@ import {
   sendFulfillmentCreatedEmail,
   sendOrderDeliveredEmail,
   sendShipmentEmail,
-} from "../lib/mail"
-import { getOrderNotificationContext } from "../lib/order-notification-context"
+} from "../lib/mail/mail"
+import { getOrderNotificationContext } from "../lib/order/order-notification-context"
 import { notificationService } from "./notification.service"
-import { eventBus } from "../lib/events"
+import { eventBus } from "../lib/infra/events/events"
 import { fulfillmentCreateWorkflow } from "../workflows/fulfillment-create"
 import { fulfillmentShipWorkflow } from "../workflows/fulfillment-ship"
-import { runInTransaction } from "../lib/transaction"
+import { runInTransaction } from "../lib/infra/db/transaction"
 import {
   restoreInventoryDeductions,
   type InventoryDeduction,

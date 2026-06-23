@@ -12,9 +12,9 @@ import {
   productVariantPriceSet,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import { parseCsv, rowsToObjects, toCsv } from "../lib/csv"
-import { slugify } from "../lib/slug"
-import { runInTransaction, type DbTx } from "../lib/transaction"
+import { parseCsv, rowsToObjects, toCsv } from "../lib/csv/csv"
+import { slugify } from "../lib/product/slug"
+import { runInTransaction, type DbTx } from "../lib/infra/db/transaction"
 import { notificationService } from "./notification.service"
 
 const IMPORT_DIR = path.resolve(process.cwd(), "public/imports")

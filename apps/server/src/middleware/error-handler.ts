@@ -1,7 +1,7 @@
 import type { ErrorHandler } from "hono"
 import { HTTPException } from "hono/http-exception"
 import { DbPoolWaitTimeoutError } from "@my-store/db"
-import { formatDbError } from "../lib/check-db"
+import { formatDbError } from "../lib/infra/db/check-db"
 
 function isDev() {
   return process.env.NODE_ENV !== "production"

@@ -96,10 +96,57 @@ describe("Admin Locales API", () => {
   it("GET / — 返回区域列表", async () => {
     const res = await apiGet("/admin/locales")
     expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.locales).toBeInstanceOf(Array)
+    expect(body.count).toBeGreaterThan(0)
   })
 
   it("GET /:code — 返回单个", async () => {
-    const res = await apiGet("/admin/locales/zh")
+    const res = await apiGet("/admin/locales/zh-CN")
+    expect(res.status).toBe(200)
+  })
+})
+
+describe("Admin Feature Flags API", () => {
+  it("GET / — translation 已开启", async () => {
+    const res = await apiGet("/admin/feature-flags")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.feature_flags.translation).toBe(true)
+  })
+})
+
+describe("Admin Translations API", () => {
+  it("GET /settings — 返回多 entity 配置", async () => {
+    const res = await apiGet("/admin/translations/settings?is_active=true")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.translation_settings.product).toBeTruthy()
+  })
+
+  it("GET /entities?type=product — 返回可翻译实体", async () => {
+    const res = await apiGet("/admin/translations/entities?type=product&limit=5")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toBeInstanceOf(Array)
+  })
+
+  it("POST /batch — 创建 product 翻译", async () => {
+    const productsRes = await apiGet("/admin/products?limit=1")
+    const productsBody = await productsRes.json()
+    const productId = productsBody.products?.[0]?.id
+    if (!productId) return
+
+    const res = await apiPost("/admin/translations/batch", {
+      create: [
+        {
+          reference: "product",
+          reference_id: productId,
+          locale_code: "en-US",
+          translations: { title: "Test EN title" },
+        },
+      ],
+    })
     expect(res.status).toBe(200)
   })
 })
@@ -278,6 +325,15 @@ describe("Store Regions", () => {
   it("GET /store/regions — 无需认证", async () => {
     const res = await unauthGet("/store/regions")
     expect(res.status).toBe(200)
+  })
+})
+
+describe("Store Locales", () => {
+  it("GET /store/locales — 返回店铺语言", async () => {
+    const res = await unauthGet("/store/locales")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.locales).toBeInstanceOf(Array)
   })
 })
 

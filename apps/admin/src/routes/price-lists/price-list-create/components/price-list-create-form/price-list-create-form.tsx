@@ -13,7 +13,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useCreatePriceList } from "../../../../../hooks/api/price-lists"
-import { toIsoStringOrNull } from "../../../../../lib/date-iso"
+import { toIsoStringOrNull } from "../../../../../lib/date/date-iso"
 import { exctractPricesFromProducts } from "../../../common/utils"
 import { PriceListDetailsForm } from "./price-list-details-form"
 import { PriceListPricesForm } from "./price-list-prices-form"

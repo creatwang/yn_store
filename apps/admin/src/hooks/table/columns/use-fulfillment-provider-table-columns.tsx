@@ -6,7 +6,7 @@ import {
   TextCell,
   TextHeader,
 } from "../../../components/table/table-cells/common/text-cell"
-import { formatProvider } from "../../../lib/format-provider"
+import { formatProvider } from "../../../lib/shipping/format-provider"
 
 const columnHelper = createColumnHelper<HttpTypes.AdminFulfillmentProvider>()
 

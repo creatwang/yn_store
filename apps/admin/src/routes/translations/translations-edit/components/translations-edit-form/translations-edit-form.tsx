@@ -659,7 +659,11 @@ export const TranslationsEditForm = ({
         onSubmit={() => handleSave(true)}
         className="flex h-full flex-col overflow-hidden"
       >
-        <RouteFocusModal.Header />
+        <RouteFocusModal.Header>
+          <RouteFocusModal.Title className="sr-only">
+            {t("translations.actions.manage")}
+          </RouteFocusModal.Title>
+        </RouteFocusModal.Header>
         <RouteFocusModal.Body className="size-full overflow-hidden">
           <div ref={containerRef} className="size-full">
             <DataGrid

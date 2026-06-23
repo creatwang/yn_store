@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import { getDb } from "@my-store/db"
+import { ensureTranslationSchema } from "../src/lib/translation"
 
 /** 测试库与 Medusa 共用库时补齐本项目依赖、官方 schema 未建的表 */
 export async function ensureTestDbSchema() {
@@ -18,4 +19,5 @@ export async function ensureTestDbSchema() {
       deleted_at timestamptz
     )
   `)
+  await ensureTranslationSchema()
 }

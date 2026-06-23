@@ -9,7 +9,7 @@ import { SwitchBox } from "../../../../../../../components/common/switch-box"
 import { Combobox } from "../../../../../../../components/inputs/combobox"
 import { StackedFocusModal } from "../../../../../../../components/modals"
 import { useComboboxData } from "../../../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../../../lib/client"
+import { sdk } from "../../../../../../../lib/api/client"
 import { CategoryCombobox } from "../../../../../common/components/category-combobox"
 import { ProductCreateSchemaType } from "../../../../types"
 

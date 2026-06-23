@@ -15,7 +15,7 @@ import {
   useUpdateDraftOrder,
 } from "../../../../hooks/api/draft-orders"
 import { useComboboxData } from "../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../lib/client"
+import { sdk } from "../../../../lib/api/client"
 
 export const SalesChannel = () => {
   const { id } = useParams()

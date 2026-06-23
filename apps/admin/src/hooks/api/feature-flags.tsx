@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useQuery } from "@tanstack/react-query"
-import { sdk } from "../../lib/client"
+import { authStorage } from "../../lib/auth"
+import { sdk } from "../../lib/api/client"
 
 export type FeatureFlags = {
   view_configurations?: boolean
@@ -8,20 +9,26 @@ export type FeatureFlags = {
   [key: string]: boolean | undefined
 }
 
-export const useFeatureFlags = () => {
-  return useQuery<FeatureFlags>({
-    queryKey: ["admin", "feature-flags"],
-    queryFn: async () => {
-      const response = await sdk.client.fetch<{ feature_flags: FeatureFlags }>(
-        "/admin/feature-flags",
-        {
-          method: "GET",
-        }
-      )
+/** 与本项目 server feature-flags 默认值对齐 */
+export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
+  translation: true,
+  view_configurations: false,
+}
 
-      return response.feature_flags
+export const featureFlagsQueryKey = ["admin", "feature-flags"] as const
+
+export const useFeatureFlags = () => {
+  const hasToken = !!authStorage.getToken()
+
+  return useQuery<FeatureFlags>({
+    queryKey: featureFlagsQueryKey,
+    enabled: hasToken,
+    queryFn: async () => {
+      const response = await sdk.admin.featureFlags.list()
+      return response.feature_flags ?? DEFAULT_FEATURE_FLAGS
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    placeholderData: DEFAULT_FEATURE_FLAGS,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   })
 }

@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { batchDeleteProductsSchema, createProductSchema, updateProductSchema } from "@my-store/validators"
 import { AdminGetProductsParams } from "@my-store/validators/admin-list-params"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { productService } from "../../services/product.service"
 import {
   productExportService,

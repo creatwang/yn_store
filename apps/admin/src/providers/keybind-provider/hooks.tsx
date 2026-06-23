@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { useLogout } from "../../hooks/api/auth"
-import { queryClient } from "../../lib/query-client"
+import { queryClient } from "../../lib/query/query-client"
 import { KeybindContext } from "./keybind-context"
 import { Shortcut } from "./types"
 import { findShortcut } from "./utils"

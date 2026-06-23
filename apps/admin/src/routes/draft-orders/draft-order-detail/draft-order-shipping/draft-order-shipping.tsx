@@ -51,8 +51,8 @@ import { useShippingOptions } from "../../../../hooks/api/shipping-options"
 import { useComboboxData } from "../../../../hooks/use-combobox-data"
 import { useCancelOrderEdit } from "../../../../hooks/order-edits/use-cancel-order-edit"
 import { useInitiateOrderEdit } from "../../../../hooks/order-edits/use-initiate-order-edit"
-import { getNativeSymbol } from "../../../../lib/money-amount-helpers"
-import { sdk } from "../../../../lib/client"
+import { getNativeSymbol } from "../../../../lib/money/money-amount-helpers"
+import { sdk } from "../../../../lib/api/client"
 import { convertNumber } from "../../../../lib/utils/number-utils"
 import {
   getItemsWithShippingProfile,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatAdminOrderSummary } from "../../src/lib/order-summary"
+import { formatAdminOrderSummary } from "../../src/lib/order/order-summary"
 
 describe("formatAdminOrderSummary", () => {
   it("无 order_summary 时返回带 pending_difference 的默认对象", () => {

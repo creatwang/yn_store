@@ -1,5 +1,5 @@
 ﻿import { Hono } from "hono"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import {
   AdminGetSalesChannelsParams,
   StoreGetRegionsParams,

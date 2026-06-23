@@ -8,7 +8,7 @@
 import { sql } from "drizzle-orm"
 import { loadEnv } from "../load-env"
 import { getDb } from "@my-store/db"
-import { hashPassword } from "../src/lib/password-hash"
+import { hashPassword } from "../src/lib/auth/password-hash"
 
 loadEnv()
 

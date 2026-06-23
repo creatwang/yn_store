@@ -11,7 +11,7 @@ import { RouteFocusModal, useRouteModal } from "../../../components/modals"
 import { KeyboundForm } from "../../../components/utilities/keybound-form"
 import { useUpdateProductVariantsBatch } from "../../../hooks/api/products"
 import { useRegions } from "../../../hooks/api/regions"
-import { castNumber } from "../../../lib/cast-number"
+import { castNumber } from "../../../lib/money/cast-number"
 import { VariantPricingForm } from "../common/variant-pricing-form"
 import { ExtendedVariantPrice } from "../../product-variants/product-variant-detail/constants"
 

@@ -8,7 +8,7 @@ import { ProductCreateSchemaType } from "../../../../types"
 import { Form } from "../../../../../../../components/common/form"
 import { Combobox } from "../../../../../../../components/inputs/combobox"
 import { useComboboxData } from "../../../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../../../lib/client"
+import { sdk } from "../../../../../../../lib/api/client"
 
 type InventoryItemRowProps = {
   form: UseFormReturn<ProductCreateSchemaType>

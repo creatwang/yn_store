@@ -1,5 +1,5 @@
 import { Outlet, Route } from "react-router-dom"
-import { lazyDetailRoute } from "../lib/lazy-route"
+import { lazyDetailRoute } from "../lib/routing/lazy-route"
 import { taxRegionLoader } from "../routes/tax-regions/tax-region-detail/loader"
 
 /**
@@ -390,6 +390,25 @@ export const settingsRoutesFragment = (
             />
           </Route>
         </Route>
+      </Route>
+
+      <Route path="translations" element={<Outlet />}>
+        <Route
+          path=""
+          lazy={() => import("../routes/translations/translation-list")}
+        />
+        <Route
+          path="add-locales"
+          lazy={() => import("../routes/translations/add-locales")}
+        />
+        <Route
+          path="settings"
+          lazy={() => import("../routes/translations/settings")}
+        />
+        <Route
+          path="edit"
+          lazy={() => import("../routes/translations/translations-edit")}
+        />
       </Route>
   </>
 )

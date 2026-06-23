@@ -2,8 +2,8 @@
 import { FetchError } from "@medusajs/js-sdk"
 import { HttpTypes } from "@medusajs/types"
 import { UseMutationOptions, useMutation } from "@tanstack/react-query"
-import { sdk } from "../../lib/client"
-import { authStorage } from "../../lib/auth-storage"
+import { sdk } from "../../lib/api/client"
+import { authStorage } from "../../lib/auth"
 
 const ensureAuthTokenOrRedirect = async (
   authResponse: ReturnType<typeof sdk.auth.login>

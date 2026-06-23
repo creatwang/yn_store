@@ -8,7 +8,7 @@ import { Button, Text, toast } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { RouteDrawer, useRouteModal } from "../../../../../../components/modals"
 import { useBatchInventoryItemLocationLevels } from "../../../../../../hooks/api/inventory"
-import { sdk } from "../../../../../../lib/client"
+import { sdk } from "../../../../../../lib/api/client"
 
 import { useMemo, useState } from "react"
 import { LocationItem } from "./location-item"

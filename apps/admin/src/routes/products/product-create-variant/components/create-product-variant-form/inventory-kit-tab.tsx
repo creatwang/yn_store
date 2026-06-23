@@ -8,7 +8,7 @@ import { XMarkMini } from "@medusajs/icons"
 import { useTranslation } from "react-i18next"
 
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import { Form } from "../../../../../components/common/form"
 import { Combobox } from "../../../../../components/inputs/combobox"
 

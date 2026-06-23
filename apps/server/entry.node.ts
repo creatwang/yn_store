@@ -1,11 +1,11 @@
 import { loadEnv } from "./load-env"
 import { serve } from "@hono/node-server"
 import { closeDb } from "@my-store/db"
-import { getHealthStatus, logHealthToConsole } from "./src/lib/check-db"
-import { logDbPoolAtStartup } from "./src/lib/log-db-pool"
+import { getHealthStatus, logHealthToConsole } from "./src/lib/infra/db/check-db"
+import { logDbPoolAtStartup } from "./src/lib/infra/db/log-db-pool"
 import { app, appMount } from "./src/app"
-import { logServerStartup } from "./src/lib/log-startup"
-import { ensureDefaultPaymentProviders } from "./src/lib/ensure-payment-providers"
+import { logServerStartup } from "./src/lib/infra/db/log-startup"
+import { ensureDefaultPaymentProviders } from "./src/lib/payment/ensure-payment-providers"
 
 // Node 不会自动读 .env，须在 import app 之前加载（app 依赖 DATABASE_URL 等）
 loadEnv()

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import crypto from "node:crypto"
 import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
-import { sqlInIds } from "../lib/sql-in-ids"
+import { sqlInIds } from "../lib/infra/sql/sql-in-ids"
 import {
   generateId,
   getDb,
@@ -24,7 +24,7 @@ import type {
   StoreGetProductsParamsType,
 } from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
-import { attachOptionValues } from "../lib/product-option-values-batch"
+import { attachOptionValues } from "../lib/product/product-option-values-batch"
 import { syncVariantInventoryFromInput } from "./inventory-variant-link.service"
 import {
   applyDateRangeConditions,
@@ -32,9 +32,10 @@ import {
   listLimitOffset,
   normalizeFilterIds,
   normalizeIdFilter,
-} from "../lib/query-filters"
-import { slugify, generateUniqueHandle } from "../lib/slug"
+} from "../lib/infra/query/query-filters"
+import { slugify, generateUniqueHandle } from "../lib/product/slug"
 import { variantService } from "./variant.service"
+import { applyTranslation, applyTranslations } from "../lib/translation"
 
 /**
  * 对齐 Medusa 官方 defaultAdminProductFields
@@ -558,7 +559,7 @@ export const productService = {
     }
   },
 
-  async listStore(query: StoreGetProductsParamsType, salesChannelId?: string) {
+  async listStore(query: StoreGetProductsParamsType, salesChannelId?: string, locale?: string) {
     const db = getDb()
     const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [
@@ -644,15 +645,17 @@ export const productService = {
       }
     }
 
+    const localized = await applyTranslations("product", products.map((p) => ({ ...p, price: priceMap.get(p.id) ?? null })), locale)
+
     return {
-      products: products.map((p) => ({ ...p, price: priceMap.get(p.id) ?? null })),
+      products: localized,
       count: Number(total),
       limit,
       offset,
     }
   },
 
-  async getById(id: string, storeOnly = false, fields?: string[]) {
+  async getById(id: string, storeOnly = false, fields?: string[], locale?: string) {
     const db = getDb()
     const conditions = [eq(product.id, id), isNull(product.deleted_at)]
 
@@ -671,11 +674,22 @@ export const productService = {
     }
 
     const relations = await fetchRelations(db, id, item, fields)
+    const productPayload = { ...item, ...relations }
 
-    return { product: { ...item, ...relations } }
+    if (relations.variants?.length) {
+      productPayload.variants = await applyTranslations(
+        "product_variant",
+        relations.variants as Record<string, unknown>[],
+        locale,
+      )
+    }
+
+    const localized = await applyTranslation("product", productPayload, locale)
+
+    return { product: localized }
   },
 
-  async getByHandle(handle: string) {
+  async getByHandle(handle: string, locale?: string) {
     const db = getDb()
     const [item] = await db
       .select()
@@ -727,7 +741,15 @@ export const productService = {
       }
     }
 
-    return { product: { ...item, variants: variants.map((v) => ({ ...v, price: priceMap.get(v.id) ?? null })) } }
+    const variantRows = variants.map((v) => ({ ...v, price: priceMap.get(v.id) ?? null }))
+    const localizedVariants = await applyTranslations("product_variant", variantRows, locale)
+    const localizedProduct = await applyTranslation(
+      "product",
+      { ...item, variants: localizedVariants },
+      locale,
+    )
+
+    return { product: localizedProduct }
   },
 
   async getRealtime(idOrHandle: string) {

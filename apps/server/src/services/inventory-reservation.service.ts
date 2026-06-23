@@ -27,15 +27,15 @@ import {
   salesChannelStockLocation,
   stockLocation,
 } from "@my-store/db"
-import type { DbTx } from "../lib/transaction"
-import { runInTransaction } from "../lib/transaction"
+import type { DbTx } from "../lib/infra/db/transaction"
+import { runInTransaction } from "../lib/infra/db/transaction"
 import { HTTPException } from "hono/http-exception"
 import {
   syncAfterCheckoutReserve,
   syncAfterFulfillmentDeduct,
   syncAfterReleaseReservations,
   syncAfterRestoreDeductions,
-} from "../lib/inventory-external-hook"
+} from "../lib/inventory/inventory-external-hook"
 
 export type OrderLineForInventory = {
   line_item_id: string

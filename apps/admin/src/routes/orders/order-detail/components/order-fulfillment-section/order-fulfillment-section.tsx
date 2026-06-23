@@ -27,8 +27,8 @@ import {
   useMarkOrderFulfillmentAsDelivered,
 } from "../../../../../hooks/api/orders"
 import { useStockLocation } from "../../../../../hooks/api/stock-locations"
-import { formatProvider } from "../../../../../lib/format-provider"
-import { getLocaleAmount } from "../../../../../lib/money-amount-helpers"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
+import { getLocaleAmount } from "../../../../../lib/money/money-amount-helpers"
 import { FulfillmentSetType } from "../../../../locations/common/constants"
 import { ExtendedOrderFulfillment, ExtendedOrder } from "../../constants"
 

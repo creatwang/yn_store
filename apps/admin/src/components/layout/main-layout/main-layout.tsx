@@ -26,7 +26,7 @@ import { Shell } from "../../layout/shell"
 
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useLogout } from "../../../hooks/api"
-import { queryClient } from "../../../lib/query-client"
+import { queryClient } from "../../../lib/query/query-client"
 import { useExtension } from "../../../providers/extension-provider"
 import { useSearch } from "../../../providers/search-provider"
 import { UserMenu } from "../user-menu"

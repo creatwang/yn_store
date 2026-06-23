@@ -2,8 +2,8 @@
 import { HttpTypes } from "@medusajs/types"
 import { QueryClient } from "@tanstack/react-query"
 import { promotionsQueryKeys } from "../../../hooks/api/promotions"
-import { sdk } from "../../../lib/client"
-import { queryClient } from "../../../lib/query-client"
+import { sdk } from "../../../lib/api/client"
+import { queryClient } from "../../../lib/query/query-client"
 
 const params = {
   limit: 20,

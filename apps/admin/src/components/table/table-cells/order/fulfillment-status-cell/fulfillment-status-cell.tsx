@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 
 import { FulfillmentStatus } from "@medusajs/types"
 
-import { getOrderFulfillmentStatus } from "../../../../../lib/order-helpers"
+import { getOrderFulfillmentStatus } from "../../../../../lib/orders/order-helpers"
 import { StatusCell } from "../../common/status-cell"
 
 type FulfillmentStatusCellProps = {

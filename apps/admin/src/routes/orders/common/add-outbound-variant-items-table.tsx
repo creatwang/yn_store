@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { _DataTable } from "../../../components/table/data-table"
 import { useVariants } from "../../../hooks/api"
 import { useDataTable } from "../../../hooks/use-data-table"
-import { hasStockAtLocation } from "../../../lib/rma-inventory"
+import { hasStockAtLocation } from "../../../lib/orders/rma-inventory"
 import {
   useOrderEditItemsTableColumns,
 } from "../order-create-edit/components/add-order-edit-items-table/use-order-edit-item-table-columns"

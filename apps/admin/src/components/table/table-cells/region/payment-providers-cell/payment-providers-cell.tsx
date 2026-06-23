@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { PaymentProviderDTO } from "@medusajs/types"
 
-import { formatProvider } from "../../../../../lib/format-provider"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
 import { PlaceholderCell } from "../../common/placeholder-cell"
 import { ListSummary } from "../../../../common/list-summary"
 

@@ -12,8 +12,8 @@ import {
   categoriesQueryKeys,
   useProductCategories,
 } from "../../../../../hooks/api/categories"
-import { sdk } from "../../../../../lib/client"
-import { queryClient } from "../../../../../lib/query-client"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { CategoryTree } from "../../../common/components/category-tree"
 import { CategoryTreeItem } from "../../../common/types"
 

@@ -1,7 +1,7 @@
 /**
  * 对齐 Medusa v2.15.3 core-flows/order/utils/aggregate-status.ts
  */
-import { bn, getCurrencyEpsilon, toAmount } from "../../lib/big-number"
+import { bn, getCurrencyEpsilon, toAmount } from "../../lib/math/big-number"
 import type {
   FulfillmentForStatus,
   OrderItemForStatus,

@@ -1,5 +1,6 @@
 import type { Loader } from "astro/loaders"
-import { fetchAllPaginated, fetchStoreJson } from "../lib/store-api"
+import { contentEntryId, getSsgLocales } from "../lib/i18n"
+import { StoreApiClient } from "../lib/api/index"
 
 type ListProduct = {
   id: string
@@ -29,7 +30,7 @@ type ProductDetail = {
   }
 }
 
-function mapDetail(raw: ProductDetail["product"]) {
+function mapDetail(raw: ProductDetail["product"], locale: string) {
   const variants = raw.variants ?? []
   const firstPrice = variants.find((v) => v.price?.amount != null)?.price?.amount
   const totalStock = variants.reduce(
@@ -38,6 +39,7 @@ function mapDetail(raw: ProductDetail["product"]) {
   )
 
   return {
+    locale,
     id: raw.id,
     handle: raw.handle,
     title: raw.title,
@@ -61,27 +63,37 @@ export function honoStoreLoader(): Loader {
   return {
     name: "hono-store-products",
     load: async ({ store, logger }) => {
-      logger.info("Syncing products from Hono Store API...")
+      logger.info("Syncing products from Hono Store API (multi-locale)...")
       store.clear()
 
-      const list = await fetchAllPaginated<ListProduct>(
-        "/store/products",
-        "products",
-      )
+      let total = 0
+      for (const locale of getSsgLocales()) {
+        const client = new StoreApiClient(locale)
+        logger.info(`  locale ${locale}`)
 
-      for (const item of list) {
-        const handle = item.handle || item.id
-        try {
-          const detail = await fetchStoreJson<ProductDetail>(
-            `/store/products/${handle}`,
-          )
-          store.set({ id: handle, data: mapDetail(detail.product) })
-        } catch (err) {
-          logger.warn(`Skip product ${handle}: ${err}`)
+        const list = await client.fetchAllPaginated<ListProduct>(
+          "/store/products",
+          "products",
+        )
+
+        for (const item of list) {
+          const handle = item.handle || item.id
+          try {
+            const detail = await client.fetchJson<ProductDetail>(
+              `/store/products/${handle}`,
+            )
+            store.set({
+              id: contentEntryId(locale, handle),
+              data: mapDetail(detail.product, locale),
+            })
+            total += 1
+          } catch (err) {
+            logger.warn(`Skip product ${locale}/${handle}: ${err}`)
+          }
         }
       }
 
-      logger.info(`Synced ${list.length} products`)
+      logger.info(`Synced ${total} localized product entries`)
     },
   }
 }

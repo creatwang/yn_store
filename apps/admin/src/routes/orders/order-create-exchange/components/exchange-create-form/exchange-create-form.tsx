@@ -22,7 +22,7 @@ import {
 } from "../../../../../components/modals"
 
 import { Form } from "../../../../../components/common/form"
-import { getStylizedAmount } from "../../../../../lib/money-amount-helpers"
+import { getStylizedAmount } from "../../../../../lib/money/money-amount-helpers"
 import { CreateExchangeSchemaType, ExchangeCreateSchema } from "./schema"
 
 import { AdminReturn } from "@medusajs/types"
@@ -40,7 +40,7 @@ import { ExchangeOutboundSection } from "./exchange-outbound-section"
 import {
   fetchVariantInventoryMap,
   findOutboundQuantityViolation,
-} from "../../../../../lib/rma-inventory"
+} from "../../../../../lib/orders/rma-inventory"
 
 type ReturnCreateFormProps = {
   order: AdminOrder

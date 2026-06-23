@@ -1,5 +1,5 @@
 import { loadEnv } from "../load-env"
-import { checkDatabaseConnection } from "../src/lib/check-db"
+import { checkDatabaseConnection } from "../src/lib/infra/db/check-db"
 
 loadEnv()
 

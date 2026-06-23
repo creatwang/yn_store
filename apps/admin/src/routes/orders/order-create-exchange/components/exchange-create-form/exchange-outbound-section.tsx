@@ -24,15 +24,15 @@ import {
   useRemoveExchangeOutboundItem,
   useUpdateExchangeOutboundItems,
 } from "../../../../../hooks/api/exchanges"
-import { sdk } from "../../../../../lib/client"
-import { getAvailableAtLocation } from "../../../../../lib/rma-inventory"
+import { sdk } from "../../../../../lib/api/client"
+import { getAvailableAtLocation } from "../../../../../lib/orders/rma-inventory"
 import { OutboundShippingPlaceholder } from "../../../common/placeholders"
 import { ItemPlaceholder } from "../../../order-create-claim/components/claim-create-form/item-placeholder"
 import { AddExchangeOutboundItemsTable } from "../add-exchange-outbound-items-table"
 import { ExchangeOutboundItem } from "./exchange-outbound-item"
 import { useOrderShippingOptions } from "../../../../../hooks/api/orders"
 import { CreateExchangeSchemaType } from "./schema"
-import { getFormattedShippingOptionLocationName } from "../../../../../lib/shipping-options"
+import { getFormattedShippingOptionLocationName } from "../../../../../lib/shipping/shipping-options"
 import { ExtendedVariant } from "../../../../product-variants/product-variant-detail/constants"
 
 type ExchangeOutboundSectionProps = {

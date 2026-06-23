@@ -1,6 +1,11 @@
 ---
 export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
+import { localeUrlPath } from "../lib/i18n"
+
+const locale = Astro.locals.locale ?? "zh-CN"
+const homeHref = localeUrlPath(locale, "/")
+const checkoutHref = localeUrlPath(locale, "/checkout")
 ---
 
 <BaseLayout title="购物车">
@@ -9,10 +14,10 @@ import BaseLayout from "../layouts/BaseLayout.astro"
     <p class="text-gray-500">加载中…</p>
   </div>
   <div class="mt-8 flex gap-4">
-    <a href="/" class="text-sm text-gray-600 underline hover:text-gray-900">继续购物</a>
+    <a href={homeHref} class="text-sm text-gray-600 underline hover:text-gray-900">继续购物</a>
     <a
       id="checkout-link"
-      href="/checkout"
+      href={checkoutHref}
       class="hidden rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800"
     >
       去结算
@@ -21,10 +26,11 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 </BaseLayout>
 
 <script>
-  import { apiFetch, getCartId } from "../lib/cart"
+  import { apiFetch, getCartId } from "../lib/cart/index"
 
   const root = document.getElementById("cart-root")!
   const checkoutLink = document.getElementById("checkout-link")!
+  const homeHref = document.body.dataset.homeHref || "/"
 
   function formatPrice(amount: number | string): string {
     return `$${Number(amount).toFixed(2)}`
@@ -33,7 +39,7 @@ import BaseLayout from "../layouts/BaseLayout.astro"
   async function loadCart() {
     const cartId = getCartId()
     if (!cartId) {
-      root.innerHTML = `<p class="text-gray-500">购物车为空，<a href="/" class="underline">去逛逛</a></p>`
+      root.innerHTML = `<p class="text-gray-500">购物车为空，<a href="${homeHref}" class="underline">去逛逛</a></p>`
       return
     }
 
@@ -53,7 +59,6 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 
     checkoutLink.classList.remove("hidden")
 
-    // Calculate totals
     let subtotal = 0
     const itemHtml = items
       .map((item: Record<string, unknown>) => {

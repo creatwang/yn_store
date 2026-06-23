@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory"
 import { HTTPException } from "hono/http-exception"
-import { verifyToken, type TokenPayload } from "../lib/jwt"
+import { verifyToken, type TokenPayload } from "../lib/auth/jwt"
 
 export type AuthVariables = {
   user: TokenPayload

@@ -2,9 +2,9 @@
 import { FetchError } from "@medusajs/js-sdk"
 import { HttpTypes } from "@medusajs/types"
 import { useMutation, UseMutationOptions } from "@tanstack/react-query"
-import { sdk } from "../../lib/client"
-import { queryClient } from "../../lib/query-client"
-import { queryKeysFactory } from "../../lib/query-key-factory"
+import { sdk } from "../../lib/api/client"
+import { queryClient } from "../../lib/query/query-client"
+import { queryKeysFactory } from "../../lib/query/query-key-factory"
 import { ordersQueryKeys } from "./orders"
 
 const PAYMENT_COLLECTION_QUERY_KEY = "payment-collection" as const

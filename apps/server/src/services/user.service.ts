@@ -9,11 +9,11 @@ import type {
   AdminGetUsersParamsType,
   AdminGetInvitesParamsType,
 } from "@my-store/validators/admin-list-params"
-import { listLimitOffset } from "../lib/query-filters"
+import { listLimitOffset } from "../lib/infra/query/query-filters"
 import { HTTPException } from "hono/http-exception"
 import crypto from "node:crypto"
-import { signInviteToken, verifyOpaqueToken } from "../lib/jwt"
-import { adminAppUrl, sendInviteEmail, sendInviteResendEmail } from "../lib/mail"
+import { signInviteToken, verifyOpaqueToken } from "../lib/auth/jwt"
+import { adminAppUrl, sendInviteEmail, sendInviteResendEmail } from "../lib/mail/mail"
 
 export const userService = {
   // ── 用户 CRUD ──────────────────────────────────────────────

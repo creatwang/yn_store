@@ -21,8 +21,8 @@ import { useProductTableQuery } from "../../../../../hooks/table/query/use-produ
 import { useDataTable } from "../../../../../hooks/use-data-table"
 import { productsLoader } from "../../loader"
 import { useFeatureFlag } from "../../../../../providers/feature-flag-provider"
-import { sdk } from "../../../../../lib/client"
-import { queryClient } from "../../../../../lib/query-client"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { productsQueryKeys } from "../../../../../hooks/api/products"
 
 const PAGE_SIZE = 20

@@ -26,8 +26,8 @@ import {
   region,
   salesChannel,
 } from "@my-store/db"
-import { getCurrencyEpsilon, toAmount } from "../../lib/big-number"
-import { sqlRows } from "../../lib/sql-rows"
+import { getCurrencyEpsilon, toAmount } from "../../lib/math/big-number"
+import { sqlRows } from "../../lib/infra/sql/sql-rows"
 import {
   applyOrderFieldMask,
   DEFAULT_ADMIN_ORDER_RETRIEVE_FIELDS,

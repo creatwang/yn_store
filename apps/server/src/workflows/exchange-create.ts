@@ -1,9 +1,9 @@
 /** Workflow: exchange.create — 创建换货 */
 import { eq, sql } from "drizzle-orm"
 import { generateId, getDb, orderExchange, orderChange, orderChangeAction } from "@my-store/db"
-import { createWorkflow, step } from "../lib/workflow"
-import { eventBus } from "../lib/events"
-import { providers } from "../lib/providers"
+import { createWorkflow, step } from "../lib/infra/workflow/workflow"
+import { eventBus } from "../lib/infra/events/events"
+import { providers } from "../lib/payment/providers"
 import { createCompanionReturn } from "../services/order/admin-order-preview"
 
 export const exchangeCreateWorkflow = createWorkflow("exchange-create", [

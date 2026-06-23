@@ -1,5 +1,6 @@
 import type { Loader } from "astro/loaders"
-import { fetchAllPaginated } from "../lib/store-api"
+import { contentEntryId, getSsgLocales } from "../lib/i18n"
+import { StoreApiClient } from "../lib/api/index"
 
 type Promotion = {
   id: string
@@ -12,26 +13,32 @@ export function honoPromotionsLoader(): Loader {
   return {
     name: "hono-store-promotions",
     load: async ({ store, logger }) => {
-      logger.info("Syncing promotions...")
+      logger.info("Syncing promotions (multi-locale)...")
       store.clear()
 
-      const list = await fetchAllPaginated<Promotion>(
-        "/store/promotions",
-        "promotions",
-      )
+      let total = 0
+      for (const locale of getSsgLocales()) {
+        const client = new StoreApiClient(locale)
+        const list = await client.fetchAllPaginated<Promotion>(
+          "/store/promotions",
+          "promotions",
+        )
 
-      for (const promo of list) {
-        store.set({
-          id: promo.id,
-          data: {
-            code: promo.code,
-            type: promo.type,
-            isAutomatic: promo.is_automatic,
-          },
-        })
+        for (const promo of list) {
+          store.set({
+            id: contentEntryId(locale, promo.id),
+            data: {
+              locale,
+              code: promo.code,
+              type: promo.type,
+              isAutomatic: promo.is_automatic,
+            },
+          })
+          total += 1
+        }
       }
 
-      logger.info(`Synced ${list.length} promotions`)
+      logger.info(`Synced ${total} localized promotion entries`)
     },
   }
 }

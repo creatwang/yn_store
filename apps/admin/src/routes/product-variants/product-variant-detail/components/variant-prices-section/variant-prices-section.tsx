@@ -8,7 +8,7 @@ import { Button, Container, Heading } from "@medusajs/ui"
 
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { NoRecords } from "../../../../../components/common/empty-table-content"
-import { getLocaleAmount } from "../../../../../lib/money-amount-helpers"
+import { getLocaleAmount } from "../../../../../lib/money/money-amount-helpers"
 
 type VariantPricesSectionProps = {
   variant: Omit<HttpTypes.AdminProductVariant, "prices"> & {

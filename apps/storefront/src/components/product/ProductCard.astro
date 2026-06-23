@@ -1,5 +1,6 @@
 ---
 import ProductCardImage from "./ProductCardImage.astro"
+import { localeUrlPath } from "../../lib/i18n"
 
 interface Props {
   handle: string
@@ -10,10 +11,12 @@ interface Props {
 }
 
 const { handle, title, subtitle, thumbnail, price } = Astro.props
+const locale = Astro.locals.locale ?? "zh-CN"
+const productHref = localeUrlPath(locale, `/products/${handle}`)
 ---
 
 <a
-  href={`/products/${handle}`}
+  href={productHref}
   class="block overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-md"
 >
   <ProductCardImage src={thumbnail} alt={title} />

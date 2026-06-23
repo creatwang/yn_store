@@ -8,7 +8,7 @@ import { ActionMenu } from "../../../../../components/common/action-menu"
 import { BadgeListSummary } from "../../../../../components/common/badge-list-summary"
 import { LinkButton } from "../../../../../components/common/link-button"
 import { useDeleteStockLocation } from "../../../../../hooks/api/stock-locations"
-import { getFormattedAddress } from "../../../../../lib/addresses"
+import { getFormattedAddress } from "../../../../../lib/addresses/addresses"
 import { FulfillmentSetType } from "../../../common/constants"
 
 type SalesChannelsProps = {

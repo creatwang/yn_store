@@ -1,6 +1,6 @@
 ﻿import { Hono } from "hono"
 import { eq, sql } from "drizzle-orm"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { AdminGetPromotionsParams } from "@my-store/validators/admin-list-params"
 import {
   generateId,
@@ -21,7 +21,7 @@ import {
 import {
   listPromotionRuleAttributeOptions,
   listPromotionRuleValueOptions,
-} from "../../lib/promotion-rule-options"
+} from "../../lib/promotion/promotion-rule-options"
 
 const RULE_TYPES = new Set(["rules", "target-rules", "buy-rules"])
 

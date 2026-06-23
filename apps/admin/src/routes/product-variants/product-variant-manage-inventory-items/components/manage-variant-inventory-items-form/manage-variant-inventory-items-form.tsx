@@ -22,8 +22,8 @@ import {
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useProductVariantsInventoryItemsBatch } from "../../../../../hooks/api/products"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
-import { castNumber } from "../../../../../lib/cast-number"
-import { sdk } from "../../../../../lib/client"
+import { castNumber } from "../../../../../lib/money/cast-number"
+import { sdk } from "../../../../../lib/api/client"
 import { ExtendedVariant } from "../../../product-variant-detail/constants"
 
 type ManageVariantInventoryItemsFormProps = {

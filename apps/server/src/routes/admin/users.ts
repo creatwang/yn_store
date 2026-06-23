@@ -9,10 +9,10 @@ import {
   AdminGetInvitesParams,
   AdminGetUsersParams,
 } from "@my-store/validators/admin-list-params"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { userService } from "../../services/user.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
-import { verifyToken } from "../../lib/jwt"
+import { verifyToken } from "../../lib/auth/jwt"
 
 export const adminUsers = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)

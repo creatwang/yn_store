@@ -52,17 +52,17 @@ import { useMarkPaymentCollectionAsPaid } from "../../../../../hooks/api/payment
 import { useReservationItems } from "../../../../../hooks/api/reservations"
 import { useReturns } from "../../../../../hooks/api/returns"
 import { useDate } from "../../../../../hooks/use-date"
-import { getTotalCreditLines } from "../../../../../lib/credit-line"
-import { formatCurrency } from "../../../../../lib/format-currency"
-import { getReservationsLimitCount } from "../../../../../lib/orders"
+import { getTotalCreditLines } from "../../../../../lib/orders/credit-line"
+import { formatCurrency } from "../../../../../lib/money/format-currency"
+import { getReservationsLimitCount } from "../../../../../lib/orders/orders"
 import {
   getLocaleAmount,
   getStylizedAmount,
   isAmountLessThenRoundingError,
-} from "../../../../../lib/money-amount-helpers"
-import { getTotalCaptured } from "../../../../../lib/payment"
-import { getLoyaltyPlugin } from "../../../../../lib/plugins"
-import { getReturnableQuantity } from "../../../../../lib/rma"
+} from "../../../../../lib/money/money-amount-helpers"
+import { getTotalCaptured } from "../../../../../lib/payment/payment"
+import { getLoyaltyPlugin } from "../../../../../lib/plugins/plugins"
+import { getReturnableQuantity } from "../../../../../lib/orders/rma"
 import { CopyPaymentLink } from "../copy-payment-link/copy-payment-link"
 import ReturnInfoPopover from "./return-info-popover"
 import ShippingInfoPopover from "./shipping-info-popover"

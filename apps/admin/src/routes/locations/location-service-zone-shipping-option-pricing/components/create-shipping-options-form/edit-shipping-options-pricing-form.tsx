@@ -19,7 +19,7 @@ import { usePricePreferences } from "../../../../../hooks/api/price-preferences"
 import { useRegions } from "../../../../../hooks/api/regions"
 import { useUpdateShippingOptions } from "../../../../../hooks/api/shipping-options"
 import { useStore } from "../../../../../hooks/api/store"
-import { castNumber } from "../../../../../lib/cast-number"
+import { castNumber } from "../../../../../lib/money/cast-number"
 import { ConditionalPriceForm } from "../../../common/components/conditional-price-form"
 import { ShippingOptionPriceProvider } from "../../../common/components/shipping-option-price-provider"
 import {

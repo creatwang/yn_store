@@ -13,11 +13,11 @@ import {
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
 import type { CreateCartInput, AddToCartInput, UpdateCartInput } from "@my-store/validators"
-import { sendOrderConfirmationEmail } from "../lib/mail"
+import { sendOrderConfirmationEmail } from "../lib/mail/mail"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
-import { runInTransaction, type DbTx } from "../lib/transaction"
-import { sqlInIds } from "../lib/sql-in-ids"
+import { runInTransaction, type DbTx } from "../lib/infra/db/transaction"
+import { sqlInIds } from "../lib/infra/sql/sql-in-ids"
 import {
   loadPromotionRulesForType,
   selectApplicationMethodByPromotionId,

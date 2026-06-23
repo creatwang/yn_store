@@ -1,8 +1,8 @@
 /** Workflow: payment.refund — 支付退款 */
 import { eq, sql } from "drizzle-orm"
 import { generateId, getDb, payment, refund } from "@my-store/db"
-import { createWorkflow, step } from "../lib/workflow"
-import { providers } from "../lib/providers"
+import { createWorkflow, step } from "../lib/infra/workflow/workflow"
+import { providers } from "../lib/payment/providers"
 
 export const paymentRefundWorkflow = createWorkflow("payment-refund", [
   step("validate", async ({ input }) => {

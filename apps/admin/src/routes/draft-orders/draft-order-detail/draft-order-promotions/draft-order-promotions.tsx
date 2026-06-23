@@ -30,8 +30,8 @@ import { usePromotions } from "../../../../hooks/api/promotions"
 import { useComboboxData } from "../../../../hooks/use-combobox-data"
 import { useCancelOrderEdit } from "../../../../hooks/order-edits/use-cancel-order-edit"
 import { useInitiateOrderEdit } from "../../../../hooks/order-edits/use-initiate-order-edit"
-import { getLocaleAmount } from "../../../../lib/money-amount-helpers"
-import { sdk } from "../../../../lib/client"
+import { getLocaleAmount } from "../../../../lib/money/money-amount-helpers"
+import { sdk } from "../../../../lib/api/client"
 
 export const Promotions = () => {
   const { id } = useParams()

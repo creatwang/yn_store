@@ -8,8 +8,8 @@ import {
   ProductCell,
   ProductHeader,
 } from "../../../../../components/table/table-cells/product/product-cell"
-import { getStylizedAmount } from "../../../../../lib/money-amount-helpers"
-import { getReturnableQuantity } from "../../../../../lib/rma"
+import { getStylizedAmount } from "../../../../../lib/money/money-amount-helpers"
+import { getReturnableQuantity } from "../../../../../lib/orders/rma"
 
 const columnHelper = createColumnHelper<any>()
 

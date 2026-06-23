@@ -2,10 +2,11 @@ import { and, count, desc, eq, isNull } from "drizzle-orm"
 import { getDb, product, productCollection, promotion } from "@my-store/db"
 import type { StoreGetCollectionsParamsType } from "@my-store/validators/admin-list-params"
 import { HTTPException } from "hono/http-exception"
-import { listLimitOffset } from "../lib/query-filters"
+import { listLimitOffset } from "../lib/infra/query/query-filters"
+import { applyTranslation, applyTranslations } from "../lib/translation"
 
 export const storeCatalogService = {
-  async listCollections(query: StoreGetCollectionsParamsType) {
+  async listCollections(query: StoreGetCollectionsParamsType, locale?: string) {
     const db = getDb()
     const { limit, offset } = listLimitOffset(query, { limit: 20, offset: 0 })
     const where = isNull(productCollection.deleted_at)
@@ -19,15 +20,16 @@ export const storeCatalogService = {
         .offset(offset),
       db.select({ total: count() }).from(productCollection).where(where),
     ])
+    const localized = await applyTranslations("product_collection", collections, locale)
     return {
-      collections,
+      collections: localized,
       count: Number(total),
       limit,
       offset,
     }
   },
 
-  async getCollection(idOrHandle: string) {
+  async getCollection(idOrHandle: string, locale?: string) {
     const db = getDb()
     const isId = idOrHandle.startsWith("pcol_")
     const [col] = await db
@@ -58,7 +60,14 @@ export const storeCatalogService = {
       .orderBy(desc(product.created_at))
       .limit(48)
 
-    return { collection: { ...col, products } }
+    const localizedProducts = await applyTranslations("product", products, locale)
+    const localizedCollection = await applyTranslation(
+      "product_collection",
+      { ...col, products: localizedProducts },
+      locale,
+    )
+
+    return { collection: localizedCollection }
   },
 
   async listPromotions(query: { limit: number; offset: number }) {

@@ -1,8 +1,12 @@
 ---
+export const prerender = false
 import BaseLayout from "../layouts/BaseLayout.astro"
+import { localeUrlPath } from "../lib/i18n"
+import { storeClient } from "../lib/api/index"
 import ProductCard from "../components/product/ProductCard.astro"
 
-export const prerender = false
+const locale = Astro.locals.locale ?? "zh-CN"
+const searchAction = localeUrlPath(locale, "/search")
 
 const q = Astro.url.searchParams.get("q")?.trim() ?? ""
 let products: Array<{
@@ -16,24 +20,13 @@ let products: Array<{
 let error: string | null = null
 
 if (q) {
-  const apiUrl = import.meta.env.PUBLIC_API_URL || "http://localhost:7000"
   try {
-    const sc = import.meta.env.PUBLIC_SALES_CHANNEL_ID
-    const headers: Record<string, string> = sc
-      ? { "X-Sales-Channel": sc }
-      : {}
-    const res = await fetch(
-      `${apiUrl}/api/store/products?q=${encodeURIComponent(q)}&limit=48`,
-      { headers },
+    const data = await storeClient.fetchJson<{ products?: typeof products }>(
+      `/store/products?q=${encodeURIComponent(q)}&limit=48`,
     )
-    if (res.ok) {
-      const data = await res.json()
-      products = data.products ?? []
-    } else {
-      error = "搜索失败"
-    }
+    products = data.products ?? []
   } catch {
-    error = "API 连接失败"
+    error = "搜索失败"
   }
 }
 ---
@@ -44,7 +37,7 @@ if (q) {
 >
   <h1 class="mb-4 text-2xl font-bold">搜索</h1>
 
-  <form action="/search" method="get" class="mb-8 flex gap-2">
+  <form action={searchAction} method="get" class="mb-8 flex gap-2">
     <label for="search-q" class="sr-only">关键词</label>
     <input
       id="search-q"
@@ -53,37 +46,30 @@ if (q) {
       value={q}
       placeholder="输入商品名或 handle"
       enterkeyhint="search"
-      autocomplete="off"
       class="flex-1 rounded border border-gray-300 px-3 py-2"
     />
     <button
       type="submit"
-      class="rounded bg-gray-900 px-4 py-2 text-white hover:bg-gray-800"
+      class="rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800"
     >
       搜索
     </button>
   </form>
 
-  {error && (
-    <p class="text-red-600" role="status">{error}</p>
-  )}
-
-  {!q && !error && (
+  {!q ? (
     <p class="text-gray-500">输入关键词开始搜索</p>
-  )}
-
-  {q && !error && products.length === 0 && (
-    <p class="text-gray-500">未找到与「{q}」相关的商品</p>
-  )}
-
-  {products.length > 0 && (
+  ) : error ? (
+    <p class="text-red-600">{error}</p>
+  ) : products.length === 0 ? (
+    <p class="text-gray-500">未找到相关商品</p>
+  ) : (
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((product) => (
         <ProductCard
           handle={product.handle}
           title={product.title}
           subtitle={product.subtitle ?? undefined}
-          thumbnail={product.thumbnail}
+          thumbnail={product.thumbnail ?? undefined}
           price={product.price}
         />
       ))}

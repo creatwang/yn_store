@@ -1,5 +1,5 @@
 ﻿import { Hono } from "hono"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { AdminGetInventoryItemsParams } from "@my-store/validators/admin-list-params"
 import { inventoryService } from "../../services/inventory.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"

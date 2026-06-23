@@ -1,9 +1,9 @@
 /** Workflow: fulfillment.ship — 发货确认 */
 import { and, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, fulfillment, fulfillmentLabel, orderItem } from "@my-store/db"
-import { createWorkflow, step } from "../lib/workflow"
-import { eventBus } from "../lib/events"
-import { providers } from "../lib/providers"
+import { createWorkflow, step } from "../lib/infra/workflow/workflow"
+import { eventBus } from "../lib/infra/events/events"
+import { providers } from "../lib/payment/providers"
 
 export const fulfillmentShipWorkflow = createWorkflow("fulfillment-ship", [
   step("validate", async ({ input }) => {

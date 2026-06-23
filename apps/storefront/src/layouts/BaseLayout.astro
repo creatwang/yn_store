@@ -1,6 +1,9 @@
 ---
 import CartBadge from "../components/cart/CartBadge.astro"
 import CartCountInit from "../components/cart/CartCountInit.astro"
+import LocaleInit from "../components/LocaleInit.astro"
+import LocaleSwitcher from "../components/LocaleSwitcher.astro"
+import { localeUrlPath } from "../lib/i18n"
 
 interface Props {
   title?: string
@@ -14,14 +17,23 @@ const {
   description = "跨境商城 — Hono Store API + Astro",
 } = Astro.props
 
+const locale = Astro.locals.locale ?? "zh-CN"
 const site = Astro.site?.href ?? "http://localhost:4321"
 const canonical = Astro.props.canonical ?? new URL(Astro.url.pathname, site).href
 const ogImage = Astro.props.ogImage
 const noindex = Astro.locals.noindex ?? false
+const homeHref = localeUrlPath(locale, "/")
+const collectionsHref = localeUrlPath(locale, "/collections")
+const promotionsHref = localeUrlPath(locale, "/promotions")
+const accountHref = localeUrlPath(locale, "/account")
+const loginHref = localeUrlPath(locale, "/login")
+const cartHref = localeUrlPath(locale, "/cart")
+const checkoutHref = localeUrlPath(locale, "/checkout")
+const searchAction = localeUrlPath(locale, "/search")
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang={locale}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -35,12 +47,18 @@ const noindex = Astro.locals.noindex ?? false
     <meta property="og:type" content="website" />
     {ogImage && <meta property="og:image" content={ogImage} />}
   </head>
-  <body class="min-h-screen bg-gray-50 text-gray-900">
+  <body
+    class="min-h-screen bg-gray-50 text-gray-900"
+    data-home-href={homeHref}
+    data-account-href={accountHref}
+    data-checkout-href={checkoutHref}
+  >
+    <LocaleInit />
     <CartCountInit />
     <header class="border-b bg-white">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-        <a href="/" class="text-xl font-semibold">跨境商城</a>
-        <form action="/search" method="get" class="order-3 w-full sm:order-none sm:w-auto">
+        <a href={homeHref} class="text-xl font-semibold">跨境商城</a>
+        <form action={searchAction} method="get" class="order-3 w-full sm:order-none sm:w-auto">
           <label for="site-search" class="sr-only">搜索商品</label>
           <input
             id="site-search"
@@ -53,12 +71,13 @@ const noindex = Astro.locals.noindex ?? false
           />
         </form>
         <nav class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-          <a href="/" class="hover:text-gray-900">首页</a>
-          <a href="/collections" class="hover:text-gray-900">合集</a>
-          <a href="/promotions" class="hover:text-gray-900">促销</a>
+          <LocaleSwitcher />
+          <a href={homeHref} class="hover:text-gray-900">首页</a>
+          <a href={collectionsHref} class="hover:text-gray-900">合集</a>
+          <a href={promotionsHref} class="hover:text-gray-900">促销</a>
           <CartBadge />
-          <a href="/account" class="hover:text-gray-900">账户</a>
-          <a href="/login" class="hover:text-gray-900">登录</a>
+          <a href={accountHref} class="hover:text-gray-900">账户</a>
+          <a href={loginHref} class="hover:text-gray-900">登录</a>
         </nav>
       </div>
     </header>

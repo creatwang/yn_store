@@ -1,8 +1,8 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, notification } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import type { FeedNotificationData } from "../lib/notification-feed"
-import { buildResendSender } from "../lib/notification-resend"
+import type { FeedNotificationData } from "../lib/notification/notification-feed"
+import { buildResendSender } from "../lib/notification/notification-resend"
 
 const FEED_TO = "admin"
 

@@ -14,7 +14,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useBatchPriceListPrices } from "../../../../../hooks/api/price-lists"
-import { castNumber } from "../../../../../lib/cast-number"
+import { castNumber } from "../../../../../lib/money/cast-number"
 import { usePriceListGridColumns } from "../../../common/hooks/use-price-list-grid-columns"
 import {
   PriceListUpdateProductVariantsSchema,

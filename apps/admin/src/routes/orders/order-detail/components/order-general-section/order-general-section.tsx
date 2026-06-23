@@ -18,7 +18,7 @@ import {
   getCanceledOrderStatus,
   getOrderFulfillmentStatus,
   getOrderPaymentStatus,
-} from "../../../../../lib/order-helpers"
+} from "../../../../../lib/orders/order-helpers"
 import { ExtendedOrder } from "../../constants"
 
 type OrderGeneralSectionProps = {

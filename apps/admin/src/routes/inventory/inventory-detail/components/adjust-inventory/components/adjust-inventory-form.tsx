@@ -14,7 +14,7 @@ import { Form } from "../../../../../../components/common/form"
 import { RouteDrawer, useRouteModal } from "../../../../../../components/modals"
 import { KeyboundForm } from "../../../../../../components/utilities/keybound-form"
 import { useUpdateInventoryLevel } from "../../../../../../hooks/api/inventory"
-import { castNumber } from "../../../../../../lib/cast-number"
+import { castNumber } from "../../../../../../lib/money/cast-number"
 
 type AdjustInventoryFormProps = {
   item: HttpTypes.AdminInventoryItem

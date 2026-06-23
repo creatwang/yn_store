@@ -36,9 +36,9 @@ import { Form } from "../../../../../components/common/form"
 import { StackedFocusModal } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useCombinedRefs } from "../../../../../hooks/use-combined-refs"
-import { castNumber } from "../../../../../lib/cast-number"
+import { castNumber } from "../../../../../lib/money/cast-number"
 import { CurrencyInfo } from "../../../../../lib/data/currencies"
-import { getLocaleAmount } from "../../../../../lib/money-amount-helpers"
+import { getLocaleAmount } from "../../../../../lib/money/money-amount-helpers"
 import { CreateShippingOptionSchemaType } from "../../../location-service-zone-shipping-option-create/components/create-shipping-options-form/schema"
 import {
   CondtionalPriceRuleSchema,

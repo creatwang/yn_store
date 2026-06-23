@@ -104,7 +104,7 @@ const initialPrice =
 }
 
 <script define:vars={{ productId }}>
-  import { apiFetch, getCartId, setCartId } from "../../lib/cart"
+  import { apiFetch, getCartId, setCartId } from "../../lib/cart/index"
   import { incrementCart, decrementCart } from "../../stores/cartStore"
 
   const btn = document.getElementById("add-to-cart")

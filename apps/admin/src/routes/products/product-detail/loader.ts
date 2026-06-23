@@ -2,8 +2,8 @@
 import { LoaderFunctionArgs } from "react-router-dom"
 
 import { productsQueryKeys } from "../../../hooks/api/products"
-import { sdk } from "../../../lib/client"
-import { queryClient } from "../../../lib/query-client"
+import { sdk } from "../../../lib/api/client"
+import { queryClient } from "../../../lib/query/query-client"
 import { PRODUCT_DETAIL_FIELDS } from "./constants"
 
 const productDetailQuery = (id: string) => ({

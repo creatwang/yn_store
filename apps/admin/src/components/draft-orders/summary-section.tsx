@@ -13,7 +13,7 @@ import {
 import { useTranslation } from "react-i18next"
 import { Link, useNavigate } from "react-router-dom"
 import { useConvertDraftOrder } from "../../hooks/api/draft-orders"
-import { getLocaleAmount, getStylizedAmount } from "../../lib/money-amount-helpers"
+import { getLocaleAmount, getStylizedAmount } from "../../lib/money/money-amount-helpers"
 import { ActionMenu } from "../common/action-menu"
 import { Thumbnail } from "../common/thumbnail"
 

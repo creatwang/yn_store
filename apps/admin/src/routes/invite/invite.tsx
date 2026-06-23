@@ -13,7 +13,7 @@ import { Form } from "../../components/common/form"
 import AvatarBox from "../../components/common/logo-box/avatar-box"
 import { useSignUpWithEmailPass } from "../../hooks/api/auth"
 import { useAcceptInvite } from "../../hooks/api/invites"
-import { isFetchError } from "../../lib/is-fetch-error"
+import { isFetchError } from "../../lib/error/is-fetch-error"
 
 const CreateAccountSchema = z
   .object({

@@ -4,7 +4,7 @@ import {
   orderLineItem,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import type { DbTx } from "../../lib/transaction"
+import type { DbTx } from "../../lib/infra/db/transaction"
 import { variantService } from "../variant.service"
 
 export type OrderLineItemWriteInput = {

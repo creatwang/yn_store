@@ -36,7 +36,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useUpdateProduct } from "../../../../../hooks/api/products"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import { UploadMediaFormItem } from "../../../common/components/upload-media-form-item"
 import {
   EditProductMediaSchema,

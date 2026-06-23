@@ -15,8 +15,8 @@ import { useUpdateProductVariant } from "../../../../../hooks/api/products"
 import {
   transformNullableFormData,
   transformNullableFormNumber,
-} from "../../../../../lib/form-helpers"
-import { optionalFloat } from "../../../../../lib/validation"
+} from "../../../../../lib/forms/form-helpers"
+import { optionalFloat } from "../../../../../lib/forms/validation"
 
 type ProductEditVariantFormProps = {
   product: HttpTypes.AdminProduct

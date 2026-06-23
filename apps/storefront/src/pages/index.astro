@@ -1,32 +1,5 @@
 ---
-import { listProducts } from "../lib/catalog"
-import BaseLayout from "../layouts/BaseLayout.astro"
-import ProductCard from "../components/product/ProductCard.astro"
+import { DEFAULT_LOCALE, localeUrlPath } from "../lib/i18n"
 
-const products = await listProducts()
-const sorted = [...products].sort((a, b) => a.title.localeCompare(b.title))
+return Astro.redirect(localeUrlPath(DEFAULT_LOCALE, "/"))
 ---
-
-<BaseLayout
-  title="首页 — 跨境商城"
-  description="精选跨境商品，基于 Hono Store API 与 Astro 构建的高性能商城。"
->
-  <h1 class="mb-2 text-3xl font-bold">精选商品</h1>
-  <p class="mb-8 text-gray-600">Store API · SSR</p>
-
-  {sorted.length === 0 ? (
-    <p class="text-gray-500">暂无已发布商品</p>
-  ) : (
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {sorted.map((product) => (
-        <ProductCard
-          handle={product.handle}
-          title={product.title}
-          subtitle={product.subtitle}
-          thumbnail={product.thumbnail}
-          price={product.price}
-        />
-      ))}
-    </div>
-  )}
-</BaseLayout>

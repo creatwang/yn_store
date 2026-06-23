@@ -4,7 +4,7 @@ import { HttpTypes } from "@medusajs/types"
 import { StatusBadge, Text } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { ActionMenu } from "../../../../../components/common/action-menu"
-import { formatPercentage } from "../../../../../lib/percentage-helpers"
+import { formatPercentage } from "../../../../../lib/money/percentage-helpers"
 import { useDeleteTaxRateAction } from "../../hooks"
 
 type TaxRateLineProps = {

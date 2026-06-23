@@ -1,7 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, productOption, productOptionValue } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import { attachOptionValues } from "../lib/product-option-values-batch"
+import { attachOptionValues } from "../lib/product/product-option-values-batch"
 
 export const optionService = {
   async listOptions(productId: string) {

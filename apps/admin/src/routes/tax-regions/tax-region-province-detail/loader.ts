@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { LoaderFunctionArgs } from "react-router-dom"
 import { taxRegionsQueryKeys } from "../../../hooks/api/tax-regions"
-import { sdk } from "../../../lib/client"
-import { queryClient } from "../../../lib/query-client"
+import { sdk } from "../../../lib/api/client"
+import { queryClient } from "../../../lib/query/query-client"
 
 const taxRegionDetailQuery = (id: string) => ({
   queryKey: taxRegionsQueryKeys.detail(id),

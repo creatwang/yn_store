@@ -25,15 +25,15 @@ import {
   useRemoveClaimOutboundItem,
   useUpdateClaimOutboundItems,
 } from "../../../../../hooks/api/claims"
-import { sdk } from "../../../../../lib/client"
-import { getAvailableAtLocation } from "../../../../../lib/rma-inventory"
+import { sdk } from "../../../../../lib/api/client"
+import { getAvailableAtLocation } from "../../../../../lib/orders/rma-inventory"
 import { OutboundShippingPlaceholder } from "../../../common/placeholders"
 import { AddClaimOutboundItemsTable } from "../add-claim-outbound-items-table"
 import { ClaimOutboundItem } from "./claim-outbound-item"
 import { ItemPlaceholder } from "./item-placeholder"
 import { CreateClaimSchemaType } from "./schema"
 import { useOrderShippingOptions } from "../../../../../hooks/api/orders"
-import { getFormattedShippingOptionLocationName } from "../../../../../lib/shipping-options"
+import { getFormattedShippingOptionLocationName } from "../../../../../lib/shipping/shipping-options"
 import { ExtendedVariant } from "../../../../product-variants/product-variant-detail/constants"
 
 type ClaimOutboundSectionProps = {

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { castNumber } from "../../../../lib/cast-number"
+import { castNumber } from "../../../../lib/money/cast-number"
 import { ITEM_TOTAL_ATTRIBUTE } from "../constants"
 
 const createPriceRule = (

@@ -1,5 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
-import { getPromotionStatus } from "../../../../../lib/promotions"
+import { getPromotionStatus } from "../../../../../lib/promotions/promotions"
 import { StatusCell as StatusCell_ } from "../../common/status-cell"
 
 type PromotionCellProps = {

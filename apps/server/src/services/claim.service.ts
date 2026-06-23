@@ -6,7 +6,7 @@ import {
   applyDateRangeConditions,
   applyInArrayCondition,
   listLimitOffset,
-} from "../lib/query-filters"
+} from "../lib/infra/query/query-filters"
 import { HTTPException } from "hono/http-exception"
 import { claimCreateWorkflow } from "../workflows/claim-create"
 import {
@@ -14,13 +14,13 @@ import {
   getPendingChangeByClaimId,
   removeChangeShippingAction,
   updateChangeShippingAction,
-} from "../lib/order-change-shipping"
+} from "../lib/order/order-change-shipping"
 import {
   addChangeOutboundItems,
   removeChangeOutboundItem,
   updateChangeOutboundItem,
-} from "../lib/order-change-items"
-import { notifyClaimRequested } from "../lib/notify-customer"
+} from "../lib/order/order-change-items"
+import { notifyClaimRequested } from "../lib/mail/notify-customer"
 
 export const claimService = {
   async list(query: AdminListClaimsParamsType) {

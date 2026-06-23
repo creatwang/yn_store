@@ -1,0 +1,66 @@
+---
+import {
+  buildLocaleCollectionPaths,
+  resolveCollectionByHandle,
+  localeUrlPath,
+  normalizeLocaleSegment,
+  DEFAULT_LOCALE,
+  isStaticContentMode,
+} from "../../../lib/i18n"
+import BaseLayout from "../../../layouts/BaseLayout.astro"
+import ProductCard from "../../../components/product/ProductCard.astro"
+
+export async function getStaticPaths() {
+  if (!isStaticContentMode()) return []
+  return buildLocaleCollectionPaths()
+}
+
+const localeParam = Astro.params.locale
+const locale = localeParam
+  ? normalizeLocaleSegment(localeParam) ?? DEFAULT_LOCALE
+  : Astro.locals.locale ?? DEFAULT_LOCALE
+Astro.locals.locale = locale
+
+const handle = Astro.params.handle
+if (!handle) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
+}
+
+const collection = await resolveCollectionByHandle(locale, handle)
+if (!collection) {
+  return new Response(null, { status: 404, statusText: "Not Found" })
+}
+
+const site = Astro.site?.href ?? "http://localhost:4321"
+---
+
+<BaseLayout
+  title={`${collection.title} — 合集`}
+  description={`${collection.title} 合集，共 ${collection.products.length} 件商品。`}
+  canonical={`${site}${localeUrlPath(locale, `/collections/${collection.handle}`)}`}
+>
+  <nav class="mb-4 text-sm text-gray-600" aria-label="面包屑">
+    <a href={localeUrlPath(locale, "/")} class="underline">首页</a>
+    <span class="mx-1">/</span>
+    <a href={localeUrlPath(locale, "/collections")} class="underline">合集</a>
+    <span class="mx-1">/</span>
+    <span>{collection.title}</span>
+  </nav>
+
+  <h1 class="mb-6 text-2xl font-bold">{collection.title}</h1>
+
+  {collection.products.length === 0 ? (
+    <p class="text-gray-500">该合集暂无商品</p>
+  ) : (
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {collection.products.map((p) => (
+        <ProductCard
+          handle={p.handle}
+          title={p.title}
+          subtitle={p.subtitle}
+          thumbnail={p.thumbnail}
+        />
+      ))}
+    </div>
+  )}
+</BaseLayout>

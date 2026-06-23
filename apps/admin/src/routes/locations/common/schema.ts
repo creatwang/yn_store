@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { t } from "i18next"
 import { z } from "zod"
-import { castNumber } from "../../../lib/cast-number"
+import { castNumber } from "../../../lib/money/cast-number"
 
 export const ConditionalPriceSchema = z
   .object({

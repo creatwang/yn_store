@@ -15,8 +15,8 @@ import {
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useRegions } from "../../../../../hooks/api"
 import { useCreateProductVariant } from "../../../../../hooks/api/products"
-import { castNumber } from "../../../../../lib/cast-number"
-import { partialFormValidation } from "../../../../../lib/validation"
+import { castNumber } from "../../../../../lib/money/cast-number"
+import { partialFormValidation } from "../../../../../lib/forms/validation"
 import {
   CreateProductVariantSchema,
   CreateVariantDetailsFields,

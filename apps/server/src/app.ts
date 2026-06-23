@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { logger } from "hono/logger"
 import { serveStatic } from "@hono/node-server/serve-static"
-import { getHealthStatus, logHealthToConsole } from "./lib/check-db"
+import { getHealthStatus, logHealthToConsole } from "./lib/infra/db/check-db"
 import { corsMiddleware } from "./middleware/cors"
 import { errorHandler } from "./middleware/error-handler"
 import { authRoutes } from "./routes/auth"
@@ -32,7 +32,10 @@ import { adminDraftOrders } from "./routes/admin/draft-orders"
 import { adminUsers, adminInvites } from "./routes/admin/users"
 import { adminProductTags, adminProductTypes, adminTaxRegions, adminReturnReasons, adminRefundReasons } from "./routes/admin/settings"
 import { adminViews, adminLocales, adminTaxProviders } from "./routes/admin/views-locales-tax"
+import { adminFeatureFlags } from "./routes/admin/feature-flags"
+import { adminTranslations } from "./routes/admin/translations"
 import { salesChannelMiddleware } from "./middleware/sales-channel"
+import { localeMiddleware } from "./middleware/locale"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
@@ -41,10 +44,16 @@ import { storeRegions, storeSalesChannels } from "./routes/store/regions"
 import { storeShippingOptions } from "./routes/store/shipping-options"
 import { storePaymentCollections, storePaymentProviders } from "./routes/store/payment-collections"
 import { storeCollections, storePromotions } from "./routes/store/catalog"
+import { storeLocales } from "./routes/store/locales"
 import { rebuildWebhook } from "./routes/webhooks/rebuild"
 import { mountAppSpa } from "./host/mount-app"
-import { registerSubscribers } from "./lib/event-subscribers"
-import { registerDefaultProviders } from "./lib/providers"
+import { registerSubscribers } from "./lib/infra/events/event-subscribers"
+import { registerDefaultProviders } from "./lib/payment/providers"
+import { ensureTranslationSchema } from "./lib/translation"
+
+void ensureTranslationSchema().catch((err) => {
+  console.warn("[schema] translation tables ensure failed:", err)
+})
 registerSubscribers()
 registerDefaultProviders()
 
@@ -115,9 +124,12 @@ const apiRoutes = new Hono()
   .route("/admin/views", adminViews)
   .route("/admin/locales", adminLocales)
   .route("/admin/tax-providers", adminTaxProviders)
-  // /api/store/* 统一挂载 sales channel 中间件
+  .route("/admin/feature-flags", adminFeatureFlags)
+  .route("/admin/translations", adminTranslations)
+  // /api/store/* 统一挂载 sales channel + locale 中间件
   .route("/store", new Hono()
     .use("*", salesChannelMiddleware)
+    .use("*", localeMiddleware)
     .route("/products", storeProducts)
     .route("/orders", storeOrders)
     .route("/carts", storeCarts)
@@ -128,7 +140,8 @@ const apiRoutes = new Hono()
     .route("/payment-collections", storePaymentCollections)
     .route("/payment-providers", storePaymentProviders)
     .route("/collections", storeCollections)
-    .route("/promotions", storePromotions))
+    .route("/promotions", storePromotions)
+    .route("/locales", storeLocales))
   .route("/webhooks", rebuildWebhook)
 
 const app = new Hono()

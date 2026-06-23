@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { HttpTypes } from "@medusajs/types"
-import { castNumber } from "../../../lib/cast-number"
+import { castNumber } from "../../../lib/money/cast-number"
 import { ProductCreateSchemaType } from "./types"
 
 export const normalizeProductFormValues = (

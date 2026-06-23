@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { refundReasonsQueryKeys } from "../../../hooks/api"
-import { sdk } from "../../../lib/client"
-import { queryClient } from "../../../lib/query-client"
+import { sdk } from "../../../lib/api/client"
+import { queryClient } from "../../../lib/query/query-client"
 
 const refundReasonListQuery = () => ({
   queryKey: refundReasonsQueryKeys.list(),

@@ -15,7 +15,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useCreateShippingOptions } from "../../../../../hooks/api/shipping-options"
-import { castNumber } from "../../../../../lib/cast-number"
+import { castNumber } from "../../../../../lib/money/cast-number"
 import {
   FulfillmentSetType,
   ShippingOptionPriceType,

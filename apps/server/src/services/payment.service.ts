@@ -5,7 +5,7 @@ import type {
   AdminGetPaymentProvidersParamsType,
   AdminGetPaymentsParamsType,
 } from "@my-store/validators/admin-list-params"
-import { listLimitOffset } from "../lib/query-filters"
+import { listLimitOffset } from "../lib/infra/query/query-filters"
 import { paymentCaptureWorkflow } from "../workflows/payment-capture"
 import { paymentRefundWorkflow } from "../workflows/payment-refund"
 

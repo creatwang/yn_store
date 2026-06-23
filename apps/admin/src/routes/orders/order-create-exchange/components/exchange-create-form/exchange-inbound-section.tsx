@@ -28,7 +28,7 @@ import {
   useUpdateExchangeInboundItem,
 } from "../../../../../hooks/api/exchanges"
 import { useUpdateReturn } from "../../../../../hooks/api/returns"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import { ReturnShippingPlaceholder } from "../../../common/placeholders"
 import { ItemPlaceholder } from "../../../order-create-claim/components/claim-create-form/item-placeholder"
 import { AddExchangeInboundItemsTable } from "../add-exchange-inbound-items-table"

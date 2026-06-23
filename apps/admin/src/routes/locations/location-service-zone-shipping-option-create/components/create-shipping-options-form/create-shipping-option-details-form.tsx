@@ -8,8 +8,8 @@ import { Form } from "../../../../../components/common/form"
 import { SwitchBox } from "../../../../../components/common/switch-box"
 import { Combobox } from "../../../../../components/inputs/combobox"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
-import { sdk } from "../../../../../lib/client"
-import { formatProvider } from "../../../../../lib/format-provider"
+import { sdk } from "../../../../../lib/api/client"
+import { formatProvider } from "../../../../../lib/shipping/format-provider"
 import {
   FulfillmentSetType,
   ShippingOptionPriceType,

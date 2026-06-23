@@ -1,6 +1,6 @@
 ﻿import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import type { z } from "zod"
 import { AdminBulkCreateReservations } from "@my-store/validators/admin-list-params"
 import { sql } from "drizzle-orm"

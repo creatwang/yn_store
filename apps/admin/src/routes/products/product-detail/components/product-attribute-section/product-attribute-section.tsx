@@ -5,7 +5,7 @@ import { Container, Heading } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { SectionRow } from "../../../../../components/common/section"
-import { getFormattedCountry } from "../../../../../lib/addresses"
+import { getFormattedCountry } from "../../../../../lib/addresses/addresses"
 import { useExtension } from "../../../../../providers/extension-provider"
 
 type ProductAttributeSectionProps = {

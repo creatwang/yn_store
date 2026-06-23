@@ -4,7 +4,7 @@ import { HttpTypes } from "@medusajs/types"
 import { Badge, IconButton, Skeleton, Text } from "@medusajs/ui"
 
 import { useCustomerAddress } from "../../../hooks/api/customers"
-import { getFormattedAddress } from "../../../lib/addresses"
+import { getFormattedAddress } from "../../../lib/addresses/addresses"
 
 type AddressCardProps = {
   customerId: string

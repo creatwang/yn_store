@@ -34,8 +34,8 @@ import { KeyboundForm } from "../../../../components/utilities/keybound-form"
 import { useCreateDraftOrder } from "../../../../hooks/api/draft-orders"
 import { useCustomer } from "../../../../hooks/api/customers"
 import { useComboboxData } from "../../../../hooks/use-combobox-data"
-import { getFormattedAddress } from "../../../../lib/addresses"
-import { sdk } from "../../../../lib/client"
+import { getFormattedAddress } from "../../../../lib/addresses/addresses"
+import { sdk } from "../../../../lib/api/client"
 import { addressSchema } from "../../../../lib/schemas/address"
 
 const initialAddress = {

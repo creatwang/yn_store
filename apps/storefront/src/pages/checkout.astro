@@ -11,9 +11,10 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 </BaseLayout>
 
 <script>
-  import { apiFetch, clearCartId, getCartId } from "../lib/cart"
+  import { apiFetch, clearCartId, getCartId } from "../lib/cart/index"
 
   const root = document.getElementById("checkout-root")!
+  const homeHref = document.body.dataset.homeHref || "/"
 
   type Step = "info" | "shipping" | "payment" | "done"
 
@@ -30,7 +31,7 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 
   function render() {
     if (!cartId) {
-      root.innerHTML = `<p class="text-gray-500">购物车为空，<a href="/" class="underline">返回首页</a></p>`
+      root.innerHTML = `<p class="text-gray-500">购物车为空，<a href="${homeHref}" class="underline">返回首页</a></p>`
       return
     }
 
@@ -275,7 +276,7 @@ import BaseLayout from "../layouts/BaseLayout.astro"
       <div class="rounded border border-green-200 bg-green-50 p-6 text-green-800">
         <p class="text-lg font-semibold">下单成功</p>
         <p class="mt-2 text-sm">订单号：${order.id ?? "—"}</p>
-        <a href="/" class="mt-4 inline-block text-sm underline">返回首页</a>
+        <a href="${homeHref}" class="mt-4 inline-block text-sm underline">返回首页</a>
       </div>
     `
   }

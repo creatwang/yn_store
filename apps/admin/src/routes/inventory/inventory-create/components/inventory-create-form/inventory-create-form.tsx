@@ -28,13 +28,13 @@ import {
   inventoryItemsQueryKeys,
   useCreateInventoryItem,
 } from "../../../../../hooks/api/inventory"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import {
   transformNullableFormData,
   transformNullableFormNumber,
   transformNullableFormNumbers,
-} from "../../../../../lib/form-helpers"
-import { queryClient } from "../../../../../lib/query-client"
+} from "../../../../../lib/forms/form-helpers"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { InventoryAvailabilityForm } from "./inventory-availability-form"
 import { InventoryVariantSkuPicker } from "../inventory-variant-sku-picker"
 import { CreateInventoryItemSchema } from "./schema"

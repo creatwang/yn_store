@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { api, parseJsonResponse, toRpcQuery } from "@/lib/api"
+import { api, parseJsonResponse, toRpcQuery } from "@/lib/api/api"
 import type {
   CreateRegionInput,
   UpdateRegionInput,

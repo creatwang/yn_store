@@ -9,7 +9,7 @@ import {
   RejectedFile,
 } from "../../../../../components/common/file-upload"
 import { Form } from "../../../../../components/common/form"
-import { formatFileSize } from "../../../../../lib/format-file-size"
+import { formatFileSize } from "../../../../../lib/display/format-file-size"
 import { MediaSchema } from "../../../product-create/constants"
 import {
   EditProductMediaSchemaType,

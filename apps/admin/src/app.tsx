@@ -6,16 +6,17 @@ import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } 
 import { HelmetProvider } from "react-helmet-async"
 import { ErrorBoundary } from "./components/utilities/error-boundary/error-boundary"
 import { I18n } from "./components/utilities/i18n"
-import { queryClient } from "./lib/query-client"
+import { queryClient } from "./lib/query/query-client"
 import { ProtectedRoute } from "./components/authentication/protected-route"
 import { MainLayout } from "./components/layout/main-layout"
 import { SettingsLayout } from "./components/layout/settings-layout"
 import { PublicLayout } from "./components/layout/public-layout"
 import { ExtensionProvider } from "./providers/extension-provider"
+import { FeatureFlagProvider } from "./providers/feature-flag-provider"
 import { I18nProvider } from "./providers/i18n-provider"
 import { ThemeProvider } from "./providers/theme-provider"
 import "./index.css"
-import { lazyDetailRoute } from "./lib/lazy-route"
+import { lazyDetailRoute } from "./lib/routing/lazy-route"
 import { settingsRoutesFragment } from "./app/settings-routes"
 
 function Loading() {
@@ -763,17 +764,19 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <TooltipProvider>
-            <ExtensionProvider>
-              <I18n>
-                <I18nProvider>
-                  <RouterProvider
-                    router={router}
-                    fallbackElement={<Loading />}
-                  />
-                </I18nProvider>
-              </I18n>
-            </ExtensionProvider>
-            <Toaster />
+            <FeatureFlagProvider>
+              <ExtensionProvider>
+                <I18n>
+                  <I18nProvider>
+                    <RouterProvider
+                      router={router}
+                      fallbackElement={<Loading />}
+                    />
+                  </I18nProvider>
+                </I18n>
+              </ExtensionProvider>
+              <Toaster />
+            </FeatureFlagProvider>
           </TooltipProvider>
         </ThemeProvider>
       </QueryClientProvider>

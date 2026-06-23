@@ -1,0 +1,12 @@
+<script>
+  import { storeClient } from "../lib/api/index"
+  import { parseLocaleFromPathname } from "../lib/i18n"
+
+  function syncLocaleFromUrl() {
+    const { locale } = parseLocaleFromPathname(window.location.pathname)
+    storeClient.setLocale(locale)
+  }
+
+  syncLocaleFromUrl()
+  window.addEventListener("popstate", syncLocaleFromUrl)
+</script>

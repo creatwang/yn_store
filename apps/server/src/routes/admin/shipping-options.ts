@@ -1,5 +1,5 @@
 ﻿import { Hono } from "hono"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { sql, eq, inArray } from "drizzle-orm"
 import { generateId, getDb, shippingOptionRule } from "@my-store/db"
 import { AdminGetShippingOptionsParams } from "@my-store/validators/admin-list-params"

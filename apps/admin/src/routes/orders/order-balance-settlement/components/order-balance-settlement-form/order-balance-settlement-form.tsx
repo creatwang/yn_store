@@ -26,10 +26,10 @@ import {
   useCreateOrderCreditLine,
   useRefundPayment,
 } from "../../../../../hooks/api"
-import { currencies } from "../../../../../lib/money-amount-helpers"
-import { formatCurrency } from "../../../../../lib/format-currency"
-import { getLocaleAmount } from "../../../../../lib/money-amount-helpers"
-import { getPaymentsFromOrder } from "../../../../../lib/orders"
+import { currencies } from "../../../../../lib/money/money-amount-helpers"
+import { formatCurrency } from "../../../../../lib/money/format-currency"
+import { getLocaleAmount } from "../../../../../lib/money/money-amount-helpers"
+import { getPaymentsFromOrder } from "../../../../../lib/orders/orders"
 
 const OrderBalanceSettlementSchema = zod.object({
   settlement_type: zod.enum(["credit_line", "refund"]),

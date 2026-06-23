@@ -12,7 +12,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useBatchInventoryItemsLocationLevels } from "../../../../../hooks/api"
-import { castNumber } from "../../../../../lib/cast-number"
+import { castNumber } from "../../../../../lib/money/cast-number"
 import { useInventoryStockColumns } from "../../hooks/use-inventory-stock-columns"
 import {
   InventoryItemSchema,

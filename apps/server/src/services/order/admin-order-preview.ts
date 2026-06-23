@@ -17,7 +17,7 @@ import {
   returnItem,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import { toAmount } from "../../lib/big-number"
+import { toAmount } from "../../lib/math/big-number"
 import { decorateOrderTotals, presentAdminOrderDetail } from "./admin-order"
 
 type Db = ReturnType<typeof getDb>

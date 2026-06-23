@@ -6,7 +6,7 @@ import { config } from "dotenv"
 import { resolve } from "path"
 import { sql } from "drizzle-orm"
 import { setDb, createDb, getDb } from "@my-store/db"
-import { signToken } from "../src/lib/jwt"
+import { signToken } from "../src/lib/auth/jwt"
 import { app } from "../src/app"
 import { ensureTestDbSchema } from "./ensure-db-schema"
 

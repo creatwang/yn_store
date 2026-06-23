@@ -1,6 +1,6 @@
 <!-- 页面加载时从 server cart 同步角标数量 -->
 <script>
-  import { apiFetch, getCartId } from "../../lib/cart"
+  import { apiFetch, getCartId } from "../../lib/cart/index"
   import { setCartCount } from "../../stores/cartStore"
 
   async function syncCartCount() {

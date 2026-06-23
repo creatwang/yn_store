@@ -10,9 +10,9 @@
  */
 import { eq, sql } from "drizzle-orm"
 import { generateId, getDb, cart, cartAddress, cartLineItem, cartShippingMethod, order, orderAddress, orderItem, orderLineItem, orderShippingMethod, paymentCollection } from "@my-store/db"
-import { createWorkflow, step } from "../lib/workflow"
-import { eventBus } from "../lib/events"
-import { providers } from "../lib/providers"
+import { createWorkflow, step } from "../lib/infra/workflow/workflow"
+import { eventBus } from "../lib/infra/events/events"
+import { providers } from "../lib/payment/providers"
 import {
   confirmAndReserveForOrder,
   releaseReservations,

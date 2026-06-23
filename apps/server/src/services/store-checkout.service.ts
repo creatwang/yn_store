@@ -8,7 +8,7 @@ import {
   paymentSession,
 } from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
-import { sqlRows } from "../lib/sql-rows"
+import { sqlRows } from "../lib/infra/sql/sql-rows"
 import { cartService } from "./cart.service"
 
 export const storeShippingService = {

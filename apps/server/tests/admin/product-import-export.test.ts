@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, beforeAll } from "vitest"
 import { apiGet, apiPost, apiPostRetry } from "../setup"
-import { toCsv } from "../../src/lib/csv"
+import { toCsv } from "../../src/lib/csv/csv"
 
 const CSV_HEADERS = [
   "Product Id",

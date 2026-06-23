@@ -32,7 +32,7 @@ describe("Admin 批量与扩展 API", () => {
     })
 
     it("POST /admin/products/import — 返回 transaction_id", async () => {
-      const { toCsv } = await import("../../src/lib/csv")
+      const { toCsv } = await import("../../src/lib/csv/csv")
       const csv = toCsv(
         ["Product Handle", "Product Title", "Variant Title", "Variant SKU"],
         [[`imp_${Date.now()}`, "Test", "Default", `SKU_${Date.now()}`]],

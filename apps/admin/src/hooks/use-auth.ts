@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, parseJsonResponse } from "@/lib/api"
-import { authStorage } from "@/lib/auth-storage"
+import { authStorage } from "@/lib/auth"
+import { featureFlagsQueryKey } from "@/hooks/api/feature-flags"
 import type { LoginInput } from "@my-store/validators"
 
 type LoginResponse = {
@@ -32,6 +33,7 @@ export function useLogin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["session"] })
+      queryClient.invalidateQueries({ queryKey: featureFlagsQueryKey })
     },
   })
 }

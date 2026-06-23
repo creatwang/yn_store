@@ -33,7 +33,7 @@ import {
 } from "../../../../../hooks/api/invites"
 import { useUserInviteTableQuery } from "../../../../../hooks/table/query/use-user-invite-table-query"
 import { useDataTable } from "../../../../../hooks/use-data-table"
-import { isFetchError } from "../../../../../lib/is-fetch-error"
+import { isFetchError } from "../../../../../lib/error/is-fetch-error"
 
 const InviteUserSchema = zod.object({
   email: zod.string().email(),

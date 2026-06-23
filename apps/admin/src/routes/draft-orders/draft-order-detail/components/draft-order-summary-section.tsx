@@ -7,7 +7,7 @@ import {
   DraftOrderRecord,
   useConvertDraftOrder,
 } from "../../../../hooks/api/draft-orders"
-import { getStylizedAmount } from "../../../../lib/money-amount-helpers"
+import { getStylizedAmount } from "../../../../lib/money/money-amount-helpers"
 
 type DraftOrderSummarySectionProps = {
   draftOrder: DraftOrderRecord

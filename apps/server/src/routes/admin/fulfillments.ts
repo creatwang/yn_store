@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { and, desc, eq, isNull } from "drizzle-orm"
 import { zValidator } from "@hono/zod-validator"
-import { rpcQueryValidator } from "../../lib/rpc-query-validator"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { getDb, fulfillment, fulfillmentItem, fulfillmentLabel, orderItem } from "@my-store/db"
 import { createFulfillmentSchema, createShipmentSchema } from "@my-store/validators"
 import { AdminListFulfillmentsParams } from "@my-store/validators/admin-list-params"

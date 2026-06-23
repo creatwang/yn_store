@@ -12,7 +12,7 @@ import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useComboboxData } from "../../../../../hooks/use-combobox-data"
 import { Combobox } from "../../../../../components/inputs/combobox"
 import { useRequestTransferOrder } from "../../../../../hooks/api"
-import { sdk } from "../../../../../lib/client"
+import { sdk } from "../../../../../lib/api/client"
 import { TransferHeader } from "./transfer-header"
 
 type CreateOrderTransferFormProps = {

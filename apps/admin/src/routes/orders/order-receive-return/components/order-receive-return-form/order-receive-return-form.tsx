@@ -25,7 +25,7 @@ import {
   useRemoveReceiveItems,
   useUpdateReceiveItem,
 } from "../../../../../hooks/api/returns"
-import { getStylizedAmount } from "../../../../../lib/money-amount-helpers"
+import { getStylizedAmount } from "../../../../../lib/money/money-amount-helpers"
 import { ReceiveReturnSchema } from "./constants"
 import DismissedQuantity, { DismissedQuantityForm } from "./dismissed-quantity"
 

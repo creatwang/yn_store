@@ -22,6 +22,7 @@
     "init": "powershell -ExecutionPolicy Bypass -File ./scripts/init.ps1",
     "check:db": "powershell -ExecutionPolicy Bypass -File ./scripts/check-db.ps1",
     "db:drop-legacy-promotion": "pnpm --filter @my-store/db exec node ../../scripts/drop-legacy-promotion-schema.mjs",
+    "db:bootstrap-translation": "node scripts/bootstrap-translation-schema.mjs",
     "check:runtime-db": "node scripts/check-runtime-db.mjs",
     "seed:admin": "pnpm --filter @my-store/server seed:admin",
     "reset:passwords": "pnpm --filter @my-store/server reset:passwords",

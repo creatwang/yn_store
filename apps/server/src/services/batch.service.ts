@@ -62,7 +62,7 @@ import {
   asDateRange,
   listLimitOffset,
   normalizeFilterIds,
-} from "../lib/query-filters"
+} from "../lib/infra/query/query-filters"
 import { stockLocationService, shippingOptionService } from "./stock-location.service"
 import { getPromotionDetail } from "./promotion-detail.service"
 import {

@@ -1,7 +1,7 @@
 import { isNull } from "drizzle-orm"
 import { getDb, inventoryItem } from "@my-store/db"
 import type { AdminGetInventoryItemsParamsType } from "@my-store/validators/admin-list-params"
-import { listLimitOffset } from "../lib/query-filters"
+import { listLimitOffset } from "../lib/infra/query/query-filters"
 
 export const inventoryService = {
   async listInventoryItems(query: AdminGetInventoryItemsParamsType) {

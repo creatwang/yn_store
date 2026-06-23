@@ -13,7 +13,7 @@ import {
 } from "../../../../../components/modals"
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { useBatchInventoryItemsLocationLevels } from "../../../../../hooks/api"
-import { castNumber } from "../../../../../lib/cast-number"
+import { castNumber } from "../../../../../lib/money/cast-number"
 import { useProductStockColumns } from "../../hooks/use-product-stock-columns"
 import {
   ProductStockInventoryItemSchema,

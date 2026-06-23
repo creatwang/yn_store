@@ -11,6 +11,13 @@ export const updateStoreSchema = z.object({
       })
     )
     .optional(),
+  supported_locales: z
+    .array(
+      z.object({
+        locale_code: z.string(),
+      })
+    )
+    .optional(),
   default_sales_channel_id: z.string().nullish(),
   default_region_id: z.string().nullish(),
   default_location_id: z.string().nullish(),

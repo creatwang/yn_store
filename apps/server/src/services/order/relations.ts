@@ -9,7 +9,7 @@ import {
   orderSummary,
   salesChannel,
 } from "@my-store/db"
-import { sqlRows } from "../../lib/sql-rows"
+import { sqlRows } from "../../lib/infra/sql/sql-rows"
 import type { OrderFieldsConfig } from "./fields"
 import type {
   FulfillmentForStatus,
