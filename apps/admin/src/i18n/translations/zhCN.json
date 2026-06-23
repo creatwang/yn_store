@@ -673,7 +673,7 @@
           "itemId": "请选择库存项目。",
           "quantity": "数量为必填项。请输入一个正数。"
         },
-        "header": "库存与库存",
+        "header": "库存信息",
         "editItemDetails": "编辑项目详情",
         "manageInventoryLabel": "管理库存",
         "manageInventoryHint": "启用后,我们将在创建订单和退货时为您更改库存数量。",

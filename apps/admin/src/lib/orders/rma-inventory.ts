@@ -68,7 +68,7 @@ export function findOutboundQuantityViolation(
 export async function fetchVariantInventoryMap(
   variantIds: string[],
 ): Promise<Record<string, AdminInventoryLevel[]>> {
-  const { sdk } = await import("./client")
+  const { sdk } = await import("@/lib/api/client")
   const ret: Record<string, AdminInventoryLevel[]> = {}
   if (!variantIds.length) {
     return ret

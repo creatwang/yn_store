@@ -1,4 +1,4 @@
-﻿import { Hono } from "hono"
+import { Hono } from "hono"
 import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { createFindParams } from "@my-store/validators"
 import { StoreGetCollectionsParams } from "@my-store/validators/admin-list-params"

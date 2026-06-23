@@ -24,7 +24,7 @@ import { formatCurrency } from "../../../../../lib/money/format-currency"
 import { getLocaleAmount } from "../../../../../lib/money/money-amount-helpers"
 import { getPaymentsFromOrder } from "../../../../../lib/orders/orders"
 import { useDocumentDirection } from "../../../../../hooks/use-document-direction"
-import { formatProvider } from "../../../../../lib/format-provider.ts"
+import { formatProvider } from "@/lib/shipping/format-provider"
 
 type CreateRefundFormProps = {
   order: HttpTypes.AdminOrder

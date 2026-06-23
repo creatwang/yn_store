@@ -1,6 +1,6 @@
 import { HttpTypes } from "@medusajs/types"
 
-import { countries, getCountryByIso2 } from "./data/countries"
+import { countries, getCountryByIso2 } from "@/lib/data/countries"
 
 export const isSameAddress = (
   a?: HttpTypes.AdminOrderAddress | null,

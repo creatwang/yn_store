@@ -16,7 +16,7 @@ import { TFunction } from "i18next"
 import {
   getOrderPaymentStatus,
   getOrderFulfillmentStatus,
-} from "../order-helpers"
+} from "@/lib/orders"
 
 export type CellRenderer<TData = any> = (
   value: any,

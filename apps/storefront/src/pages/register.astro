@@ -49,8 +49,8 @@ const loginHref = localeUrlPath(locale, "/login")
     linkCartToCustomer,
     setSessionCookie,
     getCustomerToken,
-  } from "../lib/auth/index"
-  import { getCartId } from "../lib/cart/index"
+  } from "../lib/auth"
+  import { getCartId } from "../lib/cart"
 
   const form = document.getElementById("register-form") as HTMLFormElement
   const errorEl = document.getElementById("register-error")!

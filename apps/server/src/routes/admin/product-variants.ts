@@ -12,7 +12,16 @@ export const adminProductVariants = new Hono<{ Variables: AuthVariables }>()
     const limit = Number(c.req.query("limit") || 50)
     const offset = Number(c.req.query("offset") || 0)
     const withInventory = c.req.query("inventory_quantity") === "true"
-    const result = await variantService.listVariants(productId, { limit, offset })
+    const fields = c.req.query("fields")
+    const id = c.req.query("id")
+    const result = await variantService.listVariants(productId, {
+      limit,
+      offset,
+      id,
+    })
+    if (fields?.includes("inventory_items")) {
+      result.variants = await variantService.withInventoryItems(result.variants)
+    }
     if (withInventory) {
       result.variants = await variantService.withInventoryQuantity(result.variants)
     }

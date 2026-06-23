@@ -1,7 +1,7 @@
 import { hc } from "hono/client"
 import { stringify } from "qs"
 import type { AppType } from "@my-store/server/app"
-import { authStorage } from "../auth"
+import { authStorage } from "@/lib/auth"
 
 /**
  * 留空 = 与页面同源（Hono 挂 /app 静态时请求 /api）。

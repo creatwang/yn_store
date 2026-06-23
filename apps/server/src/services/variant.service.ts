@@ -1,7 +1,15 @@
 // @ts-nocheck
 import { and, count, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
-import { generateId, getDb, product, productVariant } from "@my-store/db"
+import {
+  generateId,
+  getDb,
+  inventoryItem,
+  product,
+  productVariant,
+  productVariantInventoryItem,
+} from "@my-store/db"
 import { HTTPException } from "hono/http-exception"
+import { loadInventoryLevelsForItems } from "./inventory-item-detail.service"
 import { syncVariantInventoryFromInput } from "./inventory-variant-link.service"
 
 /**
@@ -155,22 +163,109 @@ export const variantService = {
     return item
   },
 
-  async listVariants(productId: string, query?: { limit?: number; offset?: number }) {
+  async listVariants(
+    productId: string,
+    query?: { limit?: number; offset?: number; id?: string | string[] },
+  ) {
     const db = getDb()
     const limit = query?.limit ?? 50
     const offset = query?.offset ?? 0
+    const ids = parseIdFilter(query?.id)
 
-    const where = and(
+    const conditions = [
       eq(productVariant.product_id, productId),
-      isNull(productVariant.deleted_at)
-    )
+      isNull(productVariant.deleted_at),
+    ]
 
-    const [variants, [{ total }]] = await Promise.all([
-      db.select().from(productVariant).where(where).limit(limit).offset(offset),
+    if (ids?.length) {
+      conditions.push(inArray(productVariant.id, ids))
+    }
+
+    const where = and(...conditions)
+
+    const [variants, [{ total }], [productRow]] = await Promise.all([
+      db
+        .select()
+        .from(productVariant)
+        .where(where)
+        .orderBy(productVariant.variant_rank)
+        .limit(limit)
+        .offset(offset),
       db.select({ total: count() }).from(productVariant).where(where),
+      db
+        .select({ id: product.id, thumbnail: product.thumbnail })
+        .from(product)
+        .where(and(eq(product.id, productId), isNull(product.deleted_at)))
+        .limit(1),
     ])
 
-    return { variants, count: Number(total), limit, offset }
+    const enriched = variants.map((variant) => ({
+      ...variant,
+      product: productRow
+        ? { id: productRow.id, thumbnail: productRow.thumbnail }
+        : undefined,
+    }))
+
+    return { variants: enriched, count: Number(total), limit, offset }
+  },
+
+  /**
+   * 对齐 Medusa Admin 产品库存编辑：挂载 inventory_items + inventory.location_levels
+   */
+  async withInventoryItems(variants: any[]) {
+    if (!variants.length) return variants
+
+    const db = getDb()
+    const variantIds = variants.map((v) => v.id)
+
+    const links = await db
+      .select()
+      .from(productVariantInventoryItem)
+      .where(
+        and(
+          inArray(productVariantInventoryItem.variant_id, variantIds),
+          isNull(productVariantInventoryItem.deleted_at),
+        ),
+      )
+
+    if (!links.length) {
+      return variants.map((v) => ({ ...v, inventory_items: [] }))
+    }
+
+    const itemIds = [...new Set(links.map((l) => l.inventory_item_id))]
+    const items = await db
+      .select()
+      .from(inventoryItem)
+      .where(
+        and(inArray(inventoryItem.id, itemIds), isNull(inventoryItem.deleted_at)),
+      )
+    const itemMap = new Map(items.map((item) => [item.id, item]))
+    const levelsByItem = await loadInventoryLevelsForItems(itemIds)
+
+    const linksByVariant = new Map<string, any[]>()
+    for (const link of links) {
+      const item = itemMap.get(link.inventory_item_id)
+      if (!item) continue
+
+      const entry = {
+        variant_id: link.variant_id,
+        inventory_item_id: link.inventory_item_id,
+        required_quantity: link.required_quantity ?? 1,
+        inventory: {
+          ...item,
+          location_levels: levelsByItem.get(link.inventory_item_id) ?? [],
+        },
+      }
+
+      const existing = linksByVariant.get(link.variant_id) ?? []
+      existing.push(entry)
+      linksByVariant.set(link.variant_id, existing)
+    }
+
+    return variants.map((variant) => ({
+      ...variant,
+      inventory_items: linksByVariant.get(variant.id) ?? [],
+    }))
   },
 
   async getVariant(productId: string, variantId: string) {

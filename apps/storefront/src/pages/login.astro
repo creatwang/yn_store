@@ -64,8 +64,8 @@ if (errorParam) {
 </BaseLayout>
 
 <script>
-  import { loginCustomer, linkCartToCustomer, setSessionCookie } from "../lib/auth/index"
-  import { getCartId } from "../lib/cart/index"
+  import { loginCustomer, linkCartToCustomer, setSessionCookie } from "../lib/auth"
+  import { getCartId } from "../lib/cart"
 
   const form = document.getElementById("login-form") as HTMLFormElement
   const errorEl = document.getElementById("login-error")!

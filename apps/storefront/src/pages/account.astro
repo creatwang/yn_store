@@ -10,8 +10,8 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 </BaseLayout>
 
 <script>
-  import { apiFetch } from "../lib/cart/index"
-  import { clearCustomerSession, getCustomer } from "../lib/auth/index"
+  import { apiFetch } from "../lib/cart"
+  import { clearCustomerSession, getCustomer } from "../lib/auth"
 
   const root = document.getElementById("account-root")!
   const homeHref = document.body.dataset.homeHref || "/"

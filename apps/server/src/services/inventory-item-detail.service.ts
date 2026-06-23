@@ -20,6 +20,30 @@ function toNumber(value: string | number | null | undefined) {
   return Number.isFinite(n) ? n : 0
 }
 
+function formatInventoryLevels(
+  levels: (typeof inventoryLevel.$inferSelect)[],
+  locMap: Map<string, { id: string; name: string | null }>,
+) {
+  return levels
+    .filter((level) => Boolean(level.location_id?.trim()))
+    .map((level) => {
+      const loc = locMap.get(level.location_id)
+      const stocked_quantity = toNumber(level.stocked_quantity)
+      const reserved_quantity = toNumber(level.reserved_quantity)
+      const locationName =
+        loc?.name?.trim() ||
+        (loc ? level.location_id : `（库位不可用: ${level.location_id}）`)
+      return {
+        ...level,
+        stocked_quantity,
+        reserved_quantity,
+        incoming_quantity: toNumber(level.incoming_quantity),
+        available_quantity: stocked_quantity - reserved_quantity,
+        stock_locations: [{ id: level.location_id, name: locationName }],
+      }
+    })
+}
+
 export async function loadInventoryLevelsForItem(inventoryItemId: string) {
   const db = getDb()
   const levels = await db
@@ -41,24 +65,42 @@ export async function loadInventoryLevelsForItem(inventoryItemId: string) {
     )
   const locMap = new Map(locations.map((l) => [l.id, l]))
 
-  return levels
-    .filter((level) => Boolean(level.location_id?.trim()))
-    .map((level) => {
-      const loc = locMap.get(level.location_id)
-      const stocked_quantity = toNumber(level.stocked_quantity)
-      const reserved_quantity = toNumber(level.reserved_quantity)
-      const locationName =
-        loc?.name?.trim() ||
-        (loc ? level.location_id : `（库位不可用: ${level.location_id}）`)
-      return {
-        ...level,
-        stocked_quantity,
-        reserved_quantity,
-        incoming_quantity: toNumber(level.incoming_quantity),
-        available_quantity: stocked_quantity - reserved_quantity,
-        stock_locations: [{ id: level.location_id, name: locationName }],
-      }
-    })
+  return formatInventoryLevels(levels, locMap)
+}
+
+/** 批量加载多个 inventory item 的 location_levels（产品库存编辑页） */
+export async function loadInventoryLevelsForItems(
+  inventoryItemIds: string[],
+): Promise<Map<string, ReturnType<typeof formatInventoryLevels>>> {
+  const result = new Map<string, ReturnType<typeof formatInventoryLevels>>()
+  if (!inventoryItemIds.length) return result
+
+  const db = getDb()
+  const levels = await db
+    .select()
+    .from(inventoryLevel)
+    .where(inArray(inventoryLevel.inventory_item_id, inventoryItemIds))
+
+  if (!levels.length) return result
+
+  const locationIds = [...new Set(levels.map((l) => l.location_id))]
+  const locations = await db
+    .select({ id: stockLocation.id, name: stockLocation.name })
+    .from(stockLocation)
+    .where(
+      and(
+        inArray(stockLocation.id, locationIds),
+        isNull(stockLocation.deleted_at),
+      ),
+    )
+  const locMap = new Map(locations.map((l) => [l.id, l]))
+
+  for (const itemId of inventoryItemIds) {
+    const itemLevels = levels.filter((l) => l.inventory_item_id === itemId)
+    result.set(itemId, formatInventoryLevels(itemLevels, locMap))
+  }
+
+  return result
 }
 
 export async function loadVariantsForInventoryItem(

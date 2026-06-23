@@ -6,7 +6,7 @@ import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } 
 import { HelmetProvider } from "react-helmet-async"
 import { ErrorBoundary } from "./components/utilities/error-boundary/error-boundary"
 import { I18n } from "./components/utilities/i18n"
-import { queryClient } from "./lib/query/query-client"
+import { queryClient } from "@/lib/query"
 import { ProtectedRoute } from "./components/authentication/protected-route"
 import { MainLayout } from "./components/layout/main-layout"
 import { SettingsLayout } from "./components/layout/settings-layout"
@@ -16,7 +16,7 @@ import { FeatureFlagProvider } from "./providers/feature-flag-provider"
 import { I18nProvider } from "./providers/i18n-provider"
 import { ThemeProvider } from "./providers/theme-provider"
 import "./index.css"
-import { lazyDetailRoute } from "./lib/routing/lazy-route"
+import { lazyDetailRoute } from "@/lib/routing"
 import { settingsRoutesFragment } from "./app/settings-routes"
 
 function Loading() {

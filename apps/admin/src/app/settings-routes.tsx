@@ -1,5 +1,5 @@
 import { Outlet, Route } from "react-router-dom"
-import { lazyDetailRoute } from "../lib/routing/lazy-route"
+import { lazyDetailRoute } from "@/lib/routing"
 import { taxRegionLoader } from "../routes/tax-regions/tax-region-detail/loader"
 
 /**
