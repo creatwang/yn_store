@@ -1,13 +1,12 @@
 ---
 import { getImage } from "astro:assets"
 import {
-  buildLocaleProductPaths,
-  resolveProductByHandle,
   localeUrlPath,
   normalizeLocaleSegment,
   DEFAULT_LOCALE,
   isStaticContentMode,
 } from "../../../lib/i18n"
+import { buildLocaleProductPaths, resolveProductByHandle } from "../../../lib/i18n/server"
 import { resolveImageUrl } from "../../../lib/media/images"
 import BaseLayout from "../../../layouts/BaseLayout.astro"
 import ProductAddToCart from "../../../components/product/ProductAddToCart.astro"

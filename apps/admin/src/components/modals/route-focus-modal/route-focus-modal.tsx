@@ -87,6 +87,8 @@ const Content = ({ stackedModalOpen, children }: ContentProps) => {
         "!bg-ui-bg-disabled !inset-x-5 !inset-y-3": stackedModalOpen,
       })}
     >
+      {/* Radix DialogContent 要求存在 DialogTitle；加载中 children 为空时也需要 */}
+      <FocusModal.Title className="sr-only">Dialog</FocusModal.Title>
       {children}
     </FocusModal.Content>
   )

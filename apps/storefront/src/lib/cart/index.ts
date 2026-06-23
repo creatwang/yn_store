@@ -16,7 +16,7 @@ export function clearCartId() {
 }
 
 export async function apiFetch(path: string, init?: RequestInit) {
-  const { authHeaders } = await import("./auth")
+  const { authHeaders } = await import("../auth")
   return storeClient.fetch(path, {
     ...init,
     headers: {

@@ -11,7 +11,7 @@ import {
   type CatalogCollection,
   type CatalogProduct,
   type CatalogPromotion,
-} from "../catalog/index"
+} from "../catalog/server"
 import { storeClient } from "../api"
 
 function mapProductEntry(entry: {

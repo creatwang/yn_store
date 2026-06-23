@@ -1,6 +1,7 @@
 import type { Loader } from "astro/loaders"
-import { contentEntryId, getSsgLocales } from "../lib/i18n"
-import { StoreApiClient } from "../lib/api/index"
+import { contentEntryId } from "../lib/i18n/content-id"
+import { getSsgLocales } from "../lib/i18n/ssg-locales"
+import { StoreApiClient } from "../lib/api"
 
 type ListProduct = {
   id: string

@@ -3,7 +3,7 @@ import {
   localeUrlPath,
   parseLocaleFromPathname,
   type StoreLocale,
-} from "../i18n"
+} from "../i18n/locale"
 
 const LOCALE_STORAGE_KEY = "store_locale"
 
@@ -109,7 +109,17 @@ export class StoreApiClient {
   }
 
   async fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await this.fetch(path, init)
+    let res: Response
+    try {
+      res = await this.fetch(path, init)
+    } catch (err) {
+      const hint =
+        API_BASE.includes("localhost") || API_BASE.includes("127.0.0.1")
+          ? "请确认 Hono 后端已启动（默认 http://localhost:7000，pnpm dev:server 或 pnpm dev）"
+          : `请检查 PUBLIC_API_URL（当前 ${API_BASE}）`
+      const message = err instanceof Error ? err.message : String(err)
+      throw new Error(`Store API 连接失败 (${message}): ${this.storeApiUrl(path)}。${hint}`)
+    }
     if (!res.ok) {
       throw new Error(`Store API ${res.status}: ${path}`)
     }

@@ -1,5 +1,5 @@
 import { describeDbPool } from "@my-store/db"
-import { maskDatabaseUrl } from "../../load-env"
+import { maskDatabaseUrl } from "../../../../load-env"
 
 /** 各 entry 统一打印 Druid 式连接池配置 */
 export function logDbPoolAtStartup(dbUrl: string) {

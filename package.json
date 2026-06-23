@@ -21,6 +21,7 @@
     "typecheck": "turbo typecheck",
     "init": "powershell -ExecutionPolicy Bypass -File ./scripts/init.ps1",
     "check:db": "powershell -ExecutionPolicy Bypass -File ./scripts/check-db.ps1",
+    "check:storefront-boundaries": "node scripts/check-storefront-boundaries.mjs",
     "db:drop-legacy-promotion": "pnpm --filter @my-store/db exec node ../../scripts/drop-legacy-promotion-schema.mjs",
     "db:bootstrap-translation": "node scripts/bootstrap-translation-schema.mjs",
     "check:runtime-db": "node scripts/check-runtime-db.mjs",

@@ -1,12 +1,11 @@
 ---
 import {
-  buildLocaleIndexPaths,
-  resolvePromotions,
   localeUrlPath,
   normalizeLocaleSegment,
   DEFAULT_LOCALE,
   isStaticContentMode,
 } from "../../lib/i18n"
+import { buildLocaleIndexPaths, resolvePromotions } from "../../lib/i18n/server"
 import BaseLayout from "../../layouts/BaseLayout.astro"
 
 export async function getStaticPaths() {

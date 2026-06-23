@@ -1,6 +1,6 @@
 <script>
-  import { storeClient } from "../lib/api/index"
-  import { parseLocaleFromPathname } from "../lib/i18n"
+  import { storeClient } from "../lib/api"
+  import { parseLocaleFromPathname } from "../lib/i18n/locale"
 
   function syncLocaleFromUrl() {
     const { locale } = parseLocaleFromPathname(window.location.pathname)
