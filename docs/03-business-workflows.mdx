@@ -239,7 +239,7 @@ POST /admin/products/batch
 POST /store/payment-collections/:id/payment-sessions
 → createPaymentSessionsWorkflow
   ├── Step 1: 验证 PaymentCollection 状态
-  ├── Step 2: 调用支付提供商创建会话 (如 Stripe)
+  ├── Step 2: 调用支付渠道创建会话 (如 Stripe)
   └── Step 3: 创建 PaymentSession 记录
 ```
 
@@ -247,7 +247,7 @@ POST /store/payment-collections/:id/payment-sessions
 ```
 POST /admin/payments/:id/capture
 → capturePaymentWorkflow
-  ├── Step 1: 调用支付提供商捕获
+  ├── Step 1: 调用支付渠道捕获
   ├── Step 2: 创建 Capture 记录
   ├── Step 3: 更新 PaymentCollection 的 captured_amount
   └── Step 4: 更新 Payment 的 captured_at
@@ -257,7 +257,7 @@ POST /admin/payments/:id/capture
 ```
 POST /admin/payments/:id/refund
 → refundPaymentWorkflow
-  ├── Step 1: 调用支付提供商退款
+  ├── Step 1: 调用支付渠道退款
   ├── Step 2: 创建 Refund 记录
   ├── Step 3: 更新 PaymentCollection 的 refunded_amount
   └── Step 4: 创建 OrderTransaction (退款记录)
@@ -322,7 +322,7 @@ calculateCartTotals
 | P0 | 商品 CRUD | 中 | 基础数据管理 |
 | P0 | 认证 | 低 | 调用 Medusa Auth API 即可 |
 | P1 | 创建发货 | 中 | 订单履约核心 |
-| P1 | 支付捕获/退款 | 中 | 依赖支付提供商 |
+| P1 | 支付捕获/退款 | 中 | 依赖支付渠道 |
 | P1 | Cart Totals 计算 | 中 | 建议先用 Medusa API，后续自实现 |
 | P2 | 退货 | 中 | 售后核心 |
 | P2 | 库存管理 | 中 | 可先简化处理 |

@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../table-pagination"
 import type { z } from "zod"
 import { AdminGetOrdersParams } from "@my-store/validators/admin-list-params"
 import { useQueryParams } from "../../use-query-params"
@@ -11,8 +12,9 @@ type UseOrderTableQueryProps = {
 
 export const useOrderTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseOrderTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     [
       "offset",

@@ -12,9 +12,18 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 
 <script>
   import { apiFetch, clearCartId, getCartId } from "../lib/cart"
+  import { formatMoney, normalizeCurrencyCode } from "../lib/currency"
 
   const root = document.getElementById("checkout-root")!
   const homeHref = document.body.dataset.homeHref || "/"
+
+  function getCurrency(): string {
+    return normalizeCurrencyCode(document.body.dataset.currency)
+  }
+
+  function formatPrice(amount: number | string): string {
+    return formatMoney(amount, getCurrency())
+  }
 
   type Step = "info" | "shipping" | "payment" | "done"
 
@@ -61,7 +70,7 @@ import BaseLayout from "../layouts/BaseLayout.astro"
                   `<label class="flex items-center gap-2 rounded border p-3 cursor-pointer">
               <input type="radio" name="ship" value="${o.id}" ${selectedOptionId === o.id ? "checked" : ""} />
               <span>${o.name}</span>
-              <span class="ml-auto text-sm text-gray-500">$${o.amount ?? 0}</span>
+              <span class="ml-auto text-sm text-gray-500">${formatPrice(o.amount ?? 0)}</span>
             </label>`,
               )
               .join("")
@@ -111,7 +120,7 @@ import BaseLayout from "../layouts/BaseLayout.astro"
                 : `<button id="apply-promo" type="button" class="rounded bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800">应用</button>`
               }
             </div>
-            <p id="promo-msg" class="mt-1 text-xs ${appliedPromo ? 'text-green-600' : ''}">${appliedPromo ? `已应用：${appliedPromo.code} -$${appliedPromo.discount.toFixed(2)}` : ""}</p>
+            <p id="promo-msg" class="mt-1 text-xs ${appliedPromo ? 'text-green-600' : ''}">${appliedPromo ? `已应用：${appliedPromo.code} -${formatPrice(appliedPromo.discount)}` : ""}</p>
           </div>
 
           <div class="flex gap-2">
@@ -224,8 +233,11 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 
   async function submitOrder() {
     const totals = await apiFetch(`/store/carts/${cartId}`)
-    const cartData = totals.ok ? await totals.json() : { items: [] }
+    const cartData = totals.ok ? await totals.json() : { items: [], cart: null }
     const items = cartData.items ?? []
+    const cartCurrency = normalizeCurrencyCode(
+      cartData.cart?.currency_code ?? document.body.dataset.currency,
+    )
     const itemTotal = items.reduce(
       (s: number, i: { unit_price?: string; quantity: number }) =>
         s + Number(i.unit_price ?? 0) * i.quantity,
@@ -236,7 +248,11 @@ import BaseLayout from "../layouts/BaseLayout.astro"
 
     const pcRes = await apiFetch("/store/payment-collections", {
       method: "POST",
-      body: JSON.stringify({ cart_id: cartId, currency_code: "USD", amount: total }),
+      body: JSON.stringify({
+        cart_id: cartId,
+        currency_code: cartCurrency.toUpperCase(),
+        amount: total,
+      }),
     })
     if (!pcRes.ok) {
       alert("创建支付失败")

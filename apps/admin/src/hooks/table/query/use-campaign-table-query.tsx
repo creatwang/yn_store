@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../table-pagination"
 import { useQueryParams } from "../../use-query-params"
 
 type UseCampaignTableQueryProps = {
@@ -7,8 +8,9 @@ type UseCampaignTableQueryProps = {
 
 export const useCampaignTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseCampaignTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     ["offset", "q", "order", "created_at", "updated_at"],
     prefix

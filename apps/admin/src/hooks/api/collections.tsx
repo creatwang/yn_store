@@ -173,6 +173,7 @@ export const useDeleteCollection = (
       queryClient.invalidateQueries({
         queryKey: collectionsQueryKeys.detail(id),
       })
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.lists() })
 
       options?.onSuccess?.(data, variables, context)
     },

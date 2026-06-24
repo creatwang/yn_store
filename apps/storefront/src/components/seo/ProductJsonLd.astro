@@ -19,6 +19,8 @@ const {
   inStock = true,
 } = Astro.props
 
+const priceCurrency = currency.toUpperCase()
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Product",
@@ -28,7 +30,7 @@ const jsonLd = {
   sku,
   offers: {
     "@type": "Offer",
-    priceCurrency: currency,
+    priceCurrency: priceCurrency,
     price: price.toFixed(2),
     availability: inStock
       ? "https://schema.org/InStock"

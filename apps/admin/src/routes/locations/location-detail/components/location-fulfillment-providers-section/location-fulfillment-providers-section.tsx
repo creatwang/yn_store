@@ -1,6 +1,6 @@
 import { HandTruck, PencilSquare } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
-import { Container, Heading } from "@medusajs/ui"
+import { Container, Heading, Text } from "@medusajs/ui"
 import { Fragment } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -27,9 +27,14 @@ function LocationsFulfillmentProvidersSection({
   return (
     <Container className="flex flex-col px-6 py-4">
       <div className="flex items-center justify-between">
-        <Heading level="h2">
-          {t("stockLocations.fulfillmentProviders.header")}
-        </Heading>
+        <div className="flex flex-col gap-y-1">
+          <Heading level="h2">
+            {t("stockLocations.fulfillmentProviders.header")}
+          </Heading>
+          <Text size="small" className="text-ui-fg-subtle">
+            {t("stockLocations.fulfillmentProviders.dbHint")}
+          </Text>
+        </div>
 
         <ActionMenu
           groups={[

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import {
   generateId,
   getDb,
@@ -340,6 +340,39 @@ export const draftOrderService = {
       .set({ deleted_at: sql`now()` })
       .where(and(eq(order.id, id), eq(order.is_draft_order, true)))
     return { id, object: "draft-order", deleted: true }
+  },
+
+  async batchDelete(ids: string[]) {
+    const db = getDb()
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+    const existing = await db
+      .select({ id: order.id })
+      .from(order)
+      .where(
+        and(
+          inArray(order.id, ids),
+          eq(order.is_draft_order, true),
+          isNull(order.deleted_at),
+        ),
+      )
+    const existingIds = existing.map((r) => r.id)
+    const existingSet = new Set(existingIds)
+    const notFound = ids.filter((id) => !existingSet.has(id))
+    if (existingIds.length) {
+      await db
+        .update(order)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(
+          and(
+            inArray(order.id, existingIds),
+            eq(order.is_draft_order, true),
+            isNull(order.deleted_at),
+          ),
+        )
+    }
+    return { deleted: existingIds, not_found: notFound }
   },
 
   async convertToOrder(id: string) {

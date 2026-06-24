@@ -33,6 +33,13 @@ export const corsMiddleware = cors({
     return null
   },
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization", "x-publishable-api-key"],
+  allowHeaders: [
+    "Content-Type",
+    "Authorization",
+    "x-publishable-api-key",
+    "X-Sales-Channel",
+    "x-store-locale",
+    "x-store-currency",
+  ],
   credentials: true,
 })

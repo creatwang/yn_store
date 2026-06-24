@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../table-pagination"
 import { HttpTypes } from "@medusajs/types"
 import { useQueryParams } from "../../use-query-params"
 
@@ -8,8 +9,9 @@ type UseFulfillmentProviderTableQueryProps = {
 
 export const useFulfillmentProvidersTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseFulfillmentProviderTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     ["offset", "q", "stock_location_id"],
     prefix

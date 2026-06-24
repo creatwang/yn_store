@@ -1,12 +1,20 @@
 // @ts-nocheck
+import { AdminShippingProfileResponse } from "@medusajs/types"
 import { Button, Container, Heading, Text } from "@medusajs/ui"
 import { Link } from "react-router-dom"
 
 import { keepPreviousData } from "@tanstack/react-query"
+import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { _DataTable } from "../../../../../components/table/data-table"
-import { useShippingProfiles } from "../../../../../hooks/api/shipping-profiles"
+import {
+  shippingProfileQueryKeys,
+  useShippingProfiles,
+} from "../../../../../hooks/api/shipping-profiles"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { useShippingProfileTableColumns } from "./use-shipping-profile-table-columns"
 import { useShippingProfileTableFilters } from "./use-shipping-profile-table-filters"
 import { useShippingProfileTableQuery } from "./use-shipping-profile-table-query"
@@ -25,7 +33,17 @@ export const ShippingProfileListTable = () => {
       placeholderData: keepPreviousData,
     })
 
-  const columns = useShippingProfileTableColumns()
+  const batchDelete = useListTableBatchDelete<
+    AdminShippingProfileResponse["shipping_profile"]
+  >({
+    deleteFn: (ids) => sdk.admin.shippingProfile.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: shippingProfileQueryKeys.lists(),
+      }),
+  })
+
+  const columns = useColumns(batchDelete.selectColumn)
   const filters = useShippingProfileTableFilters()
 
   const { table } = useDataTable({
@@ -35,6 +53,8 @@ export const ShippingProfileListTable = () => {
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -73,7 +93,14 @@ export const ShippingProfileListTable = () => {
         queryObject={raw}
         search
         pagination
+        commands={batchDelete.commands}
       />
     </Container>
   )
+}
+
+const useColumns = (selectColumn) => {
+  const base = useShippingProfileTableColumns()
+
+  return useMemo(() => [selectColumn, ...base], [base, selectColumn])
 }

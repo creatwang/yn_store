@@ -1,26 +1,12 @@
-import { Table } from "@medusajs/ui"
-import { ComponentPropsWithoutRef, ElementRef, forwardRef } from "react"
-import { useTranslation } from "react-i18next"
+import { ComponentPropsWithoutRef } from "react"
+import { TablePaginationBar } from "../../table/table-pagination-bar"
 
-type LocalizedTablePaginationProps = Omit<
-  ComponentPropsWithoutRef<typeof Table.Pagination>,
-  "translations"
+type LocalizedTablePaginationProps = ComponentPropsWithoutRef<
+  typeof TablePaginationBar
 >
 
-export const LocalizedTablePagination = forwardRef<
-  ElementRef<typeof Table.Pagination>,
-  LocalizedTablePaginationProps
->((props, ref) => {
-  const { t } = useTranslation()
-
-  const translations = {
-    of: t("general.of"),
-    results: t("general.results"),
-    pages: t("general.pages"),
-    prev: t("general.prev"),
-    next: t("general.next"),
-  }
-
-  return <Table.Pagination {...props} translations={translations} ref={ref} />
-})
-LocalizedTablePagination.displayName = "LocalizedTablePagination"
+export const LocalizedTablePagination = (
+  props: LocalizedTablePaginationProps,
+) => {
+  return <TablePaginationBar {...props} />
+}

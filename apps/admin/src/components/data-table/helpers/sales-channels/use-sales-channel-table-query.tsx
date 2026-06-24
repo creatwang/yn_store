@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../../../../hooks/table/table-pagination"
 import { HttpTypes } from "@medusajs/types"
 import { useQueryParams } from "../../../../hooks/use-query-params"
 
@@ -8,8 +9,9 @@ type UseSalesChannelTableQueryProps = {
 
 export const useSalesChannelTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseSalesChannelTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     ["offset", "q", "order", "created_at", "updated_at", "is_disabled"],
     prefix

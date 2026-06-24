@@ -1,13 +1,15 @@
+import { useTablePageSize } from "../../../../../hooks/table/table-pagination"
 // @ts-nocheck
 import { useQueryParams } from "../../../../../hooks/use-query-params"
 
 export const useOrderEditItemTableQuery = ({
-  pageSize = 50,
+  pageSize: pageSizeProp,
   prefix,
 }: {
   pageSize?: number
   prefix?: string
 }) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const raw = useQueryParams(
     ["q", "offset", "order", "created_at", "updated_at"],
     prefix

@@ -10,19 +10,24 @@ import { PencilSquare } from "@medusajs/icons"
 import { DataTable } from "../../../../../components/data-table"
 import { useDataTableDateColumns } from "../../../../../components/data-table/helpers/general/use-data-table-date-columns"
 import { useDataTableDateFilters } from "../../../../../components/data-table/helpers/general/use-data-table-date-filters"
-import { useUsers } from "../../../../../hooks/api/users"
+import { usersQueryKeys, useUsers } from "../../../../../hooks/api/users"
+import { useMedusaDataTableBatchDelete } from "../../../../../hooks/table/use-medusa-data-table-batch-delete"
+import { useTablePageSize } from "../../../../../hooks/table/table-pagination"
 import { useQueryParams } from "../../../../../hooks/use-query-params"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 
 const PAGE_SIZE = 20
 
 export const UserListTable = () => {
   const { q, order, offset } = useQueryParams(["q", "order", "offset"])
+  const pageSize = useTablePageSize(undefined, PAGE_SIZE)
   const { users, count, isPending, isError, error } = useUsers(
     {
       q,
       order,
       offset: offset ? parseInt(offset) : 0,
-      limit: PAGE_SIZE,
+      limit: pageSize,
     },
     {
       placeholderData: keepPreviousData,
@@ -31,6 +36,13 @@ export const UserListTable = () => {
 
   const columns = useColumns()
   const filters = useFilters()
+
+  const batchDelete = useMedusaDataTableBatchDelete({
+    deleteFn: (ids) => sdk.admin.user.batchDelete({ ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usersQueryKeys.lists() })
+    },
+  })
 
   const { t } = useTranslation()
 
@@ -64,6 +76,8 @@ export const UserListTable = () => {
             description: t("users.list.filtered.description"),
           },
         }}
+        rowSelection={batchDelete.rowSelection}
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -79,6 +93,7 @@ const useColumns = () => {
 
   return useMemo(
     () => [
+      columnHelper.select(),
       columnHelper.accessor("email", {
         header: t("fields.email"),
         cell: ({ row }) => {

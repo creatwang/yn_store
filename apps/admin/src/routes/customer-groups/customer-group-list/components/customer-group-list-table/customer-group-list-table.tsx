@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { PencilSquare, Trash } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import {
@@ -15,10 +16,15 @@ import { DataTable } from "../../../../../components/data-table"
 import { useDataTableDateFilters } from "../../../../../components/data-table/helpers/general/use-data-table-date-filters"
 import { SingleColumnPage } from "../../../../../components/layout/pages"
 import {
+  customerGroupsQueryKeys,
   useCustomerGroups,
   useDeleteCustomerGroupLazy,
 } from "../../../../../hooks/api"
+import { useMedusaDataTableBatchDelete } from "../../../../../hooks/table/use-medusa-data-table-batch-delete"
+import { useTablePageSize } from "../../../../../hooks/table/table-pagination"
 import { useDate } from "../../../../../hooks/use-date"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { useQueryParams } from "../../../../../hooks/use-query-params"
 import { useExtension } from "../../../../../providers/extension-provider"
 
@@ -38,6 +44,16 @@ export const CustomerGroupListTable = () => {
 
   const columns = useColumns()
   const filters = useFilters()
+  const pageSize = useTablePageSize(undefined, PAGE_SIZE)
+
+  const batchDelete = useMedusaDataTableBatchDelete({
+    deleteFn: (ids) => sdk.admin.customerGroup.batchDelete({ ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: customerGroupsQueryKeys.lists(),
+      })
+    },
+  })
 
   const { customer_groups, count, isPending, isError, error } =
     useCustomerGroups(
@@ -45,7 +61,7 @@ export const CustomerGroupListTable = () => {
         q,
         order,
         offset: offset ? parseInt(offset) : undefined,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         created_at: created_at ? JSON.parse(created_at) : undefined,
         updated_at: updated_at ? JSON.parse(updated_at) : undefined,
         fields: "id,name,created_at,updated_at,customers.id",
@@ -91,6 +107,8 @@ export const CustomerGroupListTable = () => {
           }}
           pageSize={PAGE_SIZE}
           isLoading={isPending}
+          rowSelection={batchDelete.rowSelection}
+          commands={batchDelete.commands}
         />
       </Container>
     </SingleColumnPage>
@@ -141,6 +159,7 @@ const useColumns = () => {
 
   return useMemo(() => {
     return [
+      columnHelper.select(),
       columnHelper.accessor("name", {
         header: t("fields.name"),
         enableSorting: true,

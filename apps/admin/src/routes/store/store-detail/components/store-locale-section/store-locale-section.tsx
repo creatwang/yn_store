@@ -26,12 +26,17 @@ type StoreLocaleSectionProps = {
   store: HttpTypes.AdminStore
 }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 20
+/** URL 分页前缀，避免与货币表格冲突 */
+const TABLE_PREFIX = "sl"
 
 export const StoreLocaleSection = ({ store }: StoreLocaleSectionProps) => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 
-  const { searchParams, raw } = useLocalesTableQuery({ pageSize: PAGE_SIZE })
+  const { searchParams, raw } = useLocalesTableQuery({
+    pageSize: PAGE_SIZE,
+    prefix: TABLE_PREFIX,
+  })
 
   const { locales, count, isPending, isError, error } = useLocales(
     {
@@ -58,6 +63,7 @@ export const StoreLocaleSection = ({ store }: StoreLocaleSectionProps) => {
     enablePagination: true,
     enableRowSelection: true,
     pageSize: PAGE_SIZE,
+    prefix: TABLE_PREFIX,
     meta: {
       storeId: store.id,
       supportedLocales: store.supported_locales,
@@ -140,6 +146,7 @@ export const StoreLocaleSection = ({ store }: StoreLocaleSectionProps) => {
         count={!store.supported_locales?.length ? 0 : count}
         isLoading={!store.supported_locales?.length ? false : isLoading}
         queryObject={raw}
+        prefix={TABLE_PREFIX}
       />
       <CommandBar open={!!Object.keys(rowSelection).length}>
         <CommandBar.Bar>

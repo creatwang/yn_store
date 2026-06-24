@@ -1,0 +1,18 @@
+<script>
+  import { storeClient } from "../lib/api"
+  import { normalizeCurrencyCode } from "../lib/currency"
+
+  function readCurrencyFromDom(): string | undefined {
+    const raw = document.body.dataset.currency
+    return raw ? normalizeCurrencyCode(raw) : undefined
+  }
+
+  function syncCurrency() {
+    const fromDom = readCurrencyFromDom()
+    if (fromDom) {
+      storeClient.setCurrency(fromDom)
+    }
+  }
+
+  syncCurrency()
+</script>

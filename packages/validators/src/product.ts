@@ -43,8 +43,11 @@ export const updateProductSchema = createProductSchema.partial()
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>
 
-export const batchDeleteProductsSchema = z.object({
-  ids: z.array(z.string()).min(1, "至少选择一个产品"),
+export const batchDeleteByIdsSchema = z.object({
+  ids: z.array(z.string()).min(1, "至少选择一项"),
 })
 
+export const batchDeleteProductsSchema = batchDeleteByIdsSchema
+
+export type BatchDeleteByIdsInput = z.infer<typeof batchDeleteByIdsSchema>
 export type BatchDeleteProductsInput = z.infer<typeof batchDeleteProductsSchema>

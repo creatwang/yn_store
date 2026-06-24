@@ -1,11 +1,18 @@
 // @ts-nocheck
 import { Button, Container, Heading, Text } from "@medusajs/ui"
 
+import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { _DataTable } from "../../../../../components/table/data-table"
-import { useReservationItems } from "../../../../../hooks/api/reservations"
+import {
+  reservationItemsQueryKeys,
+  useReservationItems,
+} from "../../../../../hooks/api/reservations"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { useReservationTableColumns } from "./use-reservation-table-columns"
 import { useReservationTableFilters } from "./use-reservation-table-filters"
 import { useReservationTableQuery } from "./use-reservation-table-query"
@@ -23,8 +30,16 @@ export const ReservationListTable = () => {
       ...searchParams,
     })
 
+  const batchDelete = useListTableBatchDelete({
+    deleteFn: (ids) => sdk.admin.reservation.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: reservationItemsQueryKeys.lists(),
+      }),
+  })
+
   const filters = useReservationTableFilters()
-  const columns = useReservationTableColumns()
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     data: reservations || [],
@@ -33,6 +48,8 @@ export const ReservationListTable = () => {
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -62,7 +79,14 @@ export const ReservationListTable = () => {
         pagination
         navigateTo={(row) => row.id}
         search={false}
+        commands={batchDelete.commands}
       />
     </Container>
   )
+}
+
+const useColumns = (selectColumn) => {
+  const base = useReservationTableColumns()
+
+  return useMemo(() => [selectColumn, ...base], [base, selectColumn])
 }

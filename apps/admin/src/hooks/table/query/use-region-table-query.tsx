@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../table-pagination"
 import { FindParams, HttpTypes } from "@medusajs/types"
 import { useQueryParams } from "../../use-query-params"
 
@@ -8,8 +9,9 @@ type UseRegionTableQueryProps = {
 
 export const useRegionTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseRegionTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     ["offset", "q", "order", "created_at", "updated_at"],
     prefix

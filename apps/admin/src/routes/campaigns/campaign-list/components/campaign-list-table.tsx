@@ -10,12 +10,16 @@ import { Link } from "react-router-dom"
 import { ActionMenu } from "../../../../components/common/action-menu"
 import { _DataTable } from "../../../../components/table/data-table"
 import {
+  campaignsQueryKeys,
   useCampaigns,
   useDeleteCampaign,
 } from "../../../../hooks/api/campaigns"
 import { useCampaignTableColumns } from "../../../../hooks/table/columns/use-campaign-table-columns"
 import { useCampaignTableQuery } from "../../../../hooks/table/query/use-campaign-table-query"
+import { useListTableBatchDelete } from "../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../hooks/use-data-table"
+import { sdk } from "../../../../lib/api/client"
+import { queryClient } from "../../../../lib/query/query-client"
 
 const PAGE_SIZE = 20
 
@@ -33,7 +37,13 @@ export const CampaignListTable = () => {
     placeholderData: keepPreviousData,
   })
 
-  const columns = useColumns()
+  const batchDelete = useListTableBatchDelete<AdminCampaign>({
+    deleteFn: (ids) => sdk.admin.campaign.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: campaignsQueryKeys.lists() }),
+  })
+
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     data: campaigns ?? [],
@@ -42,6 +52,8 @@ export const CampaignListTable = () => {
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -74,6 +86,7 @@ export const CampaignListTable = () => {
           { key: "created_at", label: t("fields.createdAt") },
           { key: "updated_at", label: t("fields.updatedAt") },
         ]}
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -140,11 +153,12 @@ const CampaignActions = ({ campaign }: { campaign: AdminCampaign }) => {
 
 const columnHelper = createColumnHelper<AdminCampaign>()
 
-const useColumns = () => {
+const useColumns = (selectColumn) => {
   const base = useCampaignTableColumns()
 
   return useMemo(
     () => [
+      selectColumn,
       ...base,
       columnHelper.display({
         id: "actions",
@@ -153,6 +167,6 @@ const useColumns = () => {
         },
       }),
     ],
-    [base]
+    [base, selectColumn]
   )
 }

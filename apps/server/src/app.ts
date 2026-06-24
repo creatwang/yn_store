@@ -36,6 +36,7 @@ import { adminFeatureFlags } from "./routes/admin/feature-flags"
 import { adminTranslations } from "./routes/admin/translations"
 import { salesChannelMiddleware } from "./middleware/sales-channel"
 import { localeMiddleware } from "./middleware/locale"
+import { currencyMiddleware } from "./middleware/currency"
 import { storeProducts } from "./routes/store/products"
 import { storeOrders } from "./routes/store/orders"
 import { storeCarts } from "./routes/store/carts"
@@ -126,10 +127,11 @@ const apiRoutes = new Hono()
   .route("/admin/tax-providers", adminTaxProviders)
   .route("/admin/feature-flags", adminFeatureFlags)
   .route("/admin/translations", adminTranslations)
-  // /api/store/* 统一挂载 sales channel + locale 中间件
+  // /api/store/* 统一挂载 sales channel + locale + currency 中间件
   .route("/store", new Hono()
     .use("*", salesChannelMiddleware)
     .use("*", localeMiddleware)
+    .use("*", currencyMiddleware)
     .route("/products", storeProducts)
     .route("/orders", storeOrders)
     .route("/carts", storeCarts)

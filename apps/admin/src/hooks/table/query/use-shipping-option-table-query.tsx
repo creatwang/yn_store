@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../table-pagination"
 import { HttpTypes } from "@medusajs/types"
 import { useQueryParams } from "../../use-query-params"
 
@@ -9,9 +10,10 @@ type UseShippingOptionTableQueryProps = {
 
 export const useShippingOptionTableQuery = ({
   isReturn,
-  pageSize = 10,
+  pageSize: pageSizeProp,
   prefix,
 }: UseShippingOptionTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     [
       "offset",

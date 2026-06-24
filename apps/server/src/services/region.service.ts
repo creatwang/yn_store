@@ -268,6 +268,27 @@ export const regionService = {
     return { success: true }
   },
 
+  async batchDeleteRegions(ids: string[]) {
+    const db = getDb()
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+    const existing = await db
+      .select({ id: region.id })
+      .from(region)
+      .where(and(inArray(region.id, ids), isNull(region.deleted_at)))
+    const existingIds = existing.map((r) => r.id)
+    const existingSet = new Set(existingIds)
+    const notFound = ids.filter((id) => !existingSet.has(id))
+    if (existingIds.length) {
+      await db
+        .update(region)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(and(inArray(region.id, existingIds), isNull(region.deleted_at)))
+    }
+    return { deleted: existingIds, not_found: notFound }
+  },
+
   async listSalesChannels(query: AdminGetSalesChannelsParamsType) {
     const db = getDb()
     const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
@@ -387,5 +408,26 @@ export const regionService = {
       .where(and(eq(salesChannel.id, id), isNull(salesChannel.deleted_at)))
 
     return { success: true }
+  },
+
+  async batchDeleteSalesChannels(ids: string[]) {
+    const db = getDb()
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+    const existing = await db
+      .select({ id: salesChannel.id })
+      .from(salesChannel)
+      .where(and(inArray(salesChannel.id, ids), isNull(salesChannel.deleted_at)))
+    const existingIds = existing.map((r) => r.id)
+    const existingSet = new Set(existingIds)
+    const notFound = ids.filter((id) => !existingSet.has(id))
+    if (existingIds.length) {
+      await db
+        .update(salesChannel)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(and(inArray(salesChannel.id, existingIds), isNull(salesChannel.deleted_at)))
+    }
+    return { deleted: existingIds, not_found: notFound }
   },
 }

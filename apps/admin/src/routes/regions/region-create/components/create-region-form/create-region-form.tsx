@@ -408,7 +408,10 @@ export const CreateRegionForm = ({ currencies }: CreateRegionFormProps) => {
               <div className="flex flex-col gap-y-4">
                 <div>
                   <Text size="small" leading="compact" weight="plus">
-                    {t("fields.providers")}
+                    {t("fields.paymentProviders")}
+                  </Text>
+                  <Text size="small" className="text-ui-fg-subtle">
+                    {t("regions.paymentProvidersDbHint")}
                   </Text>
                   <Text size="small" className="text-ui-fg-subtle">
                     {t("regions.providersHint")}

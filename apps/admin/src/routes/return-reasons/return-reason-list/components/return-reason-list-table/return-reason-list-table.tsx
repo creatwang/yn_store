@@ -13,11 +13,15 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { DataTable } from "../../../../../components/data-table"
 import {
+  returnReasonsQueryKeys,
   useDeleteReturnReason,
   useReturnReasons,
 } from "../../../../../hooks/api/return-reasons"
+import { useMedusaDataTableBatchDelete } from "../../../../../hooks/table/use-medusa-data-table-batch-delete"
 import { useReturnReasonTableColumns } from "../../../../../hooks/table/columns"
 import { useReturnReasonTableQuery } from "../../../../../hooks/table/query"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 
 const PAGE_SIZE = 20
 
@@ -35,6 +39,15 @@ export const ReturnReasonListTable = () => {
   )
 
   const columns = useColumns()
+
+  const batchDelete = useMedusaDataTableBatchDelete({
+    deleteFn: (ids) => sdk.admin.returnReason.batchDelete({ ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: returnReasonsQueryKeys.lists(),
+      })
+    },
+  })
 
   if (isError) {
     throw error
@@ -67,6 +80,8 @@ export const ReturnReasonListTable = () => {
         ]}
         isLoading={isLoading}
         enableSearch={true}
+        rowSelection={batchDelete.rowSelection}
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -115,6 +130,7 @@ const useColumns = () => {
 
   return useMemo(
     () => [
+      columnHelper.select(),
       ...base,
       columnHelper.action({
         actions: (ctx) => [

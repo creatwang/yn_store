@@ -205,7 +205,10 @@ export const EditRegionForm = ({
             <div className="flex flex-col gap-y-4">
               <div>
                 <Text size="small" leading="compact" weight="plus">
-                  Providers
+                  {t("fields.paymentProviders")}
+                </Text>
+                <Text size="small" className="text-ui-fg-subtle">
+                  {t("regions.paymentProvidersDbHint")}
                 </Text>
                 <Text size="small" className="text-ui-fg-subtle">
                   {t("regions.providersHint")}

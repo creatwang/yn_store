@@ -14,6 +14,7 @@ import {
 import {
   generateId,
   getDb,
+  product,
   productCategory,
   productCollection,
   customerGroup,
@@ -52,6 +53,7 @@ import type {
   AdminGetInventoryItemsParamsType,
   AdminGetPromotionsParamsType,
   AdminGetPriceListsParamsType,
+  AdminGetCurrenciesParamsType,
   AdminProductCategoriesParamsType,
 } from "@my-store/validators/admin-list-params"
 import {
@@ -276,6 +278,148 @@ function mkdel(table: any) {
   }
 }
 
+function mkBatchDelete(table: any) {
+  return async (ids: string[]) => {
+    const { existingIds, notFound } = await resolveActiveIds(table, ids)
+    if (existingIds.length) {
+      const db = getDb()
+      await db
+        .update(table)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(and(inArray(table.id, existingIds), isNull(table.deleted_at)))
+    }
+    return { deleted: existingIds, not_found: notFound }
+  }
+}
+
+async function resolveActiveIds(table: any, ids: string[]) {
+  if (!ids.length) {
+    return { existingIds: [] as string[], notFound: [] as string[] }
+  }
+  const existing = await getDb()
+    .select({ id: table.id })
+    .from(table)
+    .where(and(inArray(table.id, ids), isNull(table.deleted_at)))
+  const existingIds = existing.map((r) => r.id)
+  const existingSet = new Set(existingIds)
+  return {
+    existingIds,
+    notFound: ids.filter((id) => !existingSet.has(id)),
+  }
+}
+
+async function clearProductsFromCollection(collectionId: string) {
+  const db = getDb()
+  await db
+    .update(product)
+    .set({ collection_id: null, updated_at: sql`now()` })
+    .where(and(eq(product.collection_id, collectionId), isNull(product.deleted_at)))
+}
+
+async function deleteCollectionById(id: string) {
+  const db = getDb()
+  const [existing] = await db
+    .select({ id: productCollection.id })
+    .from(productCollection)
+    .where(and(eq(productCollection.id, id), isNull(productCollection.deleted_at)))
+    .limit(1)
+  if (!existing) {
+    throw new HTTPException(404, { message: "未找到" })
+  }
+  await clearProductsFromCollection(id)
+  await db
+    .update(productCollection)
+    .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+    .where(eq(productCollection.id, id))
+  return { id, deleted: true }
+}
+
+async function batchDeleteCollections(ids: string[]) {
+  const { existingIds, notFound } = await resolveActiveIds(productCollection, ids)
+  if (existingIds.length) {
+    const db = getDb()
+    for (const id of existingIds) {
+      await clearProductsFromCollection(id)
+    }
+    await db
+      .update(productCollection)
+      .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+      .where(and(inArray(productCollection.id, existingIds), isNull(productCollection.deleted_at)))
+  }
+  return { deleted: existingIds, not_found: notFound }
+}
+
+async function collectCategoryTreeIds(categoryId: string): Promise<string[]> {
+  const db = getDb()
+  const [cat] = await db
+    .select({ id: productCategory.id, mpath: productCategory.mpath })
+    .from(productCategory)
+    .where(and(eq(productCategory.id, categoryId), isNull(productCategory.deleted_at)))
+    .limit(1)
+  if (!cat) {
+    return []
+  }
+  const rows = await db
+    .select({ id: productCategory.id })
+    .from(productCategory)
+    .where(
+      and(
+        isNull(productCategory.deleted_at),
+        or(
+          eq(productCategory.id, categoryId),
+          ilike(productCategory.mpath, `${cat.mpath}.%`),
+        ),
+      ),
+    )
+  return rows.map((r) => r.id)
+}
+
+async function clearCategoryProductLinks(categoryIds: string[]) {
+  if (!categoryIds.length) return
+  const db = getDb()
+  await db.execute(
+    sql`DELETE FROM product_category_product WHERE product_category_id IN (${sql.join(
+      categoryIds.map((id) => sql`${id}`),
+      sql`, `,
+    )})`,
+  )
+}
+
+async function softDeleteCategories(categoryIds: string[]) {
+  if (!categoryIds.length) return
+  const db = getDb()
+  await db
+    .update(productCategory)
+    .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+    .where(and(inArray(productCategory.id, categoryIds), isNull(productCategory.deleted_at)))
+}
+
+async function deleteCategoryById(id: string) {
+  const treeIds = await collectCategoryTreeIds(id)
+  if (!treeIds.length) {
+    throw new HTTPException(404, { message: "未找到" })
+  }
+  await clearCategoryProductLinks(treeIds)
+  await softDeleteCategories(treeIds)
+  return { id, deleted: true, deleted_ids: treeIds }
+}
+
+async function batchDeleteCategories(ids: string[]) {
+  const { existingIds, notFound } = await resolveActiveIds(productCategory, ids)
+  const allTreeIds = new Set<string>()
+  for (const id of existingIds) {
+    for (const treeId of await collectCategoryTreeIds(id)) {
+      allTreeIds.add(treeId)
+    }
+  }
+  const deletedIds = [...allTreeIds]
+  if (deletedIds.length) {
+    await clearCategoryProductLinks(deletedIds)
+    await softDeleteCategories(deletedIds)
+  }
+  return { deleted: deletedIds, not_found: notFound }
+}
+
 function slugHandle(value: string, fallback: string) {
   const handle = value
     .toLowerCase()
@@ -313,7 +457,8 @@ export const categoryService = {
     return { product_category: created }
   },
   update: mku(productCategory, "product_categories"),
-  delete: mkdel(productCategory),
+  delete: deleteCategoryById,
+  batchDelete: batchDeleteCategories,
 }
 
 // ── Collections ─────────────────────────────────────────────
@@ -339,7 +484,8 @@ export const collectionService = {
     return { collection: created }
   },
   update: mku(productCollection, "collections"),
-  delete: mkdel(productCollection),
+  delete: deleteCollectionById,
+  batchDelete: batchDeleteCollections,
 }
 
 // ── Customer Groups ─────────────────────────────────────────
@@ -349,6 +495,7 @@ export const customerGroupService = {
   create: mkc(customerGroup, "cgrp", "customer_groups"),
   update: mku(customerGroup, "customer_groups"),
   delete: mkdel(customerGroup),
+  batchDelete: mkBatchDelete(customerGroup),
 }
 
 async function listPriceListsFiltered(query: AdminGetPriceListsParamsType) {
@@ -698,6 +845,7 @@ export const priceListService = {
     return loadPriceListDetail(id)
   },
   delete: mkdel(priceList),
+  batchDelete: mkBatchDelete(priceList),
 }
 
 // ── Tax Rates ───────────────────────────────────────────────
@@ -707,6 +855,7 @@ export const taxRateService = {
   create: mkc(taxRate, "txr", "tax_rates"),
   update: mku(taxRate, "tax_rates"),
   delete: mkdel(taxRate),
+  batchDelete: mkBatchDelete(taxRate),
 }
 
 // ── Inventory Items ─────────────────────────────────────────
@@ -864,6 +1013,7 @@ export const inventoryItemService = {
     return getInventoryItemDetail(id)
   },
   delete: mkdel(inventoryItem),
+  batchDelete: mkBatchDelete(inventoryItem),
   async listLevels(inventoryItemId: string) {
     const rows = await loadInventoryLevelsForItem(inventoryItemId)
     return { inventory_levels: rows, count: rows.length }
@@ -882,6 +1032,7 @@ export const shippingProfileService = {
   create: mkc(shippingProfile, "sp", "shipping_profiles"),
   update: mku(shippingProfile, "shipping_profiles"),
   delete: mkdel(shippingProfile),
+  batchDelete: mkBatchDelete(shippingProfile),
 }
 
 // ── Shipping Option Types ───────────────────────────────────
@@ -891,14 +1042,61 @@ export const shippingOptionTypeService = {
   create: mkc(shippingOptionType, "sot", "shipping_option_types"),
   update: mku(shippingOptionType, "shipping_option_types"),
   delete: mkdel(shippingOptionType),
+  batchDelete: mkBatchDelete(shippingOptionType),
 }
 
 // ── Currencies ──────────────────────────────────────────────
 export const currencyService = {
-  async list() {
+  async list(query: AdminGetCurrenciesParamsType = {} as AdminGetCurrenciesParamsType) {
     const db = getDb()
-    const rows = await db.select().from(currency)
-    return { currencies: rows, count: rows.length }
+    const { limit, offset } = listLimitOffset(query, { limit: 200, offset: 0 })
+    const conditions: unknown[] = []
+
+    if (typeof query.q === "string" && query.q.trim()) {
+      const term = `%${query.q.trim()}%`
+      conditions.push(
+        or(
+          ilike(currency.code, term),
+          ilike(currency.name, term),
+        )!,
+      )
+    }
+
+    applyInArrayCondition(
+      currency.code,
+      query.code as OperatorMapValue | undefined,
+      conditions,
+    )
+
+    const orderParam = String(query.order ?? "name")
+    const orderDesc = orderParam.startsWith("-")
+    const orderKey = orderDesc ? orderParam.slice(1) : orderParam
+    const orderColumns: Record<string, AnyColumn> = {
+      code: currency.code,
+      name: currency.name,
+    }
+    const orderColumn = orderColumns[orderKey] ?? currency.name
+    const where = conditions.length
+      ? and(...(conditions as Parameters<typeof and>[0][]))
+      : undefined
+
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select()
+        .from(currency)
+        .where(where)
+        .orderBy(orderDesc ? desc(orderColumn) : asc(orderColumn))
+        .limit(limit)
+        .offset(offset),
+      db.select({ total: count() }).from(currency).where(where),
+    ])
+
+    return {
+      currencies: rows,
+      count: Number(total),
+      limit,
+      offset,
+    }
   },
   async getByCode(code: string) {
     const db = getDb()
@@ -913,6 +1111,7 @@ export const promotionService = {
   list: listPromotionsFiltered,
   getById: getPromotionDetail,
   delete: mkdel(promotion),
+  batchDelete: mkBatchDelete(promotion),
 
   async create(input: Record<string, unknown>) {
     const db = getDb()
@@ -1209,6 +1408,7 @@ export const campaignService = {
     return loadCampaignDetail(id)
   },
   delete: mkdel(promotionCampaign),
+  batchDelete: mkBatchDelete(promotionCampaign),
 }
 
 // ── API Keys ───────────────────────────────────────────────
@@ -1266,6 +1466,7 @@ export const apiKeyService = {
   create: mkc(apiKey, "ak", "api_keys"),
   update: mku(apiKey, "api_keys"),
   delete: mkdel(apiKey),
+  batchDelete: mkBatchDelete(apiKey),
   async revoke(id: string) {
     const db = getDb()
     const [updated] = await db
@@ -1291,10 +1492,10 @@ export const apiKeyService = {
 export const workflowExecutionService = { list: mkl(workflowExecution, "workflow_executions"), getById: mkg(workflowExecution, "workflow_executions") }
 
 // ── Price Preferences ──────────────────────────────────────
-export const pricePreferenceService = { list: mkl(pricePreference, "price_preferences"), getById: mkg(pricePreference, "price_preferences"), create: mkc(pricePreference, "ppref", "price_preferences"), update: mku(pricePreference, "price_preferences"), delete: mkdel(pricePreference) }
+export const pricePreferenceService = { list: mkl(pricePreference, "price_preferences"), getById: mkg(pricePreference, "price_preferences"), create: mkc(pricePreference, "ppref", "price_preferences"), update: mku(pricePreference, "price_preferences"), delete: mkdel(pricePreference), batchDelete: mkBatchDelete(pricePreference) }
 
 // ── Property Labels ────────────────────────────────────────
-export const propertyLabelService = { list: mkl(propertyLabel, "property_labels"), getById: mkg(propertyLabel, "property_labels"), create: mkc(propertyLabel, "pl", "property_labels"), update: mku(propertyLabel, "property_labels"), delete: mkdel(propertyLabel) }
+export const propertyLabelService = { list: mkl(propertyLabel, "property_labels"), getById: mkg(propertyLabel, "property_labels"), create: mkc(propertyLabel, "pl", "property_labels"), update: mku(propertyLabel, "property_labels"), delete: mkdel(propertyLabel), batchDelete: mkBatchDelete(propertyLabel) }
 
 export const paymentCollectionService = { list: mkl(paymentCollection, "payment_collections"), getById: mkg(paymentCollection, "payment_collections") }
 
@@ -1633,7 +1834,7 @@ export const fulfillmentProviderService = {
       fulfillment_options: [
         {
           id: `${id}_manual`,
-          name: "Manual fulfillment",
+          name: "手动发货",
           provider_id: id,
         },
       ],
@@ -1641,4 +1842,4 @@ export const fulfillmentProviderService = {
   },
 }
 
-export const fulfillmentSetService = { list: mkl(fulfillmentSet, "fulfillment_sets"), getById: mkg(fulfillmentSet, "fulfillment_sets"), create: mkc(fulfillmentSet, "fs", "fulfillment_sets"), update: mku(fulfillmentSet, "fulfillment_sets"), delete: mkdel(fulfillmentSet) }
+export const fulfillmentSetService = { list: mkl(fulfillmentSet, "fulfillment_sets"), getById: mkg(fulfillmentSet, "fulfillment_sets"), create: mkc(fulfillmentSet, "fs", "fulfillment_sets"), update: mku(fulfillmentSet, "fulfillment_sets"), delete: mkdel(fulfillmentSet), batchDelete: mkBatchDelete(fulfillmentSet) }

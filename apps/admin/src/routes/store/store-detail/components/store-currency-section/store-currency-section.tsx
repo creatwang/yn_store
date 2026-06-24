@@ -28,12 +28,17 @@ type StoreCurrencySectionProps = {
   store: HttpTypes.AdminStore
 }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 20
+/** URL 分页前缀，避免与语言表格及子路由 ac_ 冲突 */
+const TABLE_PREFIX = "sc"
 
 export const StoreCurrencySection = ({ store }: StoreCurrencySectionProps) => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 
-  const { searchParams, raw } = useCurrenciesTableQuery({ pageSize: PAGE_SIZE })
+  const { searchParams, raw } = useCurrenciesTableQuery({
+    pageSize: PAGE_SIZE,
+    prefix: TABLE_PREFIX,
+  })
 
   const {
     currencies,
@@ -89,6 +94,7 @@ export const StoreCurrencySection = ({ store }: StoreCurrencySectionProps) => {
     enablePagination: true,
     enableRowSelection: true,
     pageSize: PAGE_SIZE,
+    prefix: TABLE_PREFIX,
     meta: {
       storeId: store.id,
       supportedCurrencies: store.supported_currencies,
@@ -178,6 +184,7 @@ export const StoreCurrencySection = ({ store }: StoreCurrencySectionProps) => {
         count={!store.supported_currencies?.length ? 0 : count}
         isLoading={!store.supported_currencies?.length ? false : isLoading}
         queryObject={raw}
+        prefix={TABLE_PREFIX}
       />
       <CommandBar open={!!Object.keys(rowSelection).length}>
         <CommandBar.Bar>

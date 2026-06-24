@@ -3,16 +3,19 @@ import { defineMiddleware } from "astro:middleware"
 import { storeClient } from "./lib/api"
 
 import {
-
   DEFAULT_LOCALE,
-
   localeUrlPath,
-
   normalizeLocaleSegment,
-
   parseLocaleFromPathname,
-
 } from "./lib/i18n"
+
+import {
+  DEFAULT_CURRENCY,
+  dedupeCurrencyOptions,
+  readCurrencyFromCookie,
+  normalizeCurrencyCode,
+  type CurrencyOption,
+} from "./lib/currency"
 
 
 
@@ -75,6 +78,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.locale = locale
 
   storeClient.syncLocaleFromPathname(pathname)
+
+  const cookieCurrency = readCurrencyFromCookie(context.request.headers.get("cookie"))
+  const envDefault =
+    import.meta.env.PUBLIC_DEFAULT_CURRENCY ||
+    (typeof process !== "undefined" ? process.env.PUBLIC_DEFAULT_CURRENCY : undefined)
+  const currency = normalizeCurrencyCode(cookieCurrency || envDefault)
+  context.locals.currency = currency
+  storeClient.setCurrency(currency)
 
 
 

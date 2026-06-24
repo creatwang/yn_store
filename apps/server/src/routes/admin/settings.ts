@@ -28,6 +28,7 @@ import {
   refundReasonService,
 } from "../../services/settings.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
+import { batchDeleteByIdsSchema } from "@my-store/validators"
 
 export const adminProductTags = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
@@ -44,6 +45,11 @@ export const adminProductTags = new Hono<{ Variables: AuthVariables }>()
     const body = c.req.valid("json")
     const result = await productTagService.create(body)
     return c.json(result, 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await productTagService.batchDelete(ids)
+    return c.json(result)
   })
   .post("/:id", zValidator("json", updateProductTagSchema), async (c) => {
     const body = c.req.valid("json")
@@ -70,6 +76,11 @@ export const adminProductTypes = new Hono<{ Variables: AuthVariables }>()
     const body = c.req.valid("json")
     const result = await productTypeService.create(body)
     return c.json(result, 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await productTypeService.batchDelete(ids)
+    return c.json(result)
   })
   .post("/:id", zValidator("json", updateProductTypeSchema), async (c) => {
     const body = c.req.valid("json")
@@ -123,6 +134,11 @@ export const adminReturnReasons = new Hono<{ Variables: AuthVariables }>()
     const result = await returnReasonService.create(body)
     return c.json(result, 201)
   })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await returnReasonService.batchDelete(ids)
+    return c.json(result)
+  })
   .post("/:id", zValidator("json", updateReturnReasonSchema), async (c) => {
     const body = c.req.valid("json")
     const result = await returnReasonService.update(c.req.param("id"), body)
@@ -148,6 +164,11 @@ export const adminRefundReasons = new Hono<{ Variables: AuthVariables }>()
     const body = c.req.valid("json")
     const result = await refundReasonService.create(body)
     return c.json(result, 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await refundReasonService.batchDelete(ids)
+    return c.json(result)
   })
   .post("/:id", zValidator("json", updateRefundReasonSchema), async (c) => {
     const body = c.req.valid("json")

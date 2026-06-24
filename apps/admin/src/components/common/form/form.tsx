@@ -171,12 +171,11 @@ Control.displayName = "Form.Control"
 const Hint = forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
+>(({ className, ...props }, _ref) => {
   const { formDescriptionId } = useFormField()
 
   return (
     <HintComponent
-      ref={ref}
       id={formDescriptionId}
       className={className}
       {...props}
@@ -188,7 +187,7 @@ Hint.displayName = "Form.Hint"
 const ErrorMessage = forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
->(({ className, children, ...props }, ref) => {
+>(({ className, children, ...props }, _ref) => {
   const { error, formErrorMessageId } = useFormField()
   const msg = error ? String(error?.message) : children
 
@@ -198,7 +197,6 @@ const ErrorMessage = forwardRef<
 
   return (
     <HintComponent
-      ref={ref}
       id={formErrorMessageId}
       className={className}
       variant={error ? "error" : "info"}

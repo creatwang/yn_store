@@ -1,15 +1,23 @@
 // @ts-nocheck
 import { Button, Container, Heading } from "@medusajs/ui"
+import { HttpTypes } from "@medusajs/types"
 import { keepPreviousData } from "@tanstack/react-query"
+import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, Outlet } from "react-router-dom"
 
 import { _DataTable } from "../../../../../components/table/data-table/data-table"
-import { useDraftOrders } from "../../../../../hooks/api/draft-orders"
+import {
+  draftOrdersQueryKeys,
+  useDraftOrders,
+} from "../../../../../hooks/api/draft-orders"
 import { useOrderTableColumns } from "../../../../../hooks/table/columns/use-order-table-columns"
 import { useDraftOrderTableQuery } from "../../../../../hooks/table/query/use-draft-order-table-query"
 import { useOrderTableFilters } from "../../../../../hooks/table/filters"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 
 const PAGE_SIZE = 20
 
@@ -34,8 +42,16 @@ export const DraftOrderListTable = () => {
     },
   )
 
+  const batchDelete = useListTableBatchDelete<HttpTypes.AdminOrder>({
+    deleteFn: (ids) => sdk.admin.draftOrder.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: draftOrdersQueryKeys.lists() }),
+    warningKey: "orders.batchDeleteWarning",
+    toastPrefix: "orders.toasts.batchDelete",
+  })
+
   const filters = useOrderTableFilters()
-  const columns = useOrderTableColumns({})
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     data: draft_orders ?? [],
@@ -43,6 +59,9 @@ export const DraftOrderListTable = () => {
     enablePagination: true,
     count,
     pageSize: PAGE_SIZE,
+    getRowId: (row) => row.id,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -78,8 +97,15 @@ export const DraftOrderListTable = () => {
         noRecords={{
           message: t("draftOrders.list.noRecordsMessage"),
         }}
+        commands={batchDelete.commands}
       />
       <Outlet />
     </Container>
   )
+}
+
+const useColumns = (selectColumn) => {
+  const base = useOrderTableColumns({})
+
+  return useMemo(() => [selectColumn, ...base], [base, selectColumn])
 }

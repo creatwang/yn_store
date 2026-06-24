@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import { generateId, getDb, reservationItem } from "@my-store/db"
 import type {
   AdminBulkCreateReservationsType,
@@ -158,6 +158,24 @@ export const reservationService = {
   async delete(id: string) {
     await releaseReservations([id])
     return { id, deleted: true }
+  },
+
+  async batchDelete(ids: string[]) {
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+    const db = getDb()
+    const existing = await db
+      .select({ id: reservationItem.id })
+      .from(reservationItem)
+      .where(and(inArray(reservationItem.id, ids), isNull(reservationItem.deleted_at)))
+    const existingIds = existing.map((r) => r.id)
+    const existingSet = new Set(existingIds)
+    const notFound = ids.filter((id) => !existingSet.has(id))
+    if (existingIds.length) {
+      await releaseReservations(existingIds)
+    }
+    return { deleted: existingIds, not_found: notFound }
   },
 
   async bulkAllocate(input: AdminBulkCreateReservationsType) {

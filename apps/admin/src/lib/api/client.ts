@@ -39,6 +39,7 @@ function entityClient(entity: string) {
     create: (body?: any, query?: Record<string, any>) => rpcPost(rpc, body, undefined, query),
     update: (id: string, body?: any, query?: Record<string, any>) => rpcPost(rpc[":id"], body, { id }, query),
     delete: (id: string) => rpcDelete(rpc[":id"], { id }),
+    batchDelete: (body?: { ids: string[] }) => rpcPost(rpc.batch, body),
   }
 }
 
@@ -174,6 +175,7 @@ function ordersClient() {
     createClaim: (body?: any) => claimClient().create(body),
     createExchange: (body?: any) => exchangeClient().create(body),
     delete: (id: string) => rpcDelete(rpc[":id"], { id }),
+    batchDelete: (body?: { ids: string[] }) => rpcPost(rpc.batch, body),
     listTransactions: (id: string) => rpcGet(rpc[":id"].transactions, { id }),
     addItems: (id: string, body?: any) => rpcPost(rpc[":id"]["line-items"], body, { id }),
     updateItem: (id: string, itemId: string, body?: any) => rpcPost(rpc[":id"]["line-items"][":itemId"], body, { id, itemId }),
@@ -343,6 +345,8 @@ function linkProductsClient(entity: "product-categories" | "collections") {
   const base = entityClient(entity)
   return {
     ...base,
+    batchDelete: (body?: { ids: string[] }) =>
+      rpcPost((api as any).admin[entity].batch, body),
     updateProducts: async (id: string, body?: any) => {
       const res = await (api as any).admin[entity][":id"].products.$post({ param: { id }, json: body })
       return parseJsonResponse(res)
@@ -359,6 +363,7 @@ function draftOrderClient() {
     create: (body?: any) => rpcPost(rpc, body),
     update: (id: string, body?: any) => rpcPost(rpc[":id"], body, { id }),
     delete: (id: string) => rpcDelete(rpc[":id"], { id }),
+    batchDelete: (body?: { ids: string[] }) => rpcPost(rpc.batch, body),
     // ── Convert ──
     convertToOrder: (id: string) => rpcPost(rpc[":id"]["convert-to-order"], undefined, { id }),
     // ── Edit workflow ──
@@ -612,6 +617,8 @@ export const sdk = {
     },
     reservation: {
       ...entityClient("reservations"),
+      batchDelete: (body?: { ids: string[] }) =>
+        rpcPost((api as any).admin.reservations["batch-delete"], body),
       batchAllocate: async (body: {
         location_id: string
         items: Array<{

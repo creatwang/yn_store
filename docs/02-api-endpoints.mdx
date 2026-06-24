@@ -142,12 +142,12 @@
 |------|------|------|
 | GET | `/admin/feature-flags` | 获取功能开关列表 |
 
-### Fulfillment Providers（履约服务商）
+### Fulfillment Providers（物流渠道）
 
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| GET | `/admin/fulfillment-providers` | 获取履约服务商列表 |
-| GET | `/admin/fulfillment-providers/:id/options` | 获取服务商配送选项 |
+| GET | `/admin/fulfillment-providers` | 获取物流渠道列表 |
+| GET | `/admin/fulfillment-providers/:id/options` | 获取渠道配送选项 |
 
 ### Fulfillment Sets（履约集合）
 
@@ -264,7 +264,7 @@
 | 方法 | 路径 | 描述 |
 |------|------|------|
 | GET | `/admin/payments` | 获取支付列表 |
-| GET | `/admin/payments/payment-providers` | 获取支付服务商列表 |
+| GET | `/admin/payments/payment-providers` | 获取支付渠道列表 |
 | GET | `/admin/payments/:id` | 获取支付详情 |
 | GET | `/admin/payments/:id/capture` | 获取支付捕获信息 |
 | GET | `/admin/payments/:id/refund` | 获取支付退款信息 |
@@ -493,7 +493,7 @@
 | POST | `/admin/stock-locations` | 创建库存位置 |
 | GET | `/admin/stock-locations/:id` | 获取库存位置详情 |
 | POST | `/admin/stock-locations/:id` | 更新/删除库存位置 |
-| POST | `/admin/stock-locations/:id/fulfillment-providers` | 管理关联的履约服务商 |
+| POST | `/admin/stock-locations/:id/fulfillment-providers` | 管理关联的物流渠道 |
 | POST | `/admin/stock-locations/:id/fulfillment-sets` | 管理关联的履约集合 |
 | POST | `/admin/stock-locations/:id/sales-channels` | 管理关联的销售渠道 |
 
@@ -652,11 +652,11 @@
 | POST | `/store/payment-collections` | 创建支付集合 |
 | POST | `/store/payment-collections/:id/payment-sessions` | 创建支付会话 |
 
-### Payment Providers（支付服务商）
+### Payment Providers（支付渠道）
 
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| GET | `/store/payment-providers` | 获取支付服务商列表 |
+| GET | `/store/payment-providers` | 获取支付渠道列表 |
 
 ### Product Categories（产品分类）
 

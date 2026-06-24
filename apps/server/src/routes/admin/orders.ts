@@ -5,6 +5,7 @@ import { existsSync } from "node:fs"
 import { zValidator } from "@hono/zod-validator"
 import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import {
+  batchDeleteByIdsSchema,
   createOrderSchema,
   updateOrderSchema,
   createFulfillmentSchema,
@@ -46,6 +47,11 @@ export const adminOrders = new Hono<{ Variables: AuthVariables }>()
   })
   .post("/export", async (c) => {
     const result = await orderService.exportOrders()
+    return c.json(result)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await orderService.batchDelete(ids)
     return c.json(result)
   })
   .get("/:id", async (c) => {

@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../table-pagination"
 import { HttpTypes } from "@medusajs/types"
 import { useQueryParams } from "../../use-query-params"
 
@@ -8,8 +9,9 @@ type UseCustomerGroupTableQueryProps = {
 
 export const useCustomerGroupTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseCustomerGroupTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     ["offset", "q", "has_account", "order", "created_at", "updated_at"],
     prefix

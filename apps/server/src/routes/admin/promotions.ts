@@ -1,7 +1,9 @@
 ﻿import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
 import { eq, sql } from "drizzle-orm"
 import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { AdminGetPromotionsParams } from "@my-store/validators/admin-list-params"
+import { batchDeleteByIdsSchema } from "@my-store/validators"
 import {
   generateId,
   getDb,
@@ -244,6 +246,11 @@ export const adminPromotions = new Hono<{ Variables: AuthVariables }>()
     const body = await c.req.json()
     const { promotion } = await promotionService.create(body)
     return c.json(await getPromotionDetail(promotion.id), 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await promotionService.batchDelete(ids)
+    return c.json(result)
   })
   .post("/:id", async (c) => {
     const id = c.req.param("id")

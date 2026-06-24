@@ -6,6 +6,7 @@ import {
   updateSalesChannelSchema,
 } from "@my-store/validators"
 import { AdminGetSalesChannelsParams } from "@my-store/validators/admin-list-params"
+import { batchDeleteByIdsSchema } from "@my-store/validators"
 import { regionService } from "../../services/region.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 
@@ -24,6 +25,11 @@ export const adminSalesChannels = new Hono<{ Variables: AuthVariables }>()
     const body = c.req.valid("json")
     const result = await regionService.createSalesChannel(body)
     return c.json(result, 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await regionService.batchDeleteSalesChannels(ids)
+    return c.json(result)
   })
   .post("/:id", zValidator("json", updateSalesChannelSchema), async (c) => {
     const body = c.req.valid("json")

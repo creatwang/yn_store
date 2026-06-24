@@ -3,7 +3,13 @@ import { ShoppingBag, TruckFast } from "@medusajs/icons"
 import { Container, Heading } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 
-import { useStockLocations } from "../../../hooks/api/stock-locations"
+import {
+  stockLocationsQueryKeys,
+  useStockLocations,
+} from "../../../hooks/api/stock-locations"
+import { useMedusaDataTableBatchDelete } from "../../../hooks/table/use-medusa-data-table-batch-delete"
+import { sdk } from "../../../lib/api/client"
+import { queryClient } from "../../../lib/query/query-client"
 import { LOCATION_LIST_FIELDS } from "./constants"
 import { useLocationListTableColumns } from "./use-location-list-table-columns"
 import { useLocationListTableQuery } from "./use-location-list-table-query"
@@ -43,6 +49,15 @@ export function LocationList() {
 
   const columns = useLocationListTableColumns()
   const { getWidgets } = useExtension()
+
+  const batchDelete = useMedusaDataTableBatchDelete({
+    deleteFn: (ids) => sdk.admin.stockLocation.batchDelete({ ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: stockLocationsQueryKeys.lists(),
+      })
+    },
+  })
 
   if (isError) {
     throw error
@@ -89,6 +104,8 @@ export function LocationList() {
             enableSearch={true}
             prefix={PREFIX}
             layout="fill"
+            rowSelection={batchDelete.rowSelection}
+            commands={batchDelete.commands}
           />
         </Container>
       </TwoColumnPage.Main>

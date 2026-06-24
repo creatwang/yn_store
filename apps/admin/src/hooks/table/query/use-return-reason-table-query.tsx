@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../table-pagination"
 import { HttpTypes } from "@medusajs/types"
 import { useQueryParams } from "../../use-query-params"
 
@@ -8,8 +9,9 @@ type UseReturnReasonTableQueryProps = {
 
 export const useReturnReasonTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseReturnReasonTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     ["offset", "q", "order", "created_at", "updated_at"],
     prefix

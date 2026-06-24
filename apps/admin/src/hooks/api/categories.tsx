@@ -146,6 +146,7 @@ export const useDeleteProductCategory = (
         queryKey: categoriesQueryKeys.detail(id),
       })
       queryClient.invalidateQueries({ queryKey: categoriesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: productsQueryKeys.lists() })
 
       options?.onSuccess?.(data, variables, context)
     },

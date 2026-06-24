@@ -17,11 +17,18 @@ import { Link } from "react-router-dom"
 
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { _DataTable } from "../../../../../components/table/data-table"
-import { useDeleteRegion, useRegions } from "../../../../../hooks/api/regions"
+import {
+  regionsQueryKeys,
+  useDeleteRegion,
+  useRegions,
+} from "../../../../../hooks/api/regions"
 import { useRegionTableColumns } from "../../../../../hooks/table/columns/use-region-table-columns"
 import { useRegionTableFilters } from "../../../../../hooks/table/filters/use-region-table-filters"
 import { useRegionTableQuery } from "../../../../../hooks/table/query/use-region-table-query"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 
 const PAGE_SIZE = 20
 
@@ -45,8 +52,14 @@ export const RegionListTable = () => {
     }
   )
 
+  const batchDelete = useListTableBatchDelete<HttpTypes.AdminRegion>({
+    deleteFn: (ids) => sdk.admin.region.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: regionsQueryKeys.lists() }),
+  })
+
   const filters = useRegionTableFilters()
-  const columns = useColumns()
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     data: (regions ?? []) as HttpTypes.AdminRegion[],
@@ -55,6 +68,8 @@ export const RegionListTable = () => {
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -96,6 +111,7 @@ export const RegionListTable = () => {
         noRecords={{
           message: t("regions.list.noRecordsMessage"),
         }}
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -161,11 +177,12 @@ const RegionActions = ({ region }: { region: HttpTypes.AdminRegion }) => {
 
 const columnHelper = createColumnHelper<HttpTypes.AdminRegion>()
 
-const useColumns = () => {
+const useColumns = (selectColumn) => {
   const base = useRegionTableColumns()
 
   return useMemo(
     () => [
+      selectColumn,
       ...base,
       columnHelper.display({
         id: "actions",
@@ -174,6 +191,6 @@ const useColumns = () => {
         },
       }),
     ],
-    [base]
+    [base, selectColumn]
   )
 }

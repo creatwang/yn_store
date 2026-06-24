@@ -19,6 +19,11 @@ import { useTranslation } from "react-i18next"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 
 import { useQueryParams } from "../../hooks/use-query-params"
+import {
+  applyTablePaginationSearchParams,
+  useTablePageSize,
+} from "../../hooks/table/table-pagination"
+import { TablePaginationBar } from "../table/table-pagination-bar"
 import { ActionMenu } from "../common/action-menu"
 import { ViewPills } from "../table/view-selector"
 import { useFeatureFlag } from "../../providers/feature-flag-provider"
@@ -123,7 +128,7 @@ export const DataTable = <TData,>({
   headingLevel = "h1",
   subHeading,
   prefix,
-  pageSize = 10,
+  pageSize: pageSizeProp,
   emptyState,
   rowSelection,
   isLoading = false,
@@ -214,24 +219,23 @@ export const DataTable = <TData,>({
     })
   }
 
+  const resolvedPageSize = useTablePageSize(prefix, pageSizeProp)
+
   const pagination: DataTablePaginationState = useMemo(() => {
     return offset
-      ? parsePaginationState(offset, pageSize)
-      : { pageIndex: 0, pageSize }
-  }, [offset, pageSize])
+      ? parsePaginationState(offset, resolvedPageSize)
+      : { pageIndex: 0, pageSize: resolvedPageSize }
+  }, [offset, resolvedPageSize])
 
   const handlePaginationChange = (value: DataTablePaginationState) => {
-    setSearchParams((prev) => {
-      if (value.pageIndex === 0) {
-        prev.delete(getQueryParamKey("offset", prefix))
-      } else {
-        prev.set(
-          getQueryParamKey("offset", prefix),
-          transformPaginationState(value).toString()
-        )
-      }
-      return prev
-    })
+    setSearchParams((prev) =>
+      applyTablePaginationSearchParams(prev, {
+        prefix,
+        pageIndex: value.pageIndex,
+        pageSize: value.pageSize,
+        prevPageSize: pagination.pageSize,
+      }),
+    )
   }
 
   const filtering: DataTableFilteringState = useMemo(
@@ -294,8 +298,7 @@ export const DataTable = <TData,>({
     })
   }
 
-  const { pagination: paginationTranslations, toolbar: toolbarTranslations } =
-    useDataTableTranslations()
+  const { toolbar: toolbarTranslations } = useDataTableTranslations()
 
   const navigate = useNavigate()
 
@@ -455,7 +458,19 @@ export const DataTable = <TData,>({
       )}
       <UiDataTable.Table emptyState={emptyState} />
       {enablePagination && (
-        <UiDataTable.Pagination translations={paginationTranslations} />
+        <TablePaginationBar
+          canNextPage={instance.getCanNextPage()}
+          canPreviousPage={instance.getCanPreviousPage()}
+          count={rowCount}
+          nextPage={instance.nextPage}
+          previousPage={instance.previousPage}
+          pageCount={instance.getPageCount()}
+          pageIndex={instance.pageIndex}
+          pageSize={instance.pageSize}
+          onPageSizeChange={(nextPageSize) => {
+            handlePaginationChange({ pageIndex: 0, pageSize: nextPageSize })
+          }}
+        />
       )}
       {enableCommands && (
         <UiDataTable.CommandBar
@@ -474,10 +489,6 @@ function parseSortingState(value: string) {
   return value.startsWith("-")
     ? { id: value.slice(1), desc: true }
     : { id: value, desc: false }
-}
-
-function transformPaginationState(value: DataTablePaginationState) {
-  return value.pageIndex * value.pageSize
 }
 
 function parsePaginationState(value: string, pageSize: number) {
@@ -517,14 +528,6 @@ function getQueryParamKey(key: string, prefix?: string) {
 const useDataTableTranslations = () => {
   const { t } = useTranslation()
 
-  const paginationTranslations = {
-    of: t("general.of"),
-    results: t("general.results"),
-    pages: t("general.pages"),
-    prev: t("general.prev"),
-    next: t("general.next"),
-  }
-
   const toolbarTranslations = {
     clearAll: t("actions.clearAll"),
     sort: t("filters.sortLabel"),
@@ -532,7 +535,6 @@ const useDataTableTranslations = () => {
   }
 
   return {
-    pagination: paginationTranslations,
     toolbar: toolbarTranslations,
   }
 }

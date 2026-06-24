@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../../../../../hooks/table/table-pagination"
 // @ts-nocheck
 import {
   DateComparisonOperator,
@@ -16,12 +17,13 @@ export type ReturnItemTableQuery = {
 }
 
 export const useClaimItemTableQuery = ({
-  pageSize = 50,
+  pageSize: pageSizeProp,
   prefix,
 }: {
   pageSize?: number
   prefix?: string
 }) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const raw = useQueryParams(
     [
       "q",

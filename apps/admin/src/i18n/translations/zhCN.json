@@ -16,6 +16,7 @@
     "pages": "页",
     "next": "下一页",
     "prev": "上一页",
+    "rowsPerPage": "每页行数",
     "is": "是",
     "timeline": "时间线",
     "success": "成功",
@@ -57,6 +58,15 @@
     "includesTaxTooltip": "此列中的价格包含税费。",
     "excludesTaxTooltip": "此列中的价格不含税费。",
     "noMoreData": "没有更多数据",
+    "batchDeleteWarning": "您即将删除 {{count}} 条记录。此操作无法撤销。",
+    "batchDelete": {
+      "header": "批量删除完成",
+      "success": "已成功删除 {{count}} 条记录",
+      "notFound": "{{count}} 条记录未找到或已被删除",
+      "error": {
+        "header": "批量删除失败"
+      }
+    },
     "fullList": "全部",
     "noRecordsMessageFiltered": "没有匹配筛选条件的记录",
     "original": "原始",
@@ -189,7 +199,7 @@
         "salesChannel": "销售渠道",
         "productType": "产品类型",
         "productTag": "产品标签",
-        "location": "位置",
+        "location": "发货仓库",
         "shippingProfile": "配送方案",
         "publishableApiKey": "可发布的API密钥",
         "secretApiKey": "密钥API密钥",
@@ -223,7 +233,7 @@
         "goToTaxRegions": "税收地区",
         "goToSalesChannels": "销售渠道",
         "goToProductTypes": "产品类型",
-        "goToLocations": "位置",
+        "goToLocations": "发货仓库",
         "goToPublishableApiKeys": "可发布的API密钥",
         "goToSecretApiKeys": "密钥API密钥",
         "goToWorkflows": "工作流",
@@ -381,7 +391,7 @@
       "sameAsShippingHint": "账单地址与配送地址相同"
     },
     "contactHeading": "联系方式",
-    "locationHeading": "位置"
+    "locationHeading": "地址"
   },
   "email": {
     "editHeader": "编辑邮箱",
@@ -655,8 +665,8 @@
       "deleteWarning": "您确定要删除此变体吗？",
       "pricesPagination": "第 1-{{current}} 个价格,共 {{total}} 个",
       "tableItemAvailable": "{{availableCount}} 个可用",
-      "tableItem_one": "{{availableCount}} 个可用,位于 {{locationCount}} 个位置",
-      "tableItem_other": "{{availableCount}} 个可用,位于 {{locationCount}} 个位置",
+      "tableItem_one": "{{availableCount}} 个可用,位于 {{locationCount}} 个发货仓库",
+      "tableItem_other": "{{availableCount}} 个可用,位于 {{locationCount}} 个发货仓库",
       "inventory": {
         "notManaged": "未管理",
         "manageItems": "管理库存项目",
@@ -793,6 +803,17 @@
     "removeSingleProductWarning": "您即将从系列中移除产品 {{title}}。此操作无法撤销。",
     "removeProductsWarning_one": "您即将从系列中移除 {{count}} 个产品。此操作无法撤销。",
     "removeProductsWarning_other": "您即将从系列中移除 {{count}} 个产品。此操作无法撤销。",
+    "batchDeleteWarning": "您即将删除 {{count}} 个系列。此操作无法撤销，系列下商品的系列归属将被清空。",
+    "toasts": {
+      "batchDelete": {
+        "header": "批量删除完成",
+        "success": "成功删除 {{count}} 个系列",
+        "notFound": "{{count}} 个系列未找到",
+        "error": {
+          "header": "批量删除失败"
+        }
+      }
+    },
     "products": {
       "list": {
         "noRecordsMessage": "系列中没有产品。"
@@ -827,6 +848,17 @@
     "delete": {
       "confirmation": "您即将删除分类 {{name}}。此操作无法撤销。",
       "successToast": "分类 {{name}} 删除成功。"
+    },
+    "batchDeleteWarning": "您即将删除 {{count}} 个分类。此操作无法撤销，分类与商品的关联将被清除，子分类也会一并删除。",
+    "toasts": {
+      "batchDelete": {
+        "header": "批量删除完成",
+        "success": "成功删除 {{count}} 个分类",
+        "notFound": "{{count}} 个分类未找到",
+        "error": {
+          "header": "批量删除失败"
+        }
+      }
     },
     "products": {
       "add": {
@@ -876,10 +908,10 @@
     "subtitle": "管理您的库存项目",
     "reserved": "已预留",
     "available": "可用",
-    "locationLevels": "位置",
+    "locationLevels": "发货仓库",
     "associatedVariants": "关联变体",
-    "manageLocations": "管理位置",
-    "manageLocationQuantity": "管理位置数量",
+    "manageLocations": "管理发货仓库",
+    "manageLocationQuantity": "管理仓库库存数量",
     "deleteWarning": "您即将删除一个库存项目。此操作无法撤消。",
     "editItemDetails": "编辑项目详情",
     "quantityAcrossLocations": "{{quantity}} 分布于 {{locations}} 个地点",
@@ -887,7 +919,7 @@
       "title": "创建库存项目",
       "details": "详情",
       "availability": "可用性",
-      "locations": "位置",
+      "locations": "发货仓库",
       "attributes": "属性",
       "requiresShipping": "需要配送",
       "requiresShippingHint": "该库存项目是否需要配送？",
@@ -909,10 +941,10 @@
       "lineItemId": "行项目ID",
       "orderID": "订单ID",
       "description": "描述",
-      "location": "位置",
-      "inStockAtLocation": "该位置库存",
-      "availableAtLocation": "该位置可用",
-      "reservedAtLocation": "该位置已预留",
+      "location": "发货仓库",
+      "inStockAtLocation": "该仓库库存",
+      "availableAtLocation": "该仓库可用",
+      "reservedAtLocation": "该仓库已预留",
       "reservedAmount": "预留数量",
       "create": "创建预留",
       "itemToReserve": "要预留的项目",
@@ -922,7 +954,7 @@
       "updateSuccessToast": "预留更新成功。",
       "deleteSuccessToast": "预留删除成功。",
       "errors": {
-        "noAvaliableQuantity": "库存位置没有可用数量。",
+        "noAvaliableQuantity": "发货仓库没有可用数量。",
         "quantityOutOfRange": "最小数量为1，最大数量为{{max}}"
       }
     },
@@ -932,7 +964,7 @@
       }
     },
     "toast": {
-      "updateLocations": "位置更新成功。",
+      "updateLocations": "发货仓库更新成功。",
       "updateLevel": "库存水平更新成功。",
       "updateItem": "库存项目更新成功。"
     },
@@ -1090,7 +1122,18 @@
     "exchange": "换货",
     "return": "退货",
     "cancelWarning": "您即将取消订单 {{id}}。此操作无法撤消。",
+    "batchDeleteWarning": "您即将删除 {{count}} 个订单。此操作无法撤销。",
     "orderCanceled": "订单取消成功！",
+    "toasts": {
+      "batchDelete": {
+        "header": "批量删除完成",
+        "success": "成功删除 {{count}} 个订单",
+        "notFound": "{{count}} 个订单未找到",
+        "error": {
+          "header": "批量删除失败"
+        }
+      }
+    },
     "onDateFromSalesChannel": "{{date}} 来自 {{salesChannel}}",
     "list": {
       "noRecordsMessage": "您的订单将显示在这里。"
@@ -1189,7 +1232,7 @@
         "confirmedSuccessfully": "订单编辑已确认"
       },
       "validation": {
-        "quantityLowerThanFulfillment": "不能将数量设置为小于或等于已履行数量"
+        "quantityLowerThanFulfillment": "不能将数量设置为小于或等于已发货数量"
       }
     },
     "edit": {
@@ -1222,10 +1265,10 @@
       "reasonHint": "选择客户想要退货的原因。",
       "note": "备注",
       "noInventoryLevel": "无库存水平",
-      "noInventoryLevelDesc": "所选位置没有所选商品的库存水平。可以请求退货，但在为所选位置创建库存水平之前无法接收。",
+      "noInventoryLevelDesc": "所选发货仓库没有所选商品的库存水平。可以请求退货，但在为所选发货仓库创建库存水平之前无法接收。",
       "noteHint": "如果您想指定某些内容，可以自由输入。",
-      "location": "位置",
-      "locationHint": "选择您想要将商品退回的位置。",
+      "location": "发货仓库",
+      "locationHint": "选择您想要将商品退回的发货仓库。",
       "inboundShipping": "退货配送",
       "inboundShippingHint": "选择您想使用的方式。",
       "returnableQuantityLabel": "可退货数量",
@@ -1244,11 +1287,11 @@
       "placeholders": {
         "noReturnShippingOptions": {
           "title": "未找到退货配送选项",
-          "hint": "该位置未创建退货配送选项。您可以在<LinkComponent>位置与配送</LinkComponent>中创建。"
+          "hint": "该发货仓库未创建退货配送选项。您可以在<LinkComponent>发货仓库与配送</LinkComponent>中创建。"
         },
         "outboundShippingOptions": {
           "title": "未找到出库配送选项",
-          "hint": "该位置未创建出库配送选项。您可以在<LinkComponent>位置与配送</LinkComponent>中创建。"
+          "hint": "该发货仓库未创建出库配送选项。您可以在<LinkComponent>发货仓库与配送</LinkComponent>中创建。"
         }
       },
       "receive": {
@@ -1355,7 +1398,7 @@
     "allocateItems": {
       "action": "分配商品",
       "title": "分配订单商品",
-      "locationDescription": "选择您想要从哪个位置分配。",
+      "locationDescription": "选择从哪个发货仓库分配库存。",
       "itemsToAllocate": "要分配的商品",
       "itemsToAllocateDesc": "选择您想要分配的商品数量",
       "search": "搜索商品",
@@ -1368,10 +1411,10 @@
       "error": {
         "quantityNotAllocated": "有未分配的商品。"
       },
-      "noItemsToAllocate": "当前订单没有可分配库存的行项目（可能已全部履约或不管理库存）。"
+      "noItemsToAllocate": "当前订单没有可分配库存的行项目（可能已全部发货或不管理库存）。"
     },
     "shipment": {
-      "title": "标记履行已发货",
+      "title": "标记为已发货",
       "trackingNumber": "追踪号码",
       "addTracking": "添加追踪号码",
       "sendNotification": "发送通知",
@@ -1381,41 +1424,41 @@
       "trackingUrl": "追踪URL"
     },
     "fulfillment": {
-      "cancelWarning": "您即将取消履行。此操作无法撤消。",
-      "markAsDeliveredWarning": "您即将将履行标记为已送达。此操作无法撤消。",
+      "cancelWarning": "您即将取消此次发货。此操作无法撤消。",
+      "markAsDeliveredWarning": "您即将将此发货标记为已送达。此操作无法撤消。",
       "differentOptionSelected": "所选的运输方式与客户选择的不同。",
       "disabledItemTooltip": "您选择的配送方式不允许配送此商品",
-      "unfulfilledItems": "未履行商品",
-      "statusLabel": "履行状态",
-      "statusTitle": "履行状态",
-      "fulfillItems": "履行商品",
-      "awaitingFulfillmentBadge": "等待履行",
+      "unfulfilledItems": "未发货商品",
+      "statusLabel": "发货状态",
+      "statusTitle": "发货状态",
+      "fulfillItems": "发货",
+      "awaitingFulfillmentBadge": "等待发货",
       "requiresShipping": "需要配送",
-      "number": "履行 #{{number}}",
-      "itemsToFulfill": "要履行的商品",
-      "create": "创建履行",
+      "number": "发货单 #{{number}}",
+      "itemsToFulfill": "待发货商品",
+      "create": "创建发货",
       "available": "可用",
       "inStock": "有库存",
       "markAsShipped": "标记为已发货",
       "markAsPickedUp": "标记为已取走",
       "markAsDelivered": "标记为已送达",
-      "itemsToFulfillDesc": "选择要履行的商品和数量",
-      "locationDescription": "选择您想要从哪个位置履行商品。",
-      "sendNotificationHint": "通知客户关于已创建的履行。",
+      "itemsToFulfillDesc": "选择要发货的商品和数量",
+      "locationDescription": "选择从哪个发货仓库发货。",
+      "sendNotificationHint": "通知客户发货已创建。",
       "methodDescription": "选择与客户所选不同的配送方式",
       "error": {
-        "wrongQuantity": "只有一件商品可供履行",
+        "wrongQuantity": "只有一件商品可供发货",
         "wrongQuantity_other": "数量应该在 1 和 {{number}} 之间",
-        "noItems": "没有要履行的商品。",
+        "noItems": "没有待发货的商品。",
         "noShippingOption": "需要运输选项",
-        "noLocation": "位置为必填项"
+        "noLocation": "发货仓库为必填项"
       },
       "status": {
-        "notFulfilled": "未履行",
-        "partiallyFulfilled": "部分已履行",
-        "fulfilled": "已履行",
-        "partiallyShipped": "部分已发货",
-        "shipped": "已发货",
+        "notFulfilled": "未发货",
+        "partiallyFulfilled": "部分已发货",
+        "fulfilled": "已发货",
+        "partiallyShipped": "部分在途",
+        "shipped": "在途",
         "delivered": "已送达",
         "partiallyDelivered": "部分已送达",
         "partiallyReturned": "部分已退货",
@@ -1427,10 +1470,10 @@
         "awaitingShipping": "等待发货"
       },
       "toast": {
-        "created": "履行创建成功",
-        "canceled": "履行已成功取消",
-        "fulfillmentShipped": "无法取消已发货的履行",
-        "fulfillmentDelivered": "履行已成功标记为已送达",
+        "created": "发货创建成功",
+        "canceled": "发货已成功取消",
+        "fulfillmentShipped": "无法取消已在途的发货",
+        "fulfillmentDelivered": "发货已成功标记为已送达",
         "fulfillmentPickedUp": "订单已标记为已成功领取"
       },
       "trackingLabel": "追踪",
@@ -1486,9 +1529,9 @@
           "refunded": "支付已退款"
         },
         "fulfillment": {
-          "created": "商品已履行",
-          "canceled": "履行已取消",
-          "shipped": "商品已发货",
+          "created": "商品已发货",
+          "canceled": "发货已取消",
+          "shipped": "商品已在途",
           "delivered": "商品已送达",
           "items_one": "{{count}} 件商品",
           "items_other": "{{count}} 件商品"
@@ -1705,35 +1748,36 @@
     }
   },
   "stockLocations": {
-    "domain": "库存位置和配送",
+    "domain": "发货仓库和配送",
     "list": {
-      "description": "管理您商店的库存位置和配送选项。",
+      "description": "管理您商店的发货仓库和配送选项。",
       "noRecordsMessage": "无记录",
-      "noRecordsMessageEmpty": "未找到位置",
-      "noRecordsMessageFiltered": "未找到匹配筛选条件的位置"
+      "noRecordsMessageEmpty": "未找到发货仓库",
+      "noRecordsMessageFiltered": "未找到匹配筛选条件的发货仓库"
     },
     "create": {
-      "header": "创建库存位置",
-      "hint": "库存位置是存储和发货产品的实体场所。",
-      "successToast": "库存位置 {{name}} 创建成功。"
+      "header": "创建发货仓库",
+      "hint": "发货仓库是存储和发出商品的实体仓库。",
+      "successToast": "发货仓库 {{name}} 创建成功。"
     },
     "edit": {
-      "header": "编辑库存位置",
+      "header": "编辑发货仓库",
       "viewInventory": "查看库存",
-      "successToast": "库存位置 {{name}} 更新成功。"
+      "successToast": "发货仓库 {{name}} 更新成功。"
     },
     "delete": {
-      "confirmation": "您即将删除库存位置 {{name}}。此操作无法撤销。",
-      "successToast": "位置 \"{{name}}\" 删除成功。"
+      "confirmation": "您即将删除发货仓库 {{name}}。此操作无法撤销。",
+      "successToast": "发货仓库 \"{{name}}\" 删除成功。"
     },
     "fulfillmentProviders": {
-      "header": "履约供应商",
-      "shippingOptionsTooltip": "此下拉列表将仅包含为该位置启用的供应商。如果下拉列表被禁用,请将它们添加到该位置。",
-      "label": "已连接的履约供应商",
-      "connectedTo": "已连接 {{total}} 个履约供应商中的 {{count}} 个",
-      "noProviders": "此库存位置未连接任何履约供应商。",
-      "action": "连接供应商",
-      "successToast": "库存位置的履约供应商更新成功。"
+      "header": "物流渠道",
+      "dbHint": "物流渠道需先在数据库 fulfillment_provider 表中配置（如手动发货 manual_manual），下方列表才会出现可选项。",
+      "shippingOptionsTooltip": "此下拉列表将仅包含为该发货仓库启用的物流渠道。如果下拉列表被禁用,请先将物流渠道添加到该发货仓库。",
+      "label": "已连接的物流渠道",
+      "connectedTo": "已连接 {{total}} 个物流渠道中的 {{count}} 个",
+      "noProviders": "此发货仓库未连接任何物流渠道。",
+      "action": "连接物流渠道",
+      "successToast": "发货仓库的物流渠道更新成功。"
     },
     "fulfillmentSets": {
       "pickup": {
@@ -1767,10 +1811,10 @@
       "header": "销售渠道",
       "label": "已连接的销售渠道",
       "connectedTo": "已连接 {{total}} 个销售渠道中的 {{count}} 个",
-      "noChannels": "该位置未连接任何销售渠道。",
+      "noChannels": "该发货仓库未连接任何销售渠道。",
       "action": "连接销售渠道",
       "successToast": "销售渠道更新成功。",
-      "hint": "管理与此位置相连的销售渠道。"
+      "hint": "管理与此发货仓库相连的销售渠道。"
     },
     "pickupOptions": {
       "edit": {
@@ -1781,19 +1825,19 @@
       "create": {
         "shipping": {
           "header": "为 {{zone}} 创建配送选项",
-          "hint": "创建新的配送选项以定义如何从此位置发货产品。",
+          "hint": "创建新的配送选项以定义如何从此发货仓库发出商品。",
           "label": "配送选项",
           "successToast": "配送选项 {{name}} 创建成功。"
         },
         "pickup": {
           "header": "为 {{zone}} 创建自提选项",
-          "hint": "创建新的自提选项以定义如何从此位置自提产品。",
+          "hint": "创建新的自提选项以定义如何从此发货仓库自提商品。",
           "label": "自提选项",
           "successToast": "自提选项 {{name}} 创建成功。"
         },
         "returns": {
           "header": "为 {{zone}} 创建退货选项",
-          "hint": "创建新的退货选项以定义如何将产品退回到此位置。",
+          "hint": "创建新的退货选项以定义如何将商品退回到此发货仓库。",
           "label": "退货选项",
           "successToast": "退货选项 {{name}} 创建成功。"
         },
@@ -1868,7 +1912,7 @@
             },
             "calculated": {
               "label": "计算",
-              "hint": "配送选项的价格由履约供应商在结账时计算。"
+              "hint": "配送选项的价格由物流渠道在结账时计算。"
             }
           }
         },
@@ -1876,9 +1920,9 @@
           "label": "在商店中启用",
           "hint": "客户是否可以在结账时使用此选项。"
         },
-        "provider": "履约供应商",
+        "provider": "物流渠道",
         "profile": "配送方案",
-        "fulfillmentOption": "履约选项",
+        "fulfillmentOption": "发货选项",
         "type": "配送选项类型"
       }
     },
@@ -1906,7 +1950,7 @@
       },
       "fields": {
         "noRecords": "没有可添加配送选项的服务区域。",
-        "tip": "服务区域是地理区域或地区的集合。它用于将可用的配送选项限制在定义的位置集合中。"
+        "tip": "服务区域是地理区域或地区的集合。它用于将可用的配送选项限制在指定的区域内。"
       }
     }
   },
@@ -2677,7 +2721,7 @@
     "defaultCurrency": "默认货币",
     "defaultRegion": "默认地区",
     "defaultSalesChannel": "默认销售渠道",
-    "defaultLocation": "默认位置",
+    "defaultLocation": "默认发货仓库",
     "swapLinkTemplate": "交换链接模板",
     "paymentLinkTemplate": "支付链接模板",
     "inviteLinkTemplate": "邀请链接模板",
@@ -2707,9 +2751,9 @@
   },
   "regions": {
     "domain": "地区",
-    "subtitle": "地区是您销售产品的区域。它可以覆盖多个国家,并且有不同的税率、供应商和货币。",
+    "subtitle": "地区是您销售产品的区域。它可以覆盖多个国家,并且有不同的税率、支付渠道和货币。",
     "createRegion": "创建地区",
-    "createRegionHint": "管理税收率和供应商的地区。",
+    "createRegionHint": "管理税率和支付渠道的地区。",
     "addCountries": "添加国家",
     "editRegion": "编辑地区",
     "countriesHint": "添加此地区包含的国家。",
@@ -2719,7 +2763,8 @@
     "removeCountryWarning": "您即将从地区中移除国家 {{name}}。此操作无法撤销。",
     "automaticTaxesHint": "当启用时,税收将仅基于运输地址在结账时计算。",
     "taxInclusiveHint": "当启用时,地区的价格将包含税收。",
-    "providersHint": "添加此地区可用的支付提供商。",
+    "paymentProvidersDbHint": "支付渠道需先在数据库 payment_provider 表中配置，下方列表才会出现可选项。",
+    "providersHint": "勾选此地区启用的支付渠道。",
     "shippingOptions": "运输选项",
     "deleteShippingOptionWarning": "您即将删除运输选项 {{name}}。此操作无法撤销。",
     "return": "返回",
@@ -2740,7 +2785,7 @@
       "createShippingOption": "创建运输选项",
       "createShippingOptionHint": "为地区创建新的运输选项。",
       "editShippingOption": "编辑运输选项",
-      "fulfillmentMethod": "履行方法",
+      "fulfillmentMethod": "发货方式",
       "type": {
         "outbound": "出站",
         "outboundHint": "使用此选项如果您正在创建运输选项以将产品发送给客户。",
@@ -2808,17 +2853,17 @@
     }
   },
   "locations": {
-    "domain": "位置",
-    "editLocation": "编辑位置",
+    "domain": "发货仓库",
+    "editLocation": "编辑发货仓库",
     "addSalesChannels": "添加销售渠道",
-    "noLocationsFound": "没有找到位置",
-    "selectLocations": "选择库存商品的位置。",
-    "deleteLocationWarning": "您即将删除位置 {{name}}。此操作无法撤销。",
-    "removeSalesChannelsWarning_one": "您即将从位置中移除 {{count}} 个销售渠道。",
-    "removeSalesChannelsWarning_other": "您即将从位置中移除 {{count}} 个销售渠道。",
+    "noLocationsFound": "没有找到发货仓库",
+    "selectLocations": "选择库存商品所在的发货仓库。",
+    "deleteLocationWarning": "您即将删除发货仓库 {{name}}。此操作无法撤销。",
+    "removeSalesChannelsWarning_one": "您即将从发货仓库中移除 {{count}} 个销售渠道。",
+    "removeSalesChannelsWarning_other": "您即将从发货仓库中移除 {{count}} 个销售渠道。",
     "toast": {
-      "create": "位置创建成功",
-      "update": "位置更新成功",
+      "create": "发货仓库创建成功",
+      "update": "发货仓库更新成功",
       "removeChannel": "销售渠道移除成功"
     }
   },
@@ -3212,11 +3257,11 @@
     "minutes": "分钟",
     "totalRedemptions": "总兑换次数",
     "countries": "国家",
-    "paymentProviders": "支付供应商",
+    "paymentProviders": "支付渠道",
     "refundReason": "退款原因",
-    "fulfillmentProviders": "履约供应商",
-    "fulfillmentProvider": "履约供应商",
-    "providers": "供应商",
+    "fulfillmentProviders": "物流渠道",
+    "fulfillmentProvider": "物流渠道",
+    "providers": "支付渠道",
     "availability": "可用性",
     "inventory": "库存",
     "optional": "可选",
@@ -3252,8 +3297,8 @@
     "customer": "客户",
     "date": "日期",
     "order": "订单",
-    "fulfillment": "履约",
-    "provider": "供应商",
+    "fulfillment": "发货",
+    "provider": "物流渠道",
     "payment": "支付",
     "items": "商品",
     "salesChannel": "销售渠道",
@@ -3292,7 +3337,7 @@
     "managedInventory": "管理库存",
     "allowBackorder": "允许缺货订购",
     "inStock": "有库存",
-    "location": "位置",
+    "location": "发货仓库",
     "quantity": "数量",
     "variant": "变体",
     "id": "ID",

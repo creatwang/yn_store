@@ -1,5 +1,6 @@
 ---
 import ProductCardImage from "./ProductCardImage.astro"
+import { formatMoney } from "../../lib/currency"
 import { localeUrlPath } from "../../lib/i18n"
 
 interface Props {
@@ -8,10 +9,12 @@ interface Props {
   subtitle?: string
   thumbnail?: string
   price?: number | null
+  currency?: string
 }
 
-const { handle, title, subtitle, thumbnail, price } = Astro.props
+const { handle, title, subtitle, thumbnail, price, currency: currencyProp } = Astro.props
 const locale = Astro.locals.locale ?? "zh-CN"
+const currency = currencyProp ?? Astro.locals.currency ?? "usd"
 const productHref = localeUrlPath(locale, `/products/${handle}`)
 ---
 
@@ -25,7 +28,7 @@ const productHref = localeUrlPath(locale, `/products/${handle}`)
     {subtitle && <p class="mt-1 text-sm text-gray-500">{subtitle}</p>}
     <p class="mt-2 text-lg font-semibold text-gray-900">
       {price != null && price > 0
-        ? `$${price.toFixed(2)}`
+        ? formatMoney(price, currency)
         : "暂无定价"}
     </p>
   </div>

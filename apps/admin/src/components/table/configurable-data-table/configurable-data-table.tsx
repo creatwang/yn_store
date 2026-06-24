@@ -1,9 +1,15 @@
 import { useState } from "react"
-import { Container, Button } from "@medusajs/ui"
+import {
+  Container,
+  Button,
+  DataTableCommand,
+  DataTableRowSelectionState,
+} from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { DataTable } from "../../data-table"
 import { SaveViewDialog } from "../save-view-dialog"
 import { SaveViewDropdown } from "./save-view-dropdown"
+import { useTablePageSize } from "../../../hooks/table/table-pagination"
 import { useTableConfiguration } from "../../../hooks/table/use-table-configuration"
 import { useConfigurableTableColumns } from "../../../hooks/table/columns/use-configurable-table-columns"
 import { getEntityAdapter } from "../../../lib/table/entity-adapters"
@@ -29,6 +35,11 @@ export interface ConfigurableDataTableProps<TData> {
   queryPrefix?: string
   layout?: "fill" | "auto"
   actions?: DataTableActionProps[]
+  commands?: DataTableCommand[]
+  rowSelection?: {
+    state: DataTableRowSelectionState
+    onRowSelectionChange: (value: DataTableRowSelectionState) => void
+  }
 }
 
 export function ConfigurableDataTable<TData>({
@@ -39,6 +50,8 @@ export function ConfigurableDataTable<TData>({
   queryPrefix: queryPrefixProp,
   layout = "fill",
   actions,
+  commands,
+  rowSelection,
 }: ConfigurableDataTableProps<TData>) {
   const { t } = useTranslation()
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
@@ -54,8 +67,11 @@ export function ConfigurableDataTable<TData>({
     }
     return filter
   })
-  const pageSize = pageSizeProp || adapter.pageSize || 20
   const queryPrefix = queryPrefixProp || adapter.queryPrefix || ""
+  const pageSize = useTablePageSize(
+    queryPrefix || undefined,
+    pageSizeProp ?? adapter.pageSize,
+  )
 
   const {
     activeView,
@@ -233,6 +249,8 @@ export function ConfigurableDataTable<TData>({
         }
         prefix={queryPrefix}
         actions={actions}
+        commands={commands}
+        rowSelection={rowSelection}
         enableFilterMenu={false}
       />
 

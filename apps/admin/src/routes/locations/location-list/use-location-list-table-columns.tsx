@@ -63,6 +63,7 @@ export const useLocationListTableColumns = () => {
 
   return useMemo(
     () => [
+      columnHelper.select(),
       columnHelper.accessor("name", {
         header: t("fields.name"),
         cell: ({ getValue }) => {

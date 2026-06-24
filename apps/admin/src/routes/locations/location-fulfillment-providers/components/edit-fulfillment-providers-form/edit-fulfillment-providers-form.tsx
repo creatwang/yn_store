@@ -1,5 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
-import { Button, Checkbox, toast } from "@medusajs/ui"
+import { Button, Checkbox, Text, toast } from "@medusajs/ui"
 import { keepPreviousData } from "@tanstack/react-query"
 import {
   RowSelectionState,
@@ -132,6 +132,11 @@ export const LocationEditFulfillmentProvidersForm = ({
       <KeyboundForm onSubmit={handleSubmit} className="flex size-full flex-col">
         <RouteFocusModal.Header />
         <RouteFocusModal.Body className="flex flex-1 flex-col overflow-auto">
+          <div className="border-b border-ui-border-base px-6 py-4">
+            <Text size="small" className="text-ui-fg-subtle">
+              {t("stockLocations.fulfillmentProviders.dbHint")}
+            </Text>
+          </div>
           <_DataTable
             table={table}
             columns={columns}

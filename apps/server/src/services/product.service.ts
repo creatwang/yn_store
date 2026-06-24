@@ -36,6 +36,41 @@ import {
 import { slugify, generateUniqueHandle } from "../lib/product/slug"
 import { variantService } from "./variant.service"
 import { applyTranslation, applyTranslations } from "../lib/translation"
+import { normalizeCurrencyCode } from "../lib/currency/resolve-currency"
+
+async function loadVariantPriceByCurrency(
+  db: ReturnType<typeof getDb>,
+  variantIds: string[],
+  currencyCode?: string,
+) {
+  const currency = normalizeCurrencyCode(currencyCode)
+  const priceMap = new Map<string, { amount: number; currency_code: string }>()
+  if (!variantIds.length) return priceMap
+
+  const priceRows = await db.execute(sql`
+    SELECT pvps.variant_id, pr.amount, pr.currency_code
+    FROM product_variant_price_set pvps
+    JOIN price_set ps ON ps.id = pvps.price_set_id
+    JOIN price pr ON pr.price_set_id = ps.id
+    WHERE ${sqlInIds(sql`pvps.variant_id`, variantIds)}
+      AND pr.currency_code = ${currency}
+      AND pr.deleted_at IS NULL
+    ORDER BY pr.amount ASC
+  `)
+  for (const row of sqlRows(priceRows) as Array<{
+    variant_id: string
+    amount: string
+    currency_code: string
+  }>) {
+    if (!priceMap.has(row.variant_id)) {
+      priceMap.set(row.variant_id, {
+        amount: Number(row.amount),
+        currency_code: row.currency_code,
+      })
+    }
+  }
+  return priceMap
+}
 
 /**
  * 对齐 Medusa 官方 defaultAdminProductFields
@@ -255,7 +290,12 @@ async function attachCollectionsForList(
   const collections = await db
     .select()
     .from(productCollection)
-    .where(inArray(productCollection.id, collectionIds))
+    .where(
+      and(
+        inArray(productCollection.id, collectionIds),
+        isNull(productCollection.deleted_at),
+      ),
+    )
   const byId = new Map(collections.map((c: any) => [c.id, c]))
   return products.map((p) => ({
     ...p,
@@ -397,7 +437,15 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
   }
 
   if (wants("collection") && item.collection_id) {
-    const [col] = await db.select().from(productCollection).where(eq(productCollection.id, item.collection_id))
+    const [col] = await db
+      .select()
+      .from(productCollection)
+      .where(
+        and(
+          eq(productCollection.id, item.collection_id),
+          isNull(productCollection.deleted_at),
+        ),
+      )
     result.collection = col ?? null
   }
 
@@ -433,7 +481,7 @@ async function fetchRelations(db: any, id: string, item: any, fields: string[] =
       const rows = await db.execute(sql`
         SELECT pc.id, pc.name, pc.handle, pc.description, pc.mpath, pc.is_active, pc.is_internal, pc.rank, pc.parent_category_id
         FROM product_category pc JOIN product_category_product pcp ON pcp.product_category_id = pc.id
-        WHERE pcp.product_id = ${id}
+        WHERE pcp.product_id = ${id} AND pc.deleted_at IS NULL
       `)
       result.categories = sqlRows(rows)
     } catch { result.categories = [] }
@@ -559,7 +607,12 @@ export const productService = {
     }
   },
 
-  async listStore(query: StoreGetProductsParamsType, salesChannelId?: string, locale?: string) {
+  async listStore(
+    query: StoreGetProductsParamsType,
+    salesChannelId?: string,
+    locale?: string,
+    currencyCode?: string,
+  ) {
     const db = getDb()
     const { limit, offset } = listLimitOffset(query, { limit: 50, offset: 0 })
     const conditions = [
@@ -625,6 +678,7 @@ export const productService = {
     ])
 
     // 加载每个产品的最低价（USD），通过 price_set 链
+    const currency = normalizeCurrencyCode(currencyCode)
     const productIds = products.map((p) => p.id)
     const priceMap = new Map<string, number>()
     if (productIds.length > 0) {
@@ -635,7 +689,7 @@ export const productService = {
         JOIN price_set ps ON ps.id = pvps.price_set_id
         JOIN price pr ON pr.price_set_id = ps.id
         WHERE ${sqlInIds(sql`pv.product_id`, productIds)}
-          AND pr.currency_code = 'usd'
+          AND pr.currency_code = ${currency}
           AND pv.deleted_at IS NULL
           AND pr.deleted_at IS NULL
         GROUP BY pv.product_id
@@ -689,7 +743,7 @@ export const productService = {
     return { product: localized }
   },
 
-  async getByHandle(handle: string, locale?: string) {
+  async getByHandle(handle: string, locale?: string, currencyCode?: string) {
     const db = getDb()
     const [item] = await db
       .select()
@@ -719,27 +773,7 @@ export const productService = {
 
     // 加载变体价格（USD），通过 price_set 链
     const variantIds = variants.map((v) => v.id)
-    const priceMap = new Map<string, { amount: number; currency_code: string }>()
-    if (variantIds.length > 0) {
-      const priceRows = await db.execute(sql`
-        SELECT pvps.variant_id, pr.amount, pr.currency_code
-        FROM product_variant_price_set pvps
-        JOIN price_set ps ON ps.id = pvps.price_set_id
-        JOIN price pr ON pr.price_set_id = ps.id
-        WHERE ${sqlInIds(sql`pvps.variant_id`, variantIds)}
-          AND pr.currency_code = 'usd'
-          AND pr.deleted_at IS NULL
-        ORDER BY pr.amount ASC
-      `)
-      for (const row of (Array.isArray(priceRows) ? priceRows : (priceRows as any).rows ?? [])) {
-        if (!priceMap.has(row.variant_id)) {
-          priceMap.set(row.variant_id, {
-            amount: Number(row.amount),
-            currency_code: row.currency_code,
-          })
-        }
-      }
-    }
+    const priceMap = await loadVariantPriceByCurrency(db, variantIds, currencyCode)
 
     const variantRows = variants.map((v) => ({ ...v, price: priceMap.get(v.id) ?? null }))
     const localizedVariants = await applyTranslations("product_variant", variantRows, locale)
@@ -752,10 +786,28 @@ export const productService = {
     return { product: localizedProduct }
   },
 
-  async getRealtime(idOrHandle: string) {
-    const detail = idOrHandle.startsWith("prod_")
-      ? await this.getById(idOrHandle, true)
-      : await this.getByHandle(idOrHandle)
+  async getRealtime(idOrHandle: string, currencyCode?: string) {
+    const resolved = normalizeCurrencyCode(currencyCode)
+    let handle = idOrHandle
+    if (idOrHandle.startsWith("prod_")) {
+      const db = getDb()
+      const [row] = await db
+        .select({ handle: product.handle })
+        .from(product)
+        .where(
+          and(
+            eq(product.id, idOrHandle),
+            eq(product.status, "published"),
+            isNull(product.deleted_at),
+          ),
+        )
+        .limit(1)
+      if (!row) {
+        throw new HTTPException(404, { message: "Product not found" })
+      }
+      handle = row.handle
+    }
+    const detail = await this.getByHandle(handle, undefined, resolved)
     const product = detail.product as {
       variants?: Array<{
         price?: { amount: number } | null
@@ -771,7 +823,7 @@ export const productService = {
     return {
       price: firstPrice ?? null,
       stock,
-      currency: "USD",
+      currency: resolved.toUpperCase(),
     }
   },
 

@@ -371,6 +371,27 @@ export const stockLocationService = {
     return { id, deleted: true }
   },
 
+  async batchDelete(ids: string[]) {
+    const db = getDb()
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+    const existing = await db
+      .select({ id: stockLocation.id })
+      .from(stockLocation)
+      .where(and(inArray(stockLocation.id, ids), isNull(stockLocation.deleted_at)))
+    const existingIds = existing.map((r) => r.id)
+    const existingSet = new Set(existingIds)
+    const notFound = ids.filter((id) => !existingSet.has(id))
+    if (existingIds.length) {
+      await db
+        .update(stockLocation)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(and(inArray(stockLocation.id, existingIds), isNull(stockLocation.deleted_at)))
+    }
+    return { deleted: existingIds, not_found: notFound }
+  },
+
   async updateSalesChannels(id: string, body: { add?: string[]; remove?: string[] }) {
     return updateSalesChannelLinks(id, body)
   },

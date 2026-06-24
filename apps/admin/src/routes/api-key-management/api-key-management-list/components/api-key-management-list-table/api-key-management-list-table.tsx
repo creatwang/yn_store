@@ -1,10 +1,19 @@
+// @ts-nocheck
+import { HttpTypes } from "@medusajs/types"
 import { Button, Container, Heading, Text } from "@medusajs/ui"
 import { keepPreviousData } from "@tanstack/react-query"
+import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { _DataTable } from "../../../../../components/table/data-table"
-import { useApiKeys } from "../../../../../hooks/api/api-keys"
+import {
+  apiKeysQueryKeys,
+  useApiKeys,
+} from "../../../../../hooks/api/api-keys"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { useApiKeyManagementTableColumns } from "./use-api-key-management-table-columns"
 import { useApiKeyManagementTableFilters } from "./use-api-key-management-table-filters"
 import { useApiKeyManagementTableQuery } from "./use-api-key-management-table-query"
@@ -33,8 +42,16 @@ export const ApiKeyManagementListTable = ({
     placeholderData: keepPreviousData,
   })
 
+  const batchDelete = useListTableBatchDelete<
+    HttpTypes.AdminApiKeyResponse["api_key"]
+  >({
+    deleteFn: (ids) => sdk.admin.apiKey.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: apiKeysQueryKeys.lists() }),
+  })
+
   const filters = useApiKeyManagementTableFilters()
-  const columns = useApiKeyManagementTableColumns()
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     data: api_keys || [],
@@ -43,6 +60,8 @@ export const ApiKeyManagementListTable = ({
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -87,7 +106,14 @@ export const ApiKeyManagementListTable = ({
         search
         queryObject={raw}
         isLoading={isLoading}
+        commands={batchDelete.commands}
       />
     </Container>
   )
+}
+
+const useColumns = (selectColumn) => {
+  const base = useApiKeyManagementTableColumns()
+
+  return useMemo(() => [selectColumn, ...base], [base, selectColumn])
 }

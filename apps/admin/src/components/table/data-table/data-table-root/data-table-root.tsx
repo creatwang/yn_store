@@ -6,7 +6,6 @@ import {
   flexRender,
 } from "@tanstack/react-table"
 import {
-  ComponentPropsWithoutRef,
   Fragment,
   UIEvent,
   useEffect,
@@ -16,6 +15,7 @@ import {
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { NoResults } from "../../../common/empty-table-content"
+import { TablePaginationBar } from "../../table-pagination-bar"
 
 type BulkCommand = {
   label: string
@@ -319,7 +319,7 @@ export function DataTableRoot<TData>({
       </div>
       {pagination && (
         <div className={clx({ "border-t": layout === "fill" })}>
-          <Pagination
+          <TablePaginationBar
             canNextPage={table.getCanNextPage()}
             canPreviousPage={table.getCanPreviousPage()}
             nextPage={table.nextPage}
@@ -328,6 +328,12 @@ export function DataTableRoot<TData>({
             pageIndex={pageIndex}
             pageCount={table.getPageCount()}
             pageSize={pageSize}
+            onPageSizeChange={(nextPageSize) => {
+              table.setPagination({
+                pageIndex: 0,
+                pageSize: nextPageSize,
+              })
+            }}
           />
         </div>
       )}
@@ -356,31 +362,5 @@ export function DataTableRoot<TData>({
         </CommandBar>
       )}
     </div>
-  )
-}
-
-
-type PaginationProps = Omit<
-  ComponentPropsWithoutRef<typeof Table.Pagination>,
-  "translations"
->
-
-const Pagination = (props: PaginationProps) => {
-  const { t } = useTranslation()
-
-  const translations = {
-    of: t("general.of"),
-    results: t("general.results"),
-    pages: t("general.pages"),
-    prev: t("general.prev"),
-    next: t("general.next"),
-  }
-
-  return (
-    <Table.Pagination
-      className="flex-shrink-0"
-      {...props}
-      translations={translations}
-    />
   )
 }

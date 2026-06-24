@@ -10,11 +10,14 @@ import { Link, useLoaderData } from "react-router-dom"
 
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { _DataTable } from "../../../../../components/table/data-table"
-import { useProductTags } from "../../../../../hooks/api"
+import { productTagsQueryKeys, useProductTags } from "../../../../../hooks/api"
 import { useProductTagTableColumns } from "../../../../../hooks/table/columns"
 import { useProductTagTableFilters } from "../../../../../hooks/table/filters"
 import { useProductTagTableQuery } from "../../../../../hooks/table/query"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { useDeleteProductTagAction } from "../../../common/hooks/use-delete-product-tag-action"
 import { productTagListLoader } from "../../loader"
 import { useFeatureFlag } from "../../../../../providers/feature-flag-provider"
@@ -39,7 +42,13 @@ export const ProductTagListTable = () => {
     }
   )
 
-  const columns = useColumns()
+  const batchDelete = useListTableBatchDelete<HttpTypes.AdminProductTag>({
+    deleteFn: (ids) => sdk.admin.productTag.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: productTagsQueryKeys.lists() }),
+  })
+
+  const columns = useColumns(batchDelete.selectColumn)
   const filters = useProductTagTableFilters()
 
   const { table } = useDataTable({
@@ -48,6 +57,8 @@ export const ProductTagListTable = () => {
     columns,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -78,6 +89,7 @@ export const ProductTagListTable = () => {
           { key: "created_at", label: t("fields.createdAt") },
           { key: "updated_at", label: t("fields.updatedAt") },
         ]}
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -133,17 +145,18 @@ const ProductTagRowActions = ({
 
 const columnHelper = createColumnHelper<HttpTypes.AdminProductTag>()
 
-const useColumns = () => {
+const useColumns = (selectColumn) => {
   const base = useProductTagTableColumns()
 
   return useMemo(
     () => [
+      selectColumn,
       ...base,
       columnHelper.display({
         id: "actions",
         cell: ({ row }) => <ProductTagRowActions productTag={row.original} />,
       }),
     ],
-    [base]
+    [base, selectColumn]
   )
 }

@@ -14,7 +14,7 @@
 | 地区 | GET | `/admin/regions` | 200 | `regions,count,...` |
 | 商店 | GET | `/admin/stores` | 200 | `stores,count,...` |
 | 税收区域 | GET | `/admin/tax-regions` | 200 | `tax_regions,count,...` |
-| 支付供应商 | GET | `/admin/payments/payment-providers` | 200 | `payment_providers,...` |
+| 支付渠道 | GET | `/admin/payments/payment-providers` | 200 | `payment_providers,...` |
 | 产品列表 | GET | `/admin/products` | 200 | `products,count,...` |
 | 创建产品 | POST | `/admin/products` | 201 | `product` |
 | 价格列表 | GET | `/admin/price-lists` | 200 | `price_lists,...` |

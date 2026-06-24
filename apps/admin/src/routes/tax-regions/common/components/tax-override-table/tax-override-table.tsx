@@ -115,6 +115,12 @@ export const TaxOverrideTable = ({
           pageCount={table.getPageCount()}
           pageIndex={pageIndex}
           pageSize={pageSize}
+          onPageSizeChange={(nextPageSize) => {
+            table.setPagination({
+              pageIndex: 0,
+              pageSize: nextPageSize,
+            })
+          }}
         />
       )}
     </div>

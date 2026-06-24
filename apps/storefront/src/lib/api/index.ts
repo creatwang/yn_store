@@ -4,6 +4,13 @@ import {
   parseLocaleFromPathname,
   type StoreLocale,
 } from "../i18n/locale"
+import {
+  CURRENCY_COOKIE,
+  CURRENCY_STORAGE_KEY,
+  DEFAULT_CURRENCY,
+  normalizeCurrencyCode,
+  STORE_CURRENCY_HEADER,
+} from "../currency"
 
 const LOCALE_STORAGE_KEY = "store_locale"
 
@@ -39,6 +46,25 @@ function readPersistedLocale(): StoreLocale | undefined {
   return locale
 }
 
+function readPersistedCurrency(): string | undefined {
+  if (typeof document === "undefined") {
+    return (
+      (typeof process !== "undefined" ? process.env.PUBLIC_DEFAULT_CURRENCY : undefined) ||
+      import.meta.env.PUBLIC_DEFAULT_CURRENCY ||
+      undefined
+    )
+  }
+  const stored =
+    localStorage.getItem(CURRENCY_STORAGE_KEY) ||
+    document.cookie.match(/(?:^|;\s*)currency=([^;]+)/)?.[1]
+  if (!stored) return undefined
+  try {
+    return normalizeCurrencyCode(decodeURIComponent(stored))
+  } catch {
+    return normalizeCurrencyCode(stored)
+  }
+}
+
 function persistLocale(locale: string) {
   if (typeof document === "undefined") {
     return
@@ -47,19 +73,35 @@ function persistLocale(locale: string) {
   document.cookie = `locale=${encodeURIComponent(locale)}; path=/; max-age=31536000; samesite=lax`
 }
 
+function persistCurrency(currency: string) {
+  if (typeof document === "undefined") {
+    return
+  }
+  localStorage.setItem(CURRENCY_STORAGE_KEY, currency)
+  document.cookie = `${CURRENCY_COOKIE}=${encodeURIComponent(currency)}; path=/; max-age=31536000; samesite=lax`
+}
+
 /**
  * Storefront Store API 客户端。
  * locale 由 URL 路径首段驱动（见 middleware + syncLocaleFromPathname）。
+ * currency 由 cookie / localStorage 驱动（见 middleware + setCurrency）。
  */
 export class StoreApiClient {
   private locale: StoreLocale = DEFAULT_LOCALE
+  private currency: string = DEFAULT_CURRENCY
 
-  constructor(initialLocale?: string) {
+  constructor(initialLocale?: string, initialCurrency?: string) {
     if (initialLocale) {
       this.setLocale(initialLocale)
     } else {
       const persisted = readPersistedLocale()
       this.locale = persisted ?? DEFAULT_LOCALE
+    }
+    if (initialCurrency) {
+      this.setCurrency(initialCurrency)
+    } else {
+      const persisted = readPersistedCurrency()
+      this.currency = persisted ?? DEFAULT_CURRENCY
     }
   }
 
@@ -84,6 +126,16 @@ export class StoreApiClient {
     return this.locale
   }
 
+  /** 设置后续 Store API 请求的结算货币 */
+  setCurrency(currency: string) {
+    this.currency = normalizeCurrencyCode(currency)
+    persistCurrency(this.currency)
+  }
+
+  getCurrency(): string {
+    return this.currency
+  }
+
   storeApiUrl(path: string): string {
     const p = path.startsWith("/") ? path : `/${path}`
     return `${API_BASE}/api${p}`
@@ -99,6 +151,9 @@ export class StoreApiClient {
     }
     if (this.locale) {
       headers[STORE_LOCALE_HEADER] = this.locale
+    }
+    if (this.currency) {
+      headers[STORE_CURRENCY_HEADER] = this.currency
     }
     return headers
   }

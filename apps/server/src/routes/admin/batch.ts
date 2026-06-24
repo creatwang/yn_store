@@ -3,12 +3,14 @@ import { zValidator } from "@hono/zod-validator"
 import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import type { z } from "zod"
 import { AdminBulkCreateReservations } from "@my-store/validators/admin-list-params"
+import { batchDeleteByIdsSchema } from "@my-store/validators"
 import { sql } from "drizzle-orm"
 import { generateId, getDb } from "@my-store/db"
 import {
   AdminGetApiKeysParams,
   AdminGetCampaignsParams,
   AdminGetCollectionsParams,
+  AdminGetCurrenciesParams,
   AdminGetCustomerGroupsParams,
   AdminGetInventoryItemsParams,
   AdminGetPriceListsParams,
@@ -58,6 +60,14 @@ function crudRoutes(_entity: string, svc: any, listParams: z.ZodTypeAny) {
       const body = await c.req.json()
       const result = await svc.create(body)
       return c.json(result, 201)
+    })
+    .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+      if (typeof svc.batchDelete !== "function") {
+        return c.json({ message: "Batch delete not supported" }, 400)
+      }
+      const { ids } = c.req.valid("json")
+      const result = await svc.batchDelete(ids)
+      return c.json(result)
     })
     .post("/:id", async (c) => {
       const body = await c.req.json()
@@ -109,6 +119,11 @@ export const adminReservations = new Hono<{ Variables: AuthVariables }>()
       return c.json(result, 201)
     },
   )
+  .post("/batch-delete", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await reservationService.batchDelete(ids)
+    return c.json(result)
+  })
   .get("/:id", async (c) => {
     const result = await reservationService.getById(c.req.param("id"))
     return c.json(result)
@@ -154,6 +169,11 @@ export const adminInventoryItemsFull = new Hono<{ Variables: AuthVariables }>()
     const result = await inventoryItemService.create(body)
     return c.json(result, 201)
   })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await inventoryItemService.batchDelete(ids)
+    return c.json(result)
+  })
   .post("/:id", async (c) => {
     const body = await c.req.json()
     const result = await inventoryItemService.update(c.req.param("id"), body)
@@ -192,6 +212,11 @@ export const adminStockLocationsFull = new Hono<{ Variables: AuthVariables }>()
     const result = await stockLocationService.create(body)
     return c.json(result, 201)
   })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await stockLocationService.batchDelete(ids)
+    return c.json(result)
+  })
   .post("/:id", async (c) => {
     const body = await c.req.json()
     const result = await stockLocationService.update(c.req.param("id"), body)
@@ -228,8 +253,8 @@ export const adminStockLocationsFull = new Hono<{ Variables: AuthVariables }>()
 
 export const adminCurrencies = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", async (c) => {
-    const result = await currencyService.list()
+  .get("/", rpcQueryValidator(AdminGetCurrenciesParams), async (c) => {
+    const result = await currencyService.list(c.req.valid("query"))
     return c.json(result)
   })
   .get("/:code", async (c) => {
@@ -261,6 +286,11 @@ export const adminApiKeys = new Hono<{ Variables: AuthVariables }>()
     const body = await c.req.json()
     const result = await apiKeyService.create(body)
     return c.json(result, 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await apiKeyService.batchDelete(ids)
+    return c.json(result)
   })
   .post("/:id", async (c) => {
     const body = await c.req.json()

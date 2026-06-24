@@ -18,6 +18,7 @@ import {
 } from "@my-store/validators/medusa/admin/draft-orders/validators"
 import { draftOrderService } from "../../services/draft-order.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
+import { batchDeleteByIdsSchema } from "@my-store/validators"
 
 export const adminDraftOrders = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
@@ -30,6 +31,11 @@ export const adminDraftOrders = new Hono<{ Variables: AuthVariables }>()
       c.req.valid("json") as AdminCreateDraftOrderType,
     )
     return c.json(result, 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await draftOrderService.batchDelete(ids)
+    return c.json(result)
   })
   .get(
     "/:id",

@@ -78,6 +78,29 @@ function makeDeleteFn(table: any) {
   }
 }
 
+function makeBatchDeleteFn(table: any) {
+  return async (ids: string[]) => {
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+    const db = getDb()
+    const existing = await db
+      .select({ id: table.id })
+      .from(table)
+      .where(and(inArray(table.id, ids), isNull(table.deleted_at)))
+    const existingIds = existing.map((r) => r.id as string)
+    const existingSet = new Set(existingIds)
+    const notFound = ids.filter((id) => !existingSet.has(id))
+    if (existingIds.length) {
+      await db
+        .update(table)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(and(inArray(table.id, existingIds), isNull(table.deleted_at)))
+    }
+    return { deleted: existingIds, not_found: notFound }
+  }
+}
+
 // ── Product Tags ──────────────────────────────────────────────
 export const productTagService = {
   list: makeListFn(productTag, "product_tags"),
@@ -85,6 +108,7 @@ export const productTagService = {
   create: makeCreateFn(productTag, "ptag", "product_tags"),
   update: makeUpdateFn(productTag, "product_tags"),
   delete: makeDeleteFn(productTag),
+  batchDelete: makeBatchDeleteFn(productTag),
 }
 
 // ── Product Types ─────────────────────────────────────────────
@@ -94,6 +118,7 @@ export const productTypeService = {
   create: makeCreateFn(productType, "ptyp", "product_types"),
   update: makeUpdateFn(productType, "product_types"),
   delete: makeDeleteFn(productType),
+  batchDelete: makeBatchDeleteFn(productType),
 }
 
 async function loadTaxRatesByRegionIds(regionIds: string[]) {
@@ -239,6 +264,7 @@ export const taxRegionService = {
   create: makeCreateFn(taxRegion, "txreg", "tax_regions"),
   update: makeUpdateFn(taxRegion, "tax_regions"),
   delete: makeDeleteFn(taxRegion),
+  batchDelete: makeBatchDeleteFn(taxRegion),
 }
 
 // ── Return Reasons ────────────────────────────────────────────
@@ -248,6 +274,7 @@ export const returnReasonService = {
   create: makeCreateFn(returnReason, "rr", "return_reasons"),
   update: makeUpdateFn(returnReason, "return_reasons"),
   delete: makeDeleteFn(returnReason),
+  batchDelete: makeBatchDeleteFn(returnReason),
 }
 
 // ── Refund Reasons ────────────────────────────────────────────
@@ -257,4 +284,5 @@ export const refundReasonService = {
   create: makeCreateFn(refundReason, "rfnd", "refund_reasons"),
   update: makeUpdateFn(refundReason, "refund_reasons"),
   delete: makeDeleteFn(refundReason),
+  batchDelete: makeBatchDeleteFn(refundReason),
 }

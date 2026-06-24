@@ -1,13 +1,15 @@
 // @ts-nocheck
 import { Button, Container, Heading, Text } from "@medusajs/ui"
 
-import { RowSelectionState } from "@tanstack/react-table"
-import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useNavigate } from "react-router-dom"
 import { _DataTable } from "../../../../components/table/data-table"
+import { inventoryItemsQueryKeys } from "../../../../hooks/api/inventory"
 import { useInventoryItems } from "../../../../hooks/api/inventory"
+import { useListTableBatchDelete } from "../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../hooks/use-data-table"
+import { sdk } from "../../../../lib/api/client"
+import { queryClient } from "../../../../lib/query/query-client"
 import { INVENTORY_ITEM_IDS_KEY } from "../../common/constants"
 import { useInventoryTableColumns } from "./use-inventory-table-columns"
 import { useInventoryTableFilters } from "./use-inventory-table-filters"
@@ -18,8 +20,6 @@ const PAGE_SIZE = 20
 export const InventoryListTable = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-
-  const [selection, setSelection] = useState<RowSelectionState>({})
 
   const { searchParams, raw } = useInventoryTableQuery({
     pageSize: PAGE_SIZE,
@@ -35,6 +35,14 @@ export const InventoryListTable = () => {
     ...searchParams,
   })
 
+  const batchDelete = useListTableBatchDelete({
+    deleteFn: (ids) => sdk.admin.inventoryItem.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: inventoryItemsQueryKeys.lists(),
+      }),
+  })
+
   const filters = useInventoryTableFilters()
   const columns = useInventoryTableColumns()
 
@@ -45,11 +53,8 @@ export const InventoryListTable = () => {
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
-    enableRowSelection: true,
-    rowSelection: {
-      state: selection,
-      updater: setSelection,
-    },
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -98,6 +103,7 @@ export const InventoryListTable = () => {
             label: t("inventory.stock.action"),
             shortcut: "i",
           },
+          ...batchDelete.commands,
         ]}
       />
     </Container>

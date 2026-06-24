@@ -1,20 +1,26 @@
 // @ts-nocheck
 import { PencilSquare } from "@medusajs/icons"
 import { Button, Container, Heading } from "@medusajs/ui"
+import { HttpTypes } from "@medusajs/types"
 import { keepPreviousData } from "@tanstack/react-query"
 import { createColumnHelper } from "@tanstack/react-table"
 import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
-import { HttpTypes } from "@medusajs/types"
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { _DataTable } from "../../../../../components/table/data-table"
-import { useCustomers } from "../../../../../hooks/api/customers"
+import {
+  customersQueryKeys,
+  useCustomers,
+} from "../../../../../hooks/api/customers"
 import { useCustomerTableColumns } from "../../../../../hooks/table/columns/use-customer-table-columns"
 import { useCustomerTableFilters } from "../../../../../hooks/table/filters/use-customer-table-filters"
 import { useCustomerTableQuery } from "../../../../../hooks/table/query/use-customer-table-query"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 
 const PAGE_SIZE = 20
 
@@ -31,8 +37,14 @@ export const CustomerListTable = () => {
     }
   )
 
+  const batchDelete = useListTableBatchDelete<HttpTypes.AdminCustomer>({
+    deleteFn: (ids) => sdk.admin.customer.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: customersQueryKeys.lists() }),
+  })
+
   const filters = useCustomerTableFilters()
-  const columns = useColumns()
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     data: customers ?? [],
@@ -41,6 +53,8 @@ export const CustomerListTable = () => {
     enablePagination: true,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -78,6 +92,7 @@ export const CustomerListTable = () => {
         noRecords={{
           message: t("customers.list.noRecordsMessage"),
         }}
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -109,17 +124,18 @@ const CustomerActions = ({
 
 const columnHelper = createColumnHelper<HttpTypes.AdminCustomer>()
 
-const useColumns = () => {
+const useColumns = (selectColumn) => {
   const columns = useCustomerTableColumns()
 
   return useMemo(
     () => [
+      selectColumn,
       ...columns,
       columnHelper.display({
         id: "actions",
         cell: ({ row }) => <CustomerActions customer={row.original} />,
       }),
     ],
-    [columns]
+    [columns, selectColumn]
   )
 }

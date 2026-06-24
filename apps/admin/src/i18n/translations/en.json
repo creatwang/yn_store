@@ -18,6 +18,7 @@
     "pages": "pages",
     "next": "Next",
     "prev": "Prev",
+    "rowsPerPage": "Rows per page",
     "is": "is",
     "timeline": "Timeline",
     "success": "Success",
@@ -62,7 +63,16 @@
     "unsavedChangesDescription": "You have unsaved changes that will be lost if you exit this form.",
     "includesTaxTooltip": "Prices in this column are tax inclusive.",
     "excludesTaxTooltip": "Prices in this column are tax exclusive.",
-    "noMoreData": "No more data"
+    "noMoreData": "No more data",
+    "batchDeleteWarning": "You are about to delete {{count}} item(s). This action cannot be undone.",
+    "batchDelete": {
+      "header": "Batch delete completed",
+      "success": "Successfully deleted {{count}} item(s)",
+      "notFound": "{{count}} item(s) not found or already deleted",
+      "error": {
+        "header": "Batch delete failed"
+      }
+    }
   },
   "json": {
     "header": "JSON",
@@ -793,6 +803,17 @@
     "removeSingleProductWarning": "You are about to remove the product {{title}} from the collection. This action cannot be undone.",
     "removeProductsWarning_one": "You are about to remove {{count}} product from the collection. This action cannot be undone.",
     "removeProductsWarning_other": "You are about to remove {{count}} products from the collection. This action cannot be undone.",
+    "batchDeleteWarning": "You are about to delete {{count}} collections. Products in these collections will be unassigned.",
+    "toasts": {
+      "batchDelete": {
+        "header": "Batch delete completed",
+        "success": "Successfully deleted {{count}} collections",
+        "notFound": "{{count}} collections not found",
+        "error": {
+          "header": "Batch delete failed"
+        }
+      }
+    },
     "products": {
       "list": {
         "noRecordsMessage": "There are no products in the collection."
@@ -827,6 +848,17 @@
     "delete": {
       "confirmation": "You are about to delete the category {{name}}. This action cannot be undone.",
       "successToast": "Category {{name}} was successfully deleted."
+    },
+    "batchDeleteWarning": "You are about to delete {{count}} categories. Product links will be cleared and subcategories will also be deleted.",
+    "toasts": {
+      "batchDelete": {
+        "header": "Batch delete completed",
+        "success": "Successfully deleted {{count}} categories",
+        "notFound": "{{count}} categories not found",
+        "error": {
+          "header": "Batch delete failed"
+        }
+      }
     },
     "products": {
       "add": {
@@ -1115,7 +1147,18 @@
     "exchange": "Exchange",
     "return": "Return",
     "cancelWarning": "You are about to cancel the order {{id}}. This action cannot be undone.",
+    "batchDeleteWarning": "You are about to delete {{count}} orders. This action cannot be undone.",
     "orderCanceled": "Order canceled successfully",
+    "toasts": {
+      "batchDelete": {
+        "header": "Batch delete completed",
+        "success": "Successfully deleted {{count}} orders",
+        "notFound": "{{count}} orders not found",
+        "error": {
+          "header": "Batch delete failed"
+        }
+      }
+    },
     "onDateFromSalesChannel": "{{date}} from {{salesChannel}}",
     "list": {
       "noRecordsMessage": "Your orders will show up here."
@@ -1727,13 +1770,14 @@
       "successToast": "Location \"{{name}}\" was successfully deleted."
     },
     "fulfillmentProviders": {
-      "header": "Fulfillment Providers",
-      "shippingOptionsTooltip": "This dropdown will only consist of providers enabled for this location. Add them to the location if the dropdown is disabled.",
-      "label": "Connected fulfillment providers",
-      "connectedTo": "Connected to {{count}} of {{total}} fulfillment providers",
-      "noProviders": "This Stock Location is not connected to any fulfillment providers.",
-      "action": "Connect Providers",
-      "successToast": "Fulfillment providers for stock location were successfully updated."
+      "header": "Logistics Channels",
+      "dbHint": "Logistics channels must be configured in the fulfillment_provider database table before they appear in the list below.",
+      "shippingOptionsTooltip": "This dropdown will only consist of logistics channels enabled for this location. Add them to the location if the dropdown is disabled.",
+      "label": "Connected logistics channels",
+      "connectedTo": "Connected to {{count}} of {{total}} logistics channels",
+      "noProviders": "This Stock Location is not connected to any logistics channels.",
+      "action": "Connect Logistics Channels",
+      "successToast": "Logistics channels for stock location were successfully updated."
     },
     "fulfillmentSets": {
       "pickup": {
@@ -2756,7 +2800,8 @@
     "removeCountryWarning": "You are about to remove the country {{name}} from the region. This action cannot be undone.",
     "automaticTaxesHint": "When enabled, taxes will only be calculated at checkout based on the shipping address.",
     "taxInclusiveHint": "When enabled, prices in the region will be tax inclusive.",
-    "providersHint": "Add which payment providers are available in this region.",
+    "paymentProvidersDbHint": "Payment channels must be configured in the payment_provider database table before they appear in the list below.",
+    "providersHint": "Select which payment channels are enabled in this region.",
     "shippingOptions": "Shipping Options",
     "deleteShippingOptionWarning": "You are about to delete the shipping option {{name}}. This action cannot be undone.",
     "return": "Return",
@@ -3314,8 +3359,8 @@
     "serviceZone": "Service Zone",
     "paymentProviders": "Payment Providers",
     "refundReason": "Refund Reason",
-    "fulfillmentProviders": "Fulfillment Providers",
-    "fulfillmentProvider": "Fulfillment Provider",
+    "fulfillmentProviders": "Logistics Channels",
+    "fulfillmentProvider": "Logistics Channel",
     "providers": "Providers",
     "availability": "Availability",
     "inventory": "Inventory",

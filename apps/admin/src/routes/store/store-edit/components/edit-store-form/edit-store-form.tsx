@@ -118,31 +118,31 @@ export const EditStoreForm = ({ store }: EditStoreFormProps) => {
             <Form.Field
               control={form.control}
               name="default_currency_code"
-              render={({ field: { onChange, ...field } }) => {
+              render={({ field: { onChange, ref, ...field } }) => {
                 return (
                   <Form.Item>
                     <Form.Label>{t("store.defaultCurrency")}</Form.Label>
-                    <Form.Control>
-                      <Select
-                        dir={direction}
-                        {...field}
-                        onValueChange={onChange}
-                      >
-                        <Select.Trigger ref={field.ref}>
+                    <Select
+                      dir={direction}
+                      {...field}
+                      onValueChange={onChange}
+                    >
+                      <Form.Control ref={ref}>
+                        <Select.Trigger>
                           <Select.Value />
                         </Select.Trigger>
-                        <Select.Content>
-                          {store.supported_currencies?.map((currency) => (
-                            <Select.Item
-                              key={currency.currency_code}
-                              value={currency.currency_code}
-                            >
-                              {currency.currency_code.toUpperCase()}
-                            </Select.Item>
-                          ))}
-                        </Select.Content>
-                      </Select>
-                    </Form.Control>
+                      </Form.Control>
+                      <Select.Content>
+                        {store.supported_currencies?.map((currency) => (
+                          <Select.Item
+                            key={currency.currency_code}
+                            value={currency.currency_code}
+                          >
+                            {currency.currency_code.toUpperCase()}
+                          </Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select>
                   </Form.Item>
                 )
               }}

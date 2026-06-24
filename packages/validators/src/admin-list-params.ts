@@ -67,6 +67,11 @@ export {
 } from "./medusa/admin/tax-rates/validators"
 
 export {
+  AdminGetCurrenciesParams,
+  type AdminGetCurrenciesParamsType,
+} from "./medusa/admin/currencies/validators"
+
+export {
   AdminBulkCreateReservations,
   AdminGetReservationsParams,
   type AdminBulkCreateReservationsType,

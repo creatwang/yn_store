@@ -13,6 +13,7 @@ import {
 import { HTTPException } from "hono/http-exception"
 import type { CreateCartInput, AddToCartInput, UpdateCartInput } from "@my-store/validators"
 import { sendOrderConfirmationEmail } from "../lib/mail/mail"
+import { normalizeCurrencyCode } from "../lib/currency/resolve-currency"
 import { notificationService } from "./notification.service"
 import { orderConfirmWorkflow } from "../workflows/order-confirm"
 import { runInTransaction, type DbTx } from "../lib/infra/db/transaction"
@@ -81,9 +82,10 @@ export const cartService = {
 
   async addItem(cartId: string, input: AddToCartInput) {
     const db = getDb()
-    await this.getById(cartId)
+    const { cart: cartItem } = await this.getById(cartId)
+    const currency = normalizeCurrencyCode(cartItem.currency_code)
 
-    // 查变体价格（USD），通过 price_set 链，写入 unit_price
+    // 查变体价格（按购物车货币），通过 price_set 链，写入 unit_price
     let unitPrice = "0"
     if (input.variant_id) {
       const priceRows = await db.execute(sql`
@@ -91,7 +93,7 @@ export const cartService = {
         JOIN price_set ps ON ps.id = pr.price_set_id
         JOIN product_variant_price_set pvps ON pvps.price_set_id = ps.id
         WHERE pvps.variant_id = ${input.variant_id}
-          AND pr.currency_code = 'usd'
+          AND pr.currency_code = ${currency}
           AND pr.deleted_at IS NULL
         LIMIT 1
       `)

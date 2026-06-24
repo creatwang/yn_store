@@ -1,3 +1,4 @@
+import { useTablePageSize } from "../../../../../hooks/table/table-pagination"
 import { HttpTypes } from "@medusajs/types"
 import { useQueryParams } from "../../../../../hooks/use-query-params"
 
@@ -8,8 +9,9 @@ type UseApiKeyManagementTableQueryProps = {
 
 export const useApiKeyManagementTableQuery = ({
   prefix,
-  pageSize = 20,
+  pageSize: pageSizeProp,
 }: UseApiKeyManagementTableQueryProps) => {
+  const pageSize = useTablePageSize(prefix, pageSizeProp)
   const queryObject = useQueryParams(
     ["offset", "q", "created_at", "updated_at", "revoked_at", "order"],
     prefix

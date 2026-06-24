@@ -8,6 +8,7 @@ import {
   updateCustomerAddressSchema,
 } from "@my-store/validators"
 import { AdminCustomersParams } from "@my-store/validators/admin-list-params"
+import { batchDeleteByIdsSchema } from "@my-store/validators"
 import { customerService } from "../../services/customer.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { sql, eq, and } from "drizzle-orm"
@@ -28,6 +29,11 @@ export const adminCustomers = new Hono<{ Variables: AuthVariables }>()
     const body = c.req.valid("json")
     const result = await customerService.create(body)
     return c.json(result, 201)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await customerService.batchDelete(ids)
+    return c.json(result)
   })
   .post("/:id", zValidator("json", updateCustomerSchema), async (c) => {
     const body = c.req.valid("json")

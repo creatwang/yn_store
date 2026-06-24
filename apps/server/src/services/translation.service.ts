@@ -24,6 +24,12 @@ import type {
   AdminUpdateTranslationType,
 } from "@my-store/validators/medusa/admin/translations/validators"
 import { HTTPException } from "hono/http-exception"
+import type { AdminGetLocalesParamsType } from "@my-store/validators/admin-list-params"
+import {
+  listLimitOffset,
+  normalizeFilterIds,
+  type OperatorMapValue,
+} from "../lib/infra/query/query-filters"
 import {
   LOCALE_CATALOG,
   toAdminLocale,
@@ -31,7 +37,6 @@ import {
   getInactiveFields,
   TRANSLATABLE_ENTITY_TYPES,
 } from "../lib/translation"
-import { listLimitOffset } from "../lib/infra/query/query-filters"
 
 const DEFAULT_SETTINGS = TRANSLATABLE_ENTITY_TYPES.map((entity_type) => ({
   entity_type,
@@ -427,9 +432,40 @@ export const translationService = {
     return { statistics }
   },
 
-  listCatalogLocales(codes?: string[]) {
-    const list = (codes?.length ? codes : LOCALE_CATALOG).map(toAdminLocale)
-    return { locales: list, count: list.length }
+  listCatalogLocales(
+    codes?: string[],
+    query: AdminGetLocalesParamsType = {} as AdminGetLocalesParamsType,
+  ) {
+    const codeFilter =
+      normalizeFilterIds(query.code as OperatorMapValue | undefined) ?? codes
+    let list = (codeFilter?.length ? codeFilter : LOCALE_CATALOG).map((code) =>
+      toAdminLocale(code),
+    )
+
+    if (typeof query.q === "string" && query.q.trim()) {
+      const term = query.q.trim().toLowerCase()
+      list = list.filter(
+        (locale) =>
+          locale.code.toLowerCase().includes(term) ||
+          locale.name.toLowerCase().includes(term),
+      )
+    }
+
+    const orderParam = String(query.order ?? "name")
+    const orderDesc = orderParam.startsWith("-")
+    const orderKey = orderDesc ? orderParam.slice(1) : orderParam
+    list.sort((a, b) => {
+      const av = String((a as Record<string, unknown>)[orderKey] ?? a.name)
+      const bv = String((b as Record<string, unknown>)[orderKey] ?? b.name)
+      const cmp = av.localeCompare(bv)
+      return orderDesc ? -cmp : cmp
+    })
+
+    const { limit, offset } = listLimitOffset(query, { limit: 200, offset: 0 })
+    const total = list.length
+    const page = list.slice(offset, offset + limit)
+
+    return { locales: page, count: total, limit, offset }
   },
 
   async listStoreLocales() {

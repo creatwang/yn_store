@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, isNull, or, sql } from "drizzle-orm"
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm"
 import { generateId, getDb, user, invite } from "@my-store/db"
 import type {
   UpdateUserInput,
@@ -131,6 +131,27 @@ export const userService = {
       .where(and(eq(user.id, id), isNull(user.deleted_at)))
 
     return { id, object: "user", deleted: true }
+  },
+
+  async batchDeleteUsers(ids: string[]) {
+    const db = getDb()
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+    const existing = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(and(inArray(user.id, ids), isNull(user.deleted_at)))
+    const existingIds = existing.map((r) => r.id)
+    const existingSet = new Set(existingIds)
+    const notFound = ids.filter((id) => !existingSet.has(id))
+    if (existingIds.length) {
+      await db
+        .update(user)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(and(inArray(user.id, existingIds), isNull(user.deleted_at)))
+    }
+    return { deleted: existingIds, not_found: notFound }
   },
 
   // ── 邀请 CRUD ──────────────────────────────────────────────

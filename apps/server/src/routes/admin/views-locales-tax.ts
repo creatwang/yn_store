@@ -1,6 +1,8 @@
 import { Hono } from "hono"
 import { eq, and, isNull, desc } from "drizzle-orm"
 import { generateId, getDb, viewConfiguration, taxProvider } from "@my-store/db"
+import { AdminGetLocalesParams } from "@my-store/validators/admin-list-params"
+import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
 import { translationService } from "../../services/translation.service"
 
@@ -214,12 +216,9 @@ export const adminViews = new Hono<{ Variables: AuthVariables }>()
 
 export const adminLocales = new Hono<{ Variables: AuthVariables }>()
   .use("*", adminAuth)
-  .get("/", async (c) => {
-    const code = c.req.query("code")
-    const codes = code
-      ? (Array.isArray(code) ? code : code.split(",")).map((v) => v.trim()).filter(Boolean)
-      : undefined
-    return c.json(translationService.listCatalogLocales(codes))
+  .get("/", rpcQueryValidator(AdminGetLocalesParams), async (c) => {
+    const query = c.req.valid("query")
+    return c.json(translationService.listCatalogLocales(undefined, query))
   })
   .get("/:code", async (c) => {
     const code = c.req.param("code")

@@ -23,6 +23,7 @@ const locale = localeParam
   ? normalizeLocaleSegment(localeParam) ?? DEFAULT_LOCALE
   : Astro.locals.locale ?? DEFAULT_LOCALE
 Astro.locals.locale = locale
+const currency = Astro.locals.currency ?? "usd"
 
 const handle = Astro.params.handle
 if (!handle) {
@@ -70,6 +71,7 @@ const desc =
     image={resolvedImage ?? ""}
     sku={product.handle}
     price={product.price}
+    currency={currency}
     inStock={product.stock > 0}
   />
 
@@ -118,6 +120,7 @@ const desc =
       <ProductAddToCart
         productId={product.id}
         variants={product.variants}
+        currency={currency}
       />
     </div>
   </article>
@@ -129,20 +132,31 @@ const desc =
       basePrice: product.price,
       baseStock: product.stock,
       apiUrl: import.meta.env.PUBLIC_API_URL || "http://localhost:7000",
+      currency,
     }}
   >
     const meter = document.getElementById("live-stock-meter")
     const stockLabel = document.getElementById("live-stock-label")
     const priceEl = document.getElementById("variant-price")
 
-    fetch(`${apiUrl}/api/store/products/${handle}/realtime`)
+    fetch(`${apiUrl}/api/store/products/${handle}/realtime`, {
+      headers: { "x-store-currency": currency },
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((body) => {
         if (!body) return
         const livePrice = body.price
         const liveStock = body.stock
+        const liveCurrency = body.currency || currency.toUpperCase()
         if (livePrice != null && priceEl) {
-          priceEl.textContent = Number(livePrice).toFixed(2)
+          try {
+            priceEl.textContent = new Intl.NumberFormat(undefined, {
+              style: "currency",
+              currency: liveCurrency,
+            }).format(Number(livePrice))
+          } catch {
+            priceEl.textContent = `${liveCurrency} ${Number(livePrice).toFixed(2)}`
+          }
         }
         if (liveStock != null && meter && stockLabel) {
           const max = Math.max(liveStock, 1)

@@ -6234,6 +6234,9 @@
             "header": {
               "type": "string"
             },
+            "dbHint": {
+              "type": "string"
+            },
             "shippingOptionsTooltip": {
               "type": "string"
             },
@@ -6255,6 +6258,7 @@
           },
           "required": [
             "header",
+            "dbHint",
             "shippingOptionsTooltip",
             "label",
             "connectedTo",
@@ -9920,6 +9924,9 @@
         "providersHint": {
           "type": "string"
         },
+        "paymentProvidersDbHint": {
+          "type": "string"
+        },
         "shippingOptions": {
           "type": "string"
         },
@@ -10079,6 +10086,7 @@
         "automaticTaxesHint",
         "taxInclusiveHint",
         "providersHint",
+        "paymentProvidersDbHint",
         "shippingOptions",
         "deleteShippingOptionWarning",
         "return",

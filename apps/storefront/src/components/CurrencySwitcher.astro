@@ -1,0 +1,55 @@
+---
+import type { CurrencyOption } from "../lib/currency"
+
+interface Props {
+  current: string
+  options: CurrencyOption[]
+}
+
+const { current, options } = Astro.props
+---
+
+<label class="sr-only" for="currency-select">结算货币</label>
+<select
+  id="currency-select"
+  class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700"
+  aria-label="结算货币"
+>
+  {
+    options.map((opt) => (
+      <option value={opt.code} selected={opt.code === current} data-region-id={opt.regionId ?? ""}>
+        {opt.code.toUpperCase()}
+      </option>
+    ))
+  }
+</select>
+
+<script>
+  import {
+    CURRENCY_COOKIE,
+    CURRENCY_STORAGE_KEY,
+    REGION_STORAGE_KEY,
+    normalizeCurrencyCode,
+  } from "../lib/currency"
+  import { clearCartId } from "../lib/cart"
+
+  const select = document.getElementById("currency-select") as HTMLSelectElement | null
+  if (select) {
+    select.addEventListener("change", () => {
+      const code = normalizeCurrencyCode(select.value)
+      const option = select.options[select.selectedIndex]
+      const regionId = option?.dataset.regionId
+
+      localStorage.setItem(CURRENCY_STORAGE_KEY, code)
+      document.cookie = `${CURRENCY_COOKIE}=${encodeURIComponent(code)}; path=/; max-age=31536000; samesite=lax`
+      if (regionId) {
+        localStorage.setItem(REGION_STORAGE_KEY, regionId)
+      } else {
+        localStorage.removeItem(REGION_STORAGE_KEY)
+      }
+
+      clearCartId()
+      window.location.reload()
+    })
+  }
+</script>

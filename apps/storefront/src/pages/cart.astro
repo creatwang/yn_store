@@ -27,13 +27,18 @@ const checkoutHref = localeUrlPath(locale, "/checkout")
 
 <script>
   import { apiFetch, getCartId } from "../lib/cart"
+  import { formatMoney, normalizeCurrencyCode } from "../lib/currency"
 
   const root = document.getElementById("cart-root")!
   const checkoutLink = document.getElementById("checkout-link")!
   const homeHref = document.body.dataset.homeHref || "/"
 
+  function getCurrency(): string {
+    return normalizeCurrencyCode(document.body.dataset.currency)
+  }
+
   function formatPrice(amount: number | string): string {
-    return `$${Number(amount).toFixed(2)}`
+    return formatMoney(amount, getCurrency())
   }
 
   async function loadCart() {

@@ -1,8 +1,17 @@
 ---
 import CartBadge from "../components/cart/CartBadge.astro"
 import CartCountInit from "../components/cart/CartCountInit.astro"
+import CurrencyInit from "../components/CurrencyInit.astro"
+import CurrencySwitcher from "../components/CurrencySwitcher.astro"
 import LocaleInit from "../components/LocaleInit.astro"
 import LocaleSwitcher from "../components/LocaleSwitcher.astro"
+import { storeClient } from "../lib/api"
+import {
+  DEFAULT_CURRENCY,
+  dedupeCurrencyOptions,
+  normalizeCurrencyCode,
+  type CurrencyOption,
+} from "../lib/currency"
 import { localeUrlPath } from "../lib/i18n"
 
 interface Props {
@@ -18,6 +27,22 @@ const {
 } = Astro.props
 
 const locale = Astro.locals.locale ?? "zh-CN"
+const currency = normalizeCurrencyCode(Astro.locals.currency ?? DEFAULT_CURRENCY)
+
+let currencyOptions: CurrencyOption[] = [
+  { code: currency, label: currency.toUpperCase() },
+]
+try {
+  const { regions = [] } = await storeClient.fetchJson<{
+    regions?: Array<{ id: string; name?: string | null; currency_code?: string | null }>
+  }>("/store/regions?limit=100")
+  const fromRegions = dedupeCurrencyOptions(regions)
+  if (fromRegions.length > 0) {
+    currencyOptions = fromRegions
+  }
+} catch {
+  /* 后端不可用时仍展示当前货币 */
+}
 const site = Astro.site?.href ?? "http://localhost:4321"
 const canonical = Astro.props.canonical ?? new URL(Astro.url.pathname, site).href
 const ogImage = Astro.props.ogImage
@@ -52,8 +77,10 @@ const searchAction = localeUrlPath(locale, "/search")
     data-home-href={homeHref}
     data-account-href={accountHref}
     data-checkout-href={checkoutHref}
+    data-currency={currency}
   >
     <LocaleInit />
+    <CurrencyInit />
     <CartCountInit />
     <header class="border-b bg-white">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
@@ -72,6 +99,7 @@ const searchAction = localeUrlPath(locale, "/search")
         </form>
         <nav class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
           <LocaleSwitcher />
+          <CurrencySwitcher current={currency} options={currencyOptions} />
           <a href={homeHref} class="hover:text-gray-900">首页</a>
           <a href={collectionsHref} class="hover:text-gray-900">合集</a>
           <a href={promotionsHref} class="hover:text-gray-900">促销</a>

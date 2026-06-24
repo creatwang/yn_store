@@ -9,6 +9,7 @@ import {
   AdminGetInvitesParams,
   AdminGetUsersParams,
 } from "@my-store/validators/admin-list-params"
+import { batchDeleteByIdsSchema } from "@my-store/validators"
 import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"
 import { userService } from "../../services/user.service"
 import { adminAuth, type AuthVariables } from "../../middleware/auth"
@@ -28,6 +29,11 @@ export const adminUsers = new Hono<{ Variables: AuthVariables }>()
   })
   .get("/:id", async (c) => {
     const result = await userService.getUserById(c.req.param("id"))
+    return c.json(result)
+  })
+  .post("/batch", zValidator("json", batchDeleteByIdsSchema), async (c) => {
+    const { ids } = c.req.valid("json")
+    const result = await userService.batchDeleteUsers(ids)
     return c.json(result)
   })
   .post("/:id", zValidator("json", updateUserSchema), async (c) => {

@@ -85,7 +85,7 @@ export const paymentProvider = pgTable("payment_provider", {
   is_enabled: boolean("is_enabled").default(true).notNull(),
 })
 
-/** 区域 ↔ 支付供应商（Medusa link 表） */
+/** 区域 ↔ 支付渠道（Medusa link 表） */
 export const regionPaymentProvider = pgTable(
   "region_payment_provider",
   {

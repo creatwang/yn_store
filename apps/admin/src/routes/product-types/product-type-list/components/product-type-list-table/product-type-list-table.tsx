@@ -8,11 +8,17 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
 import { _DataTable } from "../../../../../components/table/data-table"
-import { useProductTypes } from "../../../../../hooks/api/product-types"
+import {
+  productTypesQueryKeys,
+  useProductTypes,
+} from "../../../../../hooks/api/product-types"
 import { useProductTypeTableColumns } from "../../../../../hooks/table/columns/use-product-type-table-columns"
 import { useProductTypeTableFilters } from "../../../../../hooks/table/filters/use-product-type-table-filters"
 import { useProductTypeTableQuery } from "../../../../../hooks/table/query/use-product-type-table-query"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { ProductTypeRowActions } from "./product-table-row-actions"
 
 const PAGE_SIZE = 20
@@ -30,8 +36,14 @@ export const ProductTypeListTable = () => {
     }
   )
 
+  const batchDelete = useListTableBatchDelete<HttpTypes.AdminProductType>({
+    deleteFn: (ids) => sdk.admin.productType.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: productTypesQueryKeys.lists() }),
+  })
+
   const filters = useProductTypeTableFilters()
-  const columns = useColumns()
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     columns,
@@ -39,6 +51,8 @@ export const ProductTypeListTable = () => {
     count,
     getRowId: (row) => row.id,
     pageSize: PAGE_SIZE,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -74,6 +88,7 @@ export const ProductTypeListTable = () => {
         queryObject={raw}
         pagination
         search
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -81,11 +96,12 @@ export const ProductTypeListTable = () => {
 
 const columnHelper = createColumnHelper<HttpTypes.AdminProductType>()
 
-const useColumns = () => {
+const useColumns = (selectColumn) => {
   const base = useProductTypeTableColumns()
 
   return useMemo(
     () => [
+      selectColumn,
       ...base,
       columnHelper.display({
         id: "actions",
@@ -94,6 +110,6 @@ const useColumns = () => {
         },
       }),
     ],
-    [base]
+    [base, selectColumn]
   )
 }

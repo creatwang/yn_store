@@ -789,6 +789,44 @@ export const orderService = {
     return { id, object: "order", deleted: true }
   },
 
+  async batchDelete(ids: string[]) {
+    const db = getDb()
+    if (!ids.length) {
+      return { deleted: [] as string[], not_found: [] as string[] }
+    }
+
+    const existing = await db
+      .select({ id: order.id })
+      .from(order)
+      .where(
+        and(
+          inArray(order.id, ids),
+          isNull(order.deleted_at),
+          eq(order.is_draft_order, false),
+        ),
+      )
+
+    const existingIds = new Set(existing.map((r) => r.id))
+    const notFound = ids.filter((id) => !existingIds.has(id))
+
+    if (existingIds.size > 0) {
+      await db
+        .update(order)
+        .set({ deleted_at: sql`now()`, updated_at: sql`now()` })
+        .where(
+          and(
+            inArray(order.id, [...existingIds]),
+            isNull(order.deleted_at),
+          ),
+        )
+    }
+
+    return {
+      deleted: [...existingIds],
+      not_found: notFound,
+    }
+  },
+
   async listTransactions(orderId: string) {
     const db = getDb()
     const transactions = await db.select().from(orderTransaction)

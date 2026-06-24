@@ -11,13 +11,17 @@ import { keepPreviousData } from "@tanstack/react-query"
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { _DataTable } from "../../../../../components/table/data-table"
 import {
+  promotionsQueryKeys,
   useDeletePromotion,
   usePromotions,
 } from "../../../../../hooks/api/promotions"
 import { usePromotionTableColumns } from "../../../../../hooks/table/columns/use-promotion-table-columns"
 import { usePromotionTableFilters } from "../../../../../hooks/table/filters/use-promotion-table-filters"
 import { usePromotionTableQuery } from "../../../../../hooks/table/query/use-promotion-table-query"
+import { useListTableBatchDelete } from "../../../../../hooks/table/use-list-table-batch-delete"
 import { useDataTable } from "../../../../../hooks/use-data-table"
+import { sdk } from "../../../../../lib/api/client"
+import { queryClient } from "../../../../../lib/query/query-client"
 import { promotionsLoader } from "../../loader"
 
 const PAGE_SIZE = 20
@@ -37,8 +41,14 @@ export const PromotionListTable = () => {
     }
   )
 
+  const batchDelete = useListTableBatchDelete<AdminPromotion>({
+    deleteFn: (ids) => sdk.admin.promotion.batchDelete({ ids }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: promotionsQueryKeys.lists() }),
+  })
+
   const filters = usePromotionTableFilters()
-  const columns = useColumns()
+  const columns = useColumns(batchDelete.selectColumn)
 
   const { table } = useDataTable({
     data: (promotions ?? []) as AdminPromotion[],
@@ -47,6 +57,8 @@ export const PromotionListTable = () => {
     enablePagination: true,
     pageSize: PAGE_SIZE,
     getRowId: (row) => row.id,
+    enableRowSelection: batchDelete.enableRowSelection,
+    rowSelection: batchDelete.rowSelection,
   })
 
   if (isError) {
@@ -78,6 +90,7 @@ export const PromotionListTable = () => {
           { key: "created_at", label: t("fields.createdAt") },
           { key: "updated_at", label: t("fields.updatedAt") },
         ]}
+        commands={batchDelete.commands}
       />
       <Outlet />
     </Container>
@@ -141,11 +154,12 @@ const PromotionActions = ({ promotion }: { promotion: AdminPromotion }) => {
 
 const columnHelper = createColumnHelper<AdminPromotion>()
 
-const useColumns = () => {
+const useColumns = (selectColumn) => {
   const base = usePromotionTableColumns()
 
   return useMemo(
     () => [
+      selectColumn,
       ...base,
       columnHelper.display({
         id: "actions",
@@ -154,6 +168,6 @@ const useColumns = () => {
         },
       }),
     ],
-    [base]
+    [base, selectColumn]
   )
 }

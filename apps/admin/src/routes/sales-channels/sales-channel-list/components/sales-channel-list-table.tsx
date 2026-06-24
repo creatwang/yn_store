@@ -15,9 +15,13 @@ import { DataTable } from "../../../../components/data-table"
 import * as hooks from "../../../../components/data-table/helpers/sales-channels"
 import { useStore } from "../../../../hooks/api"
 import {
+  salesChannelsQueryKeys,
   useDeleteSalesChannelLazy,
   useSalesChannels,
 } from "../../../../hooks/api/sales-channels"
+import { useMedusaDataTableBatchDelete } from "../../../../hooks/table/use-medusa-data-table-batch-delete"
+import { sdk } from "../../../../lib/api/client"
+import { queryClient } from "../../../../lib/query/query-client"
 
 type SalesChannelWithIsDefault = HttpTypes.AdminSalesChannel & {
   is_default?: boolean
@@ -44,6 +48,15 @@ export const SalesChannelListTable = () => {
   const columns = useColumns()
   const filters = hooks.useSalesChannelTableFilters()
   const emptyState = hooks.useSalesChannelTableEmptyState()
+
+  const batchDelete = useMedusaDataTableBatchDelete({
+    deleteFn: (ids) => sdk.admin.salesChannel.batchDelete({ ids }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: salesChannelsQueryKeys.lists(),
+      })
+    },
+  })
 
   const sales_channels_data: SalesChannelWithIsDefault[] =
     sales_channels?.map((sales_channel) => {
@@ -75,6 +88,8 @@ export const SalesChannelListTable = () => {
           to: "/settings/sales-channels/create",
         }}
         rowHref={(row) => `/settings/sales-channels/${row.id}`}
+        rowSelection={batchDelete.rowSelection}
+        commands={batchDelete.commands}
       />
     </Container>
   )
@@ -123,6 +138,7 @@ const useColumns = () => {
 
   return useMemo(
     () => [
+      columnHelper.select(),
       ...base,
       columnHelper.action({
         actions: (ctx) => {
