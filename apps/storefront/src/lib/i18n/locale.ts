@@ -52,7 +52,7 @@ const LOCALE_TO_SEGMENT: Partial<Record<StoreLocale, string>> = {
   "es-ES": "es",
 }
 
-export function normalizeLocaleSegment(segment: string): StoreLocale | undefined {
+export function normalizeLocaleSegment(segment: string): string | undefined {
   const trimmed = segment.trim()
   if (!trimmed) return undefined
   if ((LOCALE_CATALOG as readonly string[]).includes(trimmed)) {
@@ -61,26 +61,35 @@ export function normalizeLocaleSegment(segment: string): StoreLocale | undefined
   const alias = SEGMENT_TO_LOCALE[trimmed.toLowerCase()]
   if (alias) return alias
   const byCase = LOCALE_CATALOG.find((c) => c.toLowerCase() === trimmed.toLowerCase())
-  return byCase
+  if (byCase) return byCase
+  if (/^[a-z]{2}(-[a-z]{2})?$/i.test(trimmed)) {
+    const [lang, region] = trimmed.split("-")
+    if (!region) return lang!.toLowerCase()
+    return `${lang!.toLowerCase()}-${region.toUpperCase()}`
+  }
+  return undefined
 }
 
 export function localeToUrlSegment(locale: string): string {
   return LOCALE_TO_SEGMENT[locale as StoreLocale] ?? locale.toLowerCase()
 }
 
-export function parseLocaleFromPathname(pathname: string): {
-  locale: StoreLocale
+export function parseLocaleFromPathname(
+  pathname: string,
+  fallbackLocale: string = DEFAULT_LOCALE,
+): {
+  locale: string
   pathnameWithoutLocale: string
   urlSegment?: string
 } {
   const parts = pathname.split("/").filter(Boolean)
   if (parts.length === 0) {
-    return { locale: DEFAULT_LOCALE, pathnameWithoutLocale: "/" }
+    return { locale: fallbackLocale, pathnameWithoutLocale: "/" }
   }
 
   const normalized = normalizeLocaleSegment(parts[0]!)
   if (!normalized) {
-    return { locale: DEFAULT_LOCALE, pathnameWithoutLocale: pathname }
+    return { locale: fallbackLocale, pathnameWithoutLocale: pathname }
   }
 
   const rest = parts.slice(1)
@@ -104,7 +113,7 @@ export function localeUrlPath(locale: string, path = "/"): string {
 }
 
 /** 保持当前页面路径，仅切换语言前缀 */
-export function switchLocaleUrlPath(pathname: string, targetLocale: StoreLocale): string {
+export function switchLocaleUrlPath(pathname: string, targetLocale: string): string {
   const { pathnameWithoutLocale } = parseLocaleFromPathname(pathname)
   const searchStart = pathname.indexOf("?")
   const query = searchStart >= 0 ? pathname.slice(searchStart) : ""

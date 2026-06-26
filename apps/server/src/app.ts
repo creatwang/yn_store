@@ -46,6 +46,7 @@ import { storeShippingOptions } from "./routes/store/shipping-options"
 import { storePaymentCollections, storePaymentProviders } from "./routes/store/payment-collections"
 import { storeCollections, storePromotions } from "./routes/store/catalog"
 import { storeLocales } from "./routes/store/locales"
+import { storeCurrencies } from "./routes/store/currencies"
 import { rebuildWebhook } from "./routes/webhooks/rebuild"
 import { mountAppSpa } from "./host/mount-app"
 import { registerSubscribers } from "./lib/infra/events/event-subscribers"
@@ -143,7 +144,8 @@ const apiRoutes = new Hono()
     .route("/payment-providers", storePaymentProviders)
     .route("/collections", storeCollections)
     .route("/promotions", storePromotions)
-    .route("/locales", storeLocales))
+    .route("/locales", storeLocales)
+    .route("/currencies", storeCurrencies))
   .route("/webhooks", rebuildWebhook)
 
 const app = new Hono()

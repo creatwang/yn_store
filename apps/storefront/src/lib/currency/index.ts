@@ -59,3 +59,49 @@ export function dedupeCurrencyOptions(
   }
   return [...map.values()].sort((a, b) => a.code.localeCompare(b.code))
 }
+
+type StoreCurrencyRow = { currency_code?: string | null }
+type RegionRow = { id: string; name?: string | null; currency_code?: string | null }
+
+function regionLabelByCurrency(regions: RegionRow[]): Map<string, RegionRow> {
+  const map = new Map<string, RegionRow>()
+  for (const region of regions) {
+    const code = normalizeCurrencyCode(region.currency_code)
+    if (!map.has(code)) {
+      map.set(code, region)
+    }
+  }
+  return map
+}
+
+/**
+ * C 端货币切换选项：优先用商店已启用货币（Admin → 商店 → 货币），
+ * 再用 Region 匹配 regionId / 展示名；无商店货币时回退到 Region 列表。
+ */
+export function buildCurrencyOptions(
+  storeCurrencies: StoreCurrencyRow[],
+  regions: RegionRow[],
+): CurrencyOption[] {
+  const regionsByCurrency = regionLabelByCurrency(regions)
+
+  if (storeCurrencies.length > 0) {
+    const options: CurrencyOption[] = []
+    const seen = new Set<string>()
+    for (const row of storeCurrencies) {
+      const code = normalizeCurrencyCode(row.currency_code)
+      if (seen.has(code)) continue
+      seen.add(code)
+      const region = regionsByCurrency.get(code)
+      options.push({
+        code,
+        label: `${code.toUpperCase()}${region?.name ? ` · ${region.name}` : ""}`,
+        regionId: region?.id,
+      })
+    }
+    if (options.length > 0) {
+      return options.sort((a, b) => a.code.localeCompare(b.code))
+    }
+  }
+
+  return dedupeCurrencyOptions(regions)
+}

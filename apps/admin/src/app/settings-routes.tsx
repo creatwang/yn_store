@@ -1,5 +1,8 @@
-import { Outlet, Route } from "react-router-dom"
+import { createElement } from "react"
+import i18n from "i18next"
+import { Outlet, Route, type UIMatch } from "react-router-dom"
 import { lazyDetailRoute } from "@/lib/routing"
+import { TaxRegionDetailBreadcrumb } from "../routes/tax-regions/tax-region-detail/breadcrumb"
 import { taxRegionLoader } from "../routes/tax-regions/tax-region-detail/loader"
 
 /**
@@ -9,7 +12,11 @@ import { taxRegionLoader } from "../routes/tax-regions/tax-region-detail/loader"
  */
 export const settingsRoutesFragment = (
   <>
-      <Route path="regions" element={<Outlet />}>
+      <Route
+        path="regions"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("regions.domain") }}
+      >
         <Route path="" lazy={() => import("../routes/regions/region-list")}>
           <Route
             path="create"
@@ -40,6 +47,7 @@ export const settingsRoutesFragment = (
       <Route
         path="store"
         lazy={lazyDetailRoute(() => import("../routes/store/store-detail"))}
+        handle={{ breadcrumb: () => i18n.t("store.domain") }}
       >
         <Route path="edit" lazy={() => import("../routes/store/store-edit")} />
         <Route
@@ -56,7 +64,11 @@ export const settingsRoutesFragment = (
         />
       </Route>
 
-      <Route path="users" element={<Outlet />}>
+      <Route
+        path="users"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("users.domain") }}
+      >
         <Route path="" lazy={() => import("../routes/users/user-list")}>
           <Route path="invite" lazy={() => import("../routes/users/user-invite")} />
         </Route>
@@ -72,14 +84,26 @@ export const settingsRoutesFragment = (
         </Route>
       </Route>
 
-      <Route path="tax-regions" element={<Outlet />}>
+      <Route
+        path="tax-regions"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("taxRegions.domain") }}
+      >
         <Route path="" lazy={() => import("../routes/tax-regions/tax-region-list")}>
           <Route
             path="create"
             lazy={() => import("../routes/tax-regions/tax-region-create")}
           />
         </Route>
-        <Route path=":id" loader={taxRegionLoader} element={<Outlet />}>
+        <Route
+          path=":id"
+          loader={taxRegionLoader}
+          element={<Outlet />}
+          handle={{
+            breadcrumb: (match?: UIMatch) =>
+              createElement(TaxRegionDetailBreadcrumb, (match ?? {}) as never),
+          }}
+        >
           <Route
             path=""
             lazy={async () => {
@@ -158,13 +182,21 @@ export const settingsRoutesFragment = (
         </Route>
       </Route>
 
-      <Route path="locations" element={<Outlet />}>
+      <Route
+        path="locations"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("locations.domain") }}
+      >
         <Route index lazy={() => import("../routes/locations/location-list")} />
         <Route
           path="create"
           lazy={() => import("../routes/locations/location-create")}
         />
-        <Route path="shipping-profiles" element={<Outlet />}>
+        <Route
+          path="shipping-profiles"
+          element={<Outlet />}
+          handle={{ breadcrumb: () => i18n.t("shippingProfile.domain") }}
+        >
           <Route
             path=""
             lazy={() =>
@@ -193,7 +225,11 @@ export const settingsRoutesFragment = (
             />
           </Route>
         </Route>
-        <Route path="shipping-option-types" element={<Outlet />}>
+        <Route
+          path="shipping-option-types"
+          element={<Outlet />}
+          handle={{ breadcrumb: () => i18n.t("shippingOptionTypes.domain") }}
+        >
           <Route
             path=""
             lazy={() =>
@@ -305,7 +341,11 @@ export const settingsRoutesFragment = (
         </Route>
       </Route>
 
-      <Route path="product-tags" element={<Outlet />}>
+      <Route
+        path="product-tags"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("productTags.domain") }}
+      >
         <Route path="" lazy={() => import("../routes/product-tags/product-tag-list")}>
           <Route
             path="create"
@@ -329,7 +369,11 @@ export const settingsRoutesFragment = (
         </Route>
       </Route>
 
-      <Route path="product-types" element={<Outlet />}>
+      <Route
+        path="product-types"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("productTypes.domain") }}
+      >
         <Route
           path=""
           lazy={() => import("../routes/product-types/product-type-list")}
@@ -356,7 +400,11 @@ export const settingsRoutesFragment = (
         </Route>
       </Route>
 
-      <Route path="return-reasons" element={<Outlet />}>
+      <Route
+        path="return-reasons"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("returnReasons.domain") }}
+      >
         <Route
           path=""
           lazy={() => import("../routes/return-reasons/return-reason-list")}
@@ -374,7 +422,11 @@ export const settingsRoutesFragment = (
         </Route>
       </Route>
 
-      <Route path="refund-reasons" element={<Outlet />}>
+      <Route
+        path="refund-reasons"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("refundReasons.domain") }}
+      >
         <Route
           path=""
           lazy={() => import("../routes/refund-reasons/refund-reason-list")}
@@ -392,7 +444,11 @@ export const settingsRoutesFragment = (
         </Route>
       </Route>
 
-      <Route path="translations" element={<Outlet />}>
+      <Route
+        path="translations"
+        element={<Outlet />}
+        handle={{ breadcrumb: () => i18n.t("translations.domain") }}
+      >
         <Route
           path=""
           lazy={() => import("../routes/translations/translation-list")}

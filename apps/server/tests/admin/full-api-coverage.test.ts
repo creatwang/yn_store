@@ -257,6 +257,17 @@ describe("Admin Refund Reasons", () => {
   })
 })
 
+describe("Admin Payment Providers", () => {
+  it("GET /admin/payments/payment-providers — 返回支付渠道", async () => {
+    const res = await apiGet("/admin/payments/payment-providers?is_enabled=true")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.payment_providers).toBeInstanceOf(Array)
+    expect(body.payment_providers.length).toBeGreaterThan(0)
+    expect(body.payment_providers[0]).toHaveProperty("id")
+  })
+})
+
 describe("Admin Shipping Profiles", () => {
   it("GET / — 列表", async () => {
     const res = await apiGet("/admin/shipping-profiles")
@@ -334,6 +345,15 @@ describe("Store Locales", () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.locales).toBeInstanceOf(Array)
+  })
+})
+
+describe("Store Currencies", () => {
+  it("GET /store/currencies — 返回店铺货币", async () => {
+    const res = await unauthGet("/store/currencies")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.currencies).toBeInstanceOf(Array)
   })
 })
 

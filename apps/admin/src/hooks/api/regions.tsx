@@ -16,6 +16,37 @@ import { FetchError } from "@medusajs/js-sdk"
 const REGIONS_QUERY_KEY = "regions" as const
 export const regionsQueryKeys = queryKeysFactory(REGIONS_QUERY_KEY)
 
+type RegionListCache = PaginatedResponse<{ regions: HttpTypes.AdminRegion[] }>
+
+async function refreshRegionLists(deletedId?: string) {
+  if (deletedId) {
+    queryClient.setQueriesData<RegionListCache>(
+      { queryKey: regionsQueryKeys.lists() },
+      (old) => {
+        if (!old?.regions) {
+          return old
+        }
+        const regions = old.regions.filter((region) => region.id !== deletedId)
+        const removed = old.regions.length - regions.length
+        return {
+          ...old,
+          regions,
+          count:
+            typeof old.count === "number"
+              ? Math.max(0, old.count - removed)
+              : regions.length,
+        }
+      },
+    )
+  }
+
+  await queryClient.invalidateQueries({ queryKey: regionsQueryKeys.lists() })
+  await queryClient.refetchQueries({
+    queryKey: regionsQueryKeys.lists(),
+    type: "active",
+  })
+}
+
 export const useRegion = (
   id: string,
   query?: Record<string, any>,
@@ -67,9 +98,10 @@ export const useCreateRegion = (
   >
 ) => {
   return useMutation({
+    ...options,
     mutationFn: (payload) => sdk.admin.region.create(payload),
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: regionsQueryKeys.lists() })
+      void refreshRegionLists()
 
       queryClient.invalidateQueries({
         queryKey: pricePreferencesQueryKeys.list(),
@@ -80,7 +112,6 @@ export const useCreateRegion = (
 
       options?.onSuccess?.(data, variables, context)
     },
-    ...options,
   })
 }
 
@@ -93,9 +124,10 @@ export const useUpdateRegion = (
   >
 ) => {
   return useMutation({
+    ...options,
     mutationFn: (payload) => sdk.admin.region.update(id, payload),
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: regionsQueryKeys.lists() })
+      void refreshRegionLists()
       queryClient.invalidateQueries({ queryKey: regionsQueryKeys.details() })
 
       queryClient.invalidateQueries({
@@ -107,7 +139,6 @@ export const useUpdateRegion = (
 
       options?.onSuccess?.(data, variables, context)
     },
-    ...options,
   })
 }
 
@@ -120,13 +151,13 @@ export const useDeleteRegion = (
   >
 ) => {
   return useMutation({
+    ...options,
     mutationFn: () => sdk.admin.region.delete(id),
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: regionsQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: regionsQueryKeys.detail(id) })
+      void refreshRegionLists(id)
+      queryClient.removeQueries({ queryKey: regionsQueryKeys.detail(id) })
 
       options?.onSuccess?.(data, variables, context)
     },
-    ...options,
   })
 }

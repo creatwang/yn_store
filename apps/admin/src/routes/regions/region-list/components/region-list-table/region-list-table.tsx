@@ -54,8 +54,13 @@ export const RegionListTable = () => {
 
   const batchDelete = useListTableBatchDelete<HttpTypes.AdminRegion>({
     deleteFn: (ids) => sdk.admin.region.batchDelete({ ids }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: regionsQueryKeys.lists() }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: regionsQueryKeys.lists() })
+      void queryClient.refetchQueries({
+        queryKey: regionsQueryKeys.lists(),
+        type: "active",
+      })
+    },
   })
 
   const filters = useRegionTableFilters()

@@ -64,6 +64,8 @@ export const store = pgTable("store", {
   default_sales_channel_id: text("default_sales_channel_id"),
   default_region_id: text("default_region_id"),
   default_location_id: text("default_location_id"),
+  /** C 端默认展示语言（须在 supported_locales 内） */
+  default_locale_code: text("default_locale_code"),
   metadata: jsonb("metadata"),
   ...timestamps,
 })

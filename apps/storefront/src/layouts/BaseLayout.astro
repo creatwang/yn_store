@@ -8,7 +8,7 @@ import LocaleSwitcher from "../components/LocaleSwitcher.astro"
 import { storeClient } from "../lib/api"
 import {
   DEFAULT_CURRENCY,
-  dedupeCurrencyOptions,
+  buildCurrencyOptions,
   normalizeCurrencyCode,
   type CurrencyOption,
 } from "../lib/currency"
@@ -26,19 +26,28 @@ const {
   description = "跨境商城 — Hono Store API + Astro",
 } = Astro.props
 
-const locale = Astro.locals.locale ?? "zh-CN"
+const locale = Astro.locals.locale ?? Astro.locals.storeDefaultLocale ?? "zh-CN"
+const localeSwitchOptions = Astro.locals.storeLocaleOptions ?? []
 const currency = normalizeCurrencyCode(Astro.locals.currency ?? DEFAULT_CURRENCY)
 
 let currencyOptions: CurrencyOption[] = [
   { code: currency, label: currency.toUpperCase() },
 ]
 try {
-  const { regions = [] } = await storeClient.fetchJson<{
-    regions?: Array<{ id: string; name?: string | null; currency_code?: string | null }>
-  }>("/store/regions?limit=100")
-  const fromRegions = dedupeCurrencyOptions(regions)
-  if (fromRegions.length > 0) {
-    currencyOptions = fromRegions
+  const [currenciesRes, regionsRes] = await Promise.all([
+    storeClient.fetchJson<{
+      currencies?: Array<{ currency_code?: string | null }>
+    }>("/store/currencies"),
+    storeClient.fetchJson<{
+      regions?: Array<{ id: string; name?: string | null; currency_code?: string | null }>
+    }>("/store/regions?limit=100"),
+  ])
+  const built = buildCurrencyOptions(
+    currenciesRes.currencies ?? [],
+    regionsRes.regions ?? [],
+  )
+  if (built.length > 0) {
+    currencyOptions = built
   }
 } catch {
   /* 后端不可用时仍展示当前货币 */
@@ -98,7 +107,7 @@ const searchAction = localeUrlPath(locale, "/search")
           />
         </form>
         <nav class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-          <LocaleSwitcher />
+          <LocaleSwitcher options={localeSwitchOptions} />
           <CurrencySwitcher current={currency} options={currencyOptions} />
           <a href={homeHref} class="hover:text-gray-900">首页</a>
           <a href={collectionsHref} class="hover:text-gray-900">合集</a>

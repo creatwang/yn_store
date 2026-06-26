@@ -25,6 +25,7 @@ const EditStoreSchema = z.object({
   default_region_id: z.string().optional(),
   default_sales_channel_id: z.string().optional(),
   default_location_id: z.string().optional(),
+  default_locale_code: z.string().optional(),
 })
 
 export const EditStoreForm = ({ store }: EditStoreFormProps) => {
@@ -35,6 +36,7 @@ export const EditStoreForm = ({ store }: EditStoreFormProps) => {
     defaultValues: {
       name: store.name,
       default_region_id: store.default_region_id || undefined,
+      default_locale_code: store.default_locale_code || undefined,
       default_currency_code:
         store.supported_currencies?.find((c) => c.is_default)?.currency_code ||
         undefined,
@@ -49,10 +51,13 @@ export const EditStoreForm = ({ store }: EditStoreFormProps) => {
   const regionsCombobox = useComboboxData({
     queryKey: ["regions", "default_region_id"],
     queryFn: (params) =>
-      sdk.admin.region.list({ ...params, fields: "id,name" }),
+      sdk.admin.region.list({ ...params, fields: "id,name,currency_code" }),
     defaultValue: store.default_region_id || undefined,
     getOptions: (data) =>
-      data.regions.map((r) => ({ label: r.name, value: r.id })),
+      data.regions.map((r) => ({
+        label: `${r.name} (${r.currency_code.toUpperCase()})`,
+        value: r.id,
+      })),
   })
 
   const salesChannelsCombobox = useComboboxData({
@@ -139,6 +144,47 @@ export const EditStoreForm = ({ store }: EditStoreFormProps) => {
                             value={currency.currency_code}
                           >
                             {currency.currency_code.toUpperCase()}
+                          </Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select>
+                  </Form.Item>
+                )
+              }}
+            />
+            <Form.Field
+              control={form.control}
+              name="default_locale_code"
+              render={({ field: { onChange, ref, ...field } }) => {
+                const localeOptions = store.supported_locales ?? []
+                return (
+                  <Form.Item>
+                    <Form.Label>{t("store.defaultLocale")}</Form.Label>
+                    <Select
+                      dir={direction}
+                      {...field}
+                      value={field.value ?? ""}
+                      onValueChange={onChange}
+                      disabled={!localeOptions.length}
+                    >
+                      <Form.Control ref={ref}>
+                        <Select.Trigger>
+                          <Select.Value
+                            placeholder={
+                              localeOptions.length
+                                ? undefined
+                                : t("store.locales")
+                            }
+                          />
+                        </Select.Trigger>
+                      </Form.Control>
+                      <Select.Content>
+                        {localeOptions.map((locale) => (
+                          <Select.Item
+                            key={locale.locale_code}
+                            value={locale.locale_code}
+                          >
+                            {locale.locale?.name ?? locale.locale_code}
                           </Select.Item>
                         ))}
                       </Select.Content>

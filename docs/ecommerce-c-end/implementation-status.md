@@ -129,7 +129,7 @@
 | 能力 | 状态 |
 |------|------|
 | Stripe 支付 | ❌ 需 payment provider 配置 |
-| i18n 多语言 | ❌ |
+| i18n 多语言 | ✅ | Admin 商店语言 + 默认语言；见 [storefront-configuration.md](./storefront-configuration.md) |
 | Preact checkout | ❌ 当前 script 够用 |
 | `<dialog>` 购物车抽屉 | ❌ |
 

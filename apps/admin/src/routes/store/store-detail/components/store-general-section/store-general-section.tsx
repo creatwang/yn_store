@@ -88,6 +88,22 @@ export const StoreGeneralSection = ({ store }: StoreGeneralSectionProps) => {
       </div>
       <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
+          {t("store.defaultLocale")}
+        </Text>
+        {store.default_locale_code ? (
+          <Text size="small" leading="compact">
+            {store.supported_locales?.find(
+              (l) => l.locale_code === store.default_locale_code,
+            )?.locale?.name ?? store.default_locale_code}
+          </Text>
+        ) : (
+          <Text size="small" leading="compact">
+            -
+          </Text>
+        )}
+      </div>
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
           {t("store.defaultRegion")}
         </Text>
         <div className="flex items-center gap-x-2">

@@ -1,6 +1,6 @@
 import type { Loader } from "astro/loaders"
 import { contentEntryId } from "../lib/i18n/content-id"
-import { getSsgLocales } from "../lib/i18n/ssg-locales"
+import { getSsgLocalesAsync } from "../lib/i18n/ssg-locales"
 import { StoreApiClient } from "../lib/api"
 
 type Promotion = {
@@ -18,7 +18,8 @@ export function honoPromotionsLoader(): Loader {
       store.clear()
 
       let total = 0
-      for (const locale of getSsgLocales()) {
+      const locales = await getSsgLocalesAsync()
+      for (const locale of locales) {
         const client = new StoreApiClient(locale)
         const list = await client.fetchAllPaginated<Promotion>(
           "/store/promotions",

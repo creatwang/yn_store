@@ -14,6 +14,7 @@ export const storeService = {
         default_sales_channel_id: store.default_sales_channel_id,
         default_region_id: store.default_region_id,
         default_location_id: store.default_location_id,
+        default_locale_code: store.default_locale_code,
         metadata: store.metadata,
         created_at: store.created_at,
         updated_at: store.updated_at,
@@ -110,6 +111,7 @@ export const storeService = {
     default_sales_channel_id?: string | null
     default_region_id?: string | null
     default_location_id?: string | null
+    default_locale_code?: string | null
     metadata?: Record<string, unknown> | null
   }) {
     const db = getDb()
@@ -124,6 +126,42 @@ export const storeService = {
       throw new HTTPException(404, { message: `Store with id "${id}" not found` })
     }
 
+    const currentLocales = await db
+      .select({ locale_code: storeLocale.locale_code })
+      .from(storeLocale)
+      .where(eq(storeLocale.store_id, id))
+    const supportedLocaleCodes =
+      input.supported_locales !== undefined
+        ? input.supported_locales.map((l) => l.locale_code)
+        : currentLocales.map((l) => l.locale_code)
+
+    if (
+      input.default_locale_code !== undefined &&
+      input.default_locale_code !== null &&
+      !supportedLocaleCodes.includes(input.default_locale_code)
+    ) {
+      throw new HTTPException(400, {
+        message: "Default locale must be one of the store supported locales",
+      })
+    }
+
+    let nextDefaultLocaleCode: string | null | undefined = undefined
+    if (input.default_locale_code !== undefined) {
+      nextDefaultLocaleCode = input.default_locale_code
+    } else if (input.supported_locales !== undefined) {
+      const [currentStore] = await db
+        .select({ default_locale_code: store.default_locale_code })
+        .from(store)
+        .where(eq(store.id, id))
+        .limit(1)
+      if (
+        currentStore?.default_locale_code &&
+        !supportedLocaleCodes.includes(currentStore.default_locale_code)
+      ) {
+        nextDefaultLocaleCode = null
+      }
+    }
+
     const [updated] = await db
       .update(store)
       .set({
@@ -131,6 +169,9 @@ export const storeService = {
         ...(input.default_sales_channel_id !== undefined && { default_sales_channel_id: input.default_sales_channel_id }),
         ...(input.default_region_id !== undefined && { default_region_id: input.default_region_id }),
         ...(input.default_location_id !== undefined && { default_location_id: input.default_location_id }),
+        ...(nextDefaultLocaleCode !== undefined && {
+          default_locale_code: nextDefaultLocaleCode,
+        }),
         ...(input.metadata !== undefined && { metadata: input.metadata }),
         updated_at: sql`now()`,
       })
@@ -190,6 +231,49 @@ export const storeService = {
   async listCurrencies(storeId: string) {
     const db = getDb()
     const currencies = await db.select().from(storeCurrency).where(eq(storeCurrency.store_id, storeId))
+    return { currencies, count: currencies.length }
+  },
+
+  /** Store API：店铺语言配置（含 C 端默认语言，与 Admin「商店 → 语言」一致） */
+  async listStoreLocalesForStorefront() {
+    const db = getDb()
+    const [row] = await db
+      .select({
+        id: store.id,
+        default_locale_code: store.default_locale_code,
+      })
+      .from(store)
+      .where(isNull(store.deleted_at))
+      .limit(1)
+    if (!row) {
+      return { locales: [], default_locale_code: null as string | null, count: 0 }
+    }
+    const localeRows = await db
+      .select({ locale_code: storeLocale.locale_code })
+      .from(storeLocale)
+      .where(eq(storeLocale.store_id, row.id))
+    const locales = localeRows.map((l) => toAdminLocale(l.locale_code))
+    return {
+      locales,
+      default_locale_code: row.default_locale_code,
+      count: locales.length,
+    }
+  },
+
+  async listStoreCurrencies() {
+    const db = getDb()
+    const [row] = await db
+      .select({ id: store.id })
+      .from(store)
+      .where(isNull(store.deleted_at))
+      .limit(1)
+    if (!row) {
+      return { currencies: [], count: 0 }
+    }
+    const currencies = await db
+      .select()
+      .from(storeCurrency)
+      .where(eq(storeCurrency.store_id, row.id))
     return { currencies, count: currencies.length }
   },
 

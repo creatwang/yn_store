@@ -14,5 +14,7 @@ declare namespace App {
     noindex?: boolean
     locale?: string
     currency?: string
+    storeDefaultLocale?: string
+    storeLocaleOptions?: Array<{ locale: string; label: string }>
   }
 }

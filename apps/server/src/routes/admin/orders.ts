@@ -1,4 +1,4 @@
-﻿import { Hono } from "hono"
+import { Hono } from "hono"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { existsSync } from "node:fs"

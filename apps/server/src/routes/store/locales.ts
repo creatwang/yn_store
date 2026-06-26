@@ -1,7 +1,7 @@
 import { Hono } from "hono"
-import { translationService } from "../../services/translation.service"
+import { storeService } from "../../services/store.service"
 
 export const storeLocales = new Hono().get("/", async (c) => {
-  const result = await translationService.listStoreLocales()
+  const result = await storeService.listStoreLocalesForStorefront()
   return c.json(result)
 })

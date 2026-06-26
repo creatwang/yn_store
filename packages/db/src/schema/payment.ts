@@ -89,6 +89,7 @@ export const paymentProvider = pgTable("payment_provider", {
 export const regionPaymentProvider = pgTable(
   "region_payment_provider",
   {
+    id: text("id").primaryKey(),
     region_id: text("region_id").notNull(),
     payment_provider_id: text("payment_provider_id").notNull(),
   },

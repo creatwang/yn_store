@@ -260,7 +260,8 @@ pnpm install
 3. `docs/REMAINING-WORK.md` — 未完成项
 4. `docs/README.md` — **文档索引**
 5. `docs/QUICKSTART.md` — 快速启动
-6. `AGENTS.md` — AI 规则摘要
+6. `docs/ecommerce-c-end/storefront-configuration.md` — **C 端商城语言/货币配置（运营向）**
+7. `AGENTS.md` — AI 规则摘要
 
 ### 核心规则
 

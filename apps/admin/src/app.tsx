@@ -621,12 +621,19 @@ const router = createBrowserRouter(
         </Route>
 
         {/* Settings Layout */}
-        <Route path="settings" element={<SettingsLayout />}>
+        <Route
+          path="settings"
+          element={<SettingsLayout />}
+          handle={{ breadcrumb: () => i18n.t("app.nav.settings.header") }}
+        >
           <Route index lazy={() => import("./routes/settings")} />
 
           {settingsRoutesFragment}
 
-          <Route path="sales-channels">
+          <Route
+            path="sales-channels"
+            handle={{ breadcrumb: () => i18n.t("salesChannels.domain") }}
+          >
             <Route index lazy={() => import("./routes/sales-channels/sales-channel-list")} />
             <Route path="create" lazy={() => import("./routes/sales-channels/sales-channel-create")} />
             <Route
@@ -652,7 +659,12 @@ const router = createBrowserRouter(
             </Route>
           </Route>
 
-          <Route path="publishable-api-keys">
+          <Route
+            path="publishable-api-keys"
+            handle={{
+              breadcrumb: () => i18n.t("apiKeyManagement.domain.publishable"),
+            }}
+          >
             <Route
               index
               lazy={() =>
@@ -689,7 +701,12 @@ const router = createBrowserRouter(
             </Route>
           </Route>
 
-          <Route path="secret-api-keys">
+          <Route
+            path="secret-api-keys"
+            handle={{
+              breadcrumb: () => i18n.t("apiKeyManagement.domain.secret"),
+            }}
+          >
             <Route
               index
               lazy={() =>
@@ -726,7 +743,10 @@ const router = createBrowserRouter(
             </Route>
           </Route>
 
-          <Route path="workflows">
+          <Route
+            path="workflows"
+            handle={{ breadcrumb: () => i18n.t("workflowExecutions.domain") }}
+          >
             <Route
               index
               lazy={() =>

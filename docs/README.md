@@ -20,6 +20,7 @@
 
 | 文档 | 用途 |
 |------|------|
+| [ecommerce-c-end/storefront-configuration.md](./ecommerce-c-end/storefront-configuration.md) | **运营向：语言/货币/地区与 C 端联调** |
 | [ecommerce-c-end/implementation-status.md](./ecommerce-c-end/implementation-status.md) | C 端完成度 |
 | [ecommerce-c-end/storefront-conventions.md](./ecommerce-c-end/storefront-conventions.md) | 目录、命名、禁止项 |
 | [ecommerce-c-end/adapter-deployment.md](./ecommerce-c-end/adapter-deployment.md) | Vercel / Docker / CI |
@@ -64,5 +65,6 @@
 ```text
 START_HERE → QUICKSTART → PROJECT_STATUS + REMAINING-WORK
          →（改 API）02 + 09-stitching
-         →（改 C 端）ecommerce-c-end/implementation-status
+         →（改 C 端）ecommerce-c-end/storefront-configuration（运营配置）
+         →（改 C 端代码）ecommerce-c-end/implementation-status
 ```

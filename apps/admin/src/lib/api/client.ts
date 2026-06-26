@@ -224,6 +224,8 @@ function paymentsClient() {
   const rpc = (api as any).admin.payments
   return {
     list: (query?: Record<string, any>) => rpcGet(rpc, undefined, query),
+    listPaymentProviders: (query?: Record<string, any>) =>
+      rpcGet(rpc["payment-providers"], undefined, query),
     retrieve: (id: string) => rpcGet(rpc[":id"], { id }),
     capture: (id: string, body?: any) => rpcPost(rpc[":id"].capture, body, { id }),
     refund: (id: string, body?: any) => rpcPost(rpc[":id"].refund, body, { id }),

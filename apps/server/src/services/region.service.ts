@@ -72,6 +72,7 @@ async function replaceRegionPaymentProviders(
   if (!providerIds.length) return
   await db.insert(regionPaymentProvider).values(
     providerIds.map((payment_provider_id) => ({
+      id: generateId("regpp"),
       region_id: regionId,
       payment_provider_id,
     })),

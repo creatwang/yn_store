@@ -614,7 +614,7 @@
 
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| GET | `/store/currencies` | 获取货币列表 |
+| GET | `/store/currencies` | 商店已启用结算货币（与 Admin「商店 → 货币」一致；C 端顶栏货币下拉） |
 | GET | `/store/currencies/:code` | 获取货币详情 |
 
 ### Customers（客户）
@@ -632,7 +632,7 @@
 
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| GET | `/store/locales` | 获取语言区域列表 |
+| GET | `/store/locales` | 商店语言配置（`locales` + `default_locale_code`，与 Admin「商店 → 语言 / 默认语言」一致；见 [storefront-configuration.md](./ecommerce-c-end/storefront-configuration.md)） |
 
 ### Orders（订单）
 

@@ -1,4 +1,4 @@
-﻿import { Hono } from "hono"
+import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { eq, sql } from "drizzle-orm"
 import { rpcQueryValidator } from "../../lib/infra/query/rpc-query-validator"

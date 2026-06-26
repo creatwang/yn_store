@@ -95,8 +95,14 @@ pages/components <script>
 | 变量 | 必填 | 说明 |
 |------|------|------|
 | `PUBLIC_API_URL` | 是 | 如 `http://localhost:7000` |
+| `PUBLIC_SITE_URL` | 否 | canonical / sitemap 绝对 URL |
+| `PUBLIC_DEFAULT_LOCALE` | 否 | **兜底**默认语言；正常由 Admin「商店 → 编辑 → 默认语言」 |
+| `PUBLIC_DEFAULT_CURRENCY` | 否 | 首次访问默认货币；列表来自 Admin「商店 → 货币」 |
+| `PUBLIC_SSG_LOCALES` | 否 | 静态 build 预渲染语言；未设则从 Admin API 读取 |
 | `PUBLIC_IMAGE_DOMAINS` | 否 | 逗号分隔 CDN 域名 |
 | `ADAPTER` | 否 | `cloudflare` 时启用 passthroughImageService |
+
+**运营向配置步骤**（语言、货币、排错）见 [storefront-configuration.md](storefront-configuration.md)。
 
 ---
 
